@@ -1193,25 +1193,7 @@
 (defn check-restrictions
   [state _ eid]
   ;; memory limit check
-  (update-mu state)
-  (let [{:keys [available used]} (-> @state :runner :memory)
-        available-mu (- available used)]
-    (wait-for
-      (resolve-ability
-        state :runner
-        (make-eid state eid)
-        (when (neg? available-mu)
-          {:prompt (format "Insufficient MU. Trash %s MU of installed programs." (- available-mu))
-           :choices {:max (count (all-installed-runner-type state :program))
-                     :card #(and (installed? %)
-                                 (program? %))}
-           :async true
-           :effect (req (wait-for (move* state side (make-eid state eid) :trash-cards targets {:game-trash true
-                                                                                               :unpreventable true})
-                                  (update-mu state)
-                                  (effect-completed state side eid)))})
-        nil nil)
-      (enforce-conditions state nil eid))))
+  (enforce-conditions state nil eid))
 
 (defn checkpoint
   "10.3. Checkpoints: A CHECKPOINT is a process wherein objects that have entered an
@@ -1238,7 +1220,6 @@
            ;; f: stuff on agendas moved from score zone
            ;; g: stuff on installed cards that were trashed
            ;; h: empty servers
-           (clear-empty-remotes state)
            ;; i: card counters/agendas become cards again
            ;; j: counters in discard are returned to the bank
            ;; 10.3.2: reaction window

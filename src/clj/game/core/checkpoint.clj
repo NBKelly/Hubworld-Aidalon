@@ -15,19 +15,10 @@
 (defn fake-checkpoint
   [state]
   (loop [i 0]
-    (let [changed [(update-all-ice state :corp)
-                   (update-all-icebreakers state :runner)
-                   (update-all-card-labels state)
-                   (update-all-advancement-requirements state)
-                   (update-all-agenda-points state)
-                   (update-link state)
-                   (update-mu state)
+    (let [changed [(update-all-card-labels state)
                    (update-hand-size state :corp)
                    (update-hand-size state :runner)
-                   (update-all-subtypes state)
-                   (update-tag-status state)]]
+                   (update-all-subtypes state)]]
       (when (and (some true? changed)
                  (< i 10))
-        (recur (inc i)))))
-  (clear-empty-remotes state)
-  (generate-runnable-zones state nil nil))
+        (recur (inc i))))))
