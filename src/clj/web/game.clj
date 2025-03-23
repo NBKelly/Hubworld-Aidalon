@@ -177,18 +177,24 @@
     id :id
     timestamp :timestamp}]
   (lobby/lobby-thread
-    (let [{:keys [players started] :as lobby} (app-state/get-lobby gameid)]
-      (when (and lobby (lobby/first-player? uid lobby) (not started))
-        (let [now (inst/now)
-              new-app-state
-              (swap! app-state/app-state
-                     update :lobbies handle-start-game gameid players now)
-              lobby? (get-in new-app-state [:lobbies gameid])]
-          (when lobby?
-            (stats/game-started db lobby?)
-            (lobby/send-lobby-state lobby?)
-            (lobby/broadcast-lobby-list)
-            (send-state-to-participants :game/start lobby? (diffs/public-states (:state lobby?)))))))
+    (try
+      (let [{:keys [players started] :as lobby} (app-state/get-lobby gameid)]
+        (when (and lobby (lobby/first-player? uid lobby) (not started))
+          (let [now (inst/now)
+                new-app-state
+                (swap! app-state/app-state
+                       update :lobbies handle-start-game gameid players now)
+                lobby? (get-in new-app-state [:lobbies gameid])]
+            (when lobby?
+              (stats/game-started db lobby?)
+              (lobby/send-lobby-state lobby?)
+              (lobby/broadcast-lobby-list)
+              (send-state-to-participants :game/start lobby? (diffs/public-states (:state lobby?)))))))
+      (catch Exception e
+        (ws/chsk-send! uid [:game/error])
+        (println (str "Caught exception"
+                      "\nException Data: " (or (ex-data e) (.getMessage e))
+                      "\nStacktrace: " (with-out-str (stacktrace/print-stack-trace e 100))))))
     (lobby/log-delay! timestamp id)))
 
 (defmethod ws/-msg-handler :game/leave

@@ -637,8 +637,7 @@
    set-prop])
 
 (expose-vars
-  [game.core.player
-   new-player])
+  [game.core.player])
 
 (expose-vars
   [game.core.prompt-state
