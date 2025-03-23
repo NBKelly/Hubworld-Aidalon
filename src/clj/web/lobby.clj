@@ -529,10 +529,11 @@
     (if (and (some? side) (not= side "Any Side"))
       side
       (case request-side
-        "Player-A" "Player-B"
-        "Player-B" "Player-A"
-        ; else
-        (rand-nth ["Player-A" "Player-B"])))))
+        "Corp" "Runner" ;;"Player-A" "Player-B"
+        "Runner" "Corp" ;;"Player-B" "Player-A"
+        ;; else
+        (rand-nth ["Corp" "Runner"])))))
+;;        (rand-nth ["Player-A" "Player-B"])))))
 
 (defn insert-user-as-player [lobby uid user request-side]
   (if (or (not= 1 (-> lobby :players count))
@@ -541,7 +542,8 @@
     (let [existing-player (-> lobby :players first)
           existing-player-side (determine-player-side existing-player request-side)
           existing-player (assoc existing-player :side existing-player-side)
-          user-side (if (= "Player-A" existing-player-side) "Player-B" "Player-A")
+          ;;user-side (if (= "Player-A" existing-player-side) "Player-B" "Player-A")
+          user-side (if (= "Corp" existing-player-side) "Runner" "Corp")
           user-as-player {:uid uid
                           :user user
                           :side user-side}]
@@ -597,7 +599,8 @@
 (defn swap-side
   "Returns a new player map with the player's :side switched"
   [player]
-  (-> player (update :side #(if (= % "Player-A") "Player-B" "Player-A"))))
+  (-> player (update :side #(if (= % "Corp") "Runner" "Corp"))))
+;;(-> player (update :side #(if (= % "Player-A") "Player-B" "Player-A"))))
 
 (defn change-side
   "Returns a new player map with the player's :side set to a new side"

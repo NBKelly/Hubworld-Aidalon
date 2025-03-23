@@ -80,7 +80,7 @@
   "Initialises the game state"
   [{:keys [players gameid timer spectatorhands api-access save-replay room] :as game}]
   (let [corp (some #(when (= (:side %) "Corp") %) players)
-        runner (some #(when (runner? %) %) players)
+        runner (some #(when (= (:side %) "Runner") %) players)
         corp-deck (create-deck (:deck corp) "Corp")
         runner-deck (create-deck (:deck runner) "Runner")
         corp-deck-id (get-in corp [:deck :_id])

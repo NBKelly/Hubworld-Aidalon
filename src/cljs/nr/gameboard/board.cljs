@@ -50,13 +50,7 @@
 (defn- image-url [{:keys [side code] :as card}]
   (let [lang (get-in @app-state [:options :language] "en")
         res (get-in @app-state [:options :card-resolution] "default")
-        special-user (get-in @game-state [(keyword (lower-case side)) :user :special])
-        special-wants-art (get-in @game-state [(keyword (lower-case side)) :user :options :show-alt-art])
-        viewer-wants-art (get-in @app-state [:options :show-alt-art])
-        show-art (and special-user special-wants-art viewer-wants-art)
-        art (if show-art
-              (get-in @game-state [(keyword (lower-case side)) :user :options :alt-arts (keyword code)] "stock")
-              "stock")
+        art "stock"
         card (if (or (:face card) (:images card)) card (get @all-cards (get-title card)))
         images (image-or-face card)]
     (get-image-path images (keyword lang) (keyword res) (keyword art))))
