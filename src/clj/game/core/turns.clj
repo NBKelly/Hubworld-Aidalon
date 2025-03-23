@@ -19,6 +19,7 @@
     [game.core.winning :refer [flatline]]
     [game.macros :refer [continue-ability req wait-for]]
     [game.utils :refer [dissoc-in enumerate-str quantify]]
+    [jinteki.utils :refer [other-side]]
     [clojure.string :as string]))
 
 (defn- turn-message
@@ -30,6 +31,9 @@
         credits (get-in @state [side :credit])
         text (str pre " [their] turn " (:turn @state) " with " credits " [Credit] and " (quantify cards "card") " in " hand)]
     (system-msg state side text {:hr (not start-of-turn)})))
+
+(defn players [state]
+  [(:active-player @state) (other-side (:active-player @state))])
 
 (defn end-phase-12
   "End phase 1.2 and trigger appropriate events for the player."
@@ -55,6 +59,52 @@
              (when (= side :corp)
                (update-all-advancement-requirements state)))))
 
+(defn start-hubworld-turn
+  [state _ eid]
+  (when-not (get-in @state [:turn :started])
+    (println "starting turn...")
+    (swap! state assoc :turn-events nil)
+    (swap! state assoc-in [:turn :started] true)
+    ;; clear out last revealed cards
+    (swap! state assoc :last-revealed [])
+
+    ;; set up the state for undo-turn functionality
+    (doseq [s (players state)] (swap! state dissoc-in [s :undo-turn]))
+    (swap! state assoc :click-states [])
+    (swap! state assoc :turn-state (dissoc @state :log :history :turn-state))
+
+    (swap! state update-in [:turn :index] inc)
+
+    (println "players: " (players state))
+
+    ;; TODO - dissoc "new" from all cards in discard piles
+    (doseq [s (players state)]
+      (doseq [c (get-in @state [s :discard])]
+        (swap! state :corp (dissoc c :new))))
+
+    (swap! state assoc :active-player (:first-player @state) :per-turn nil :end-turn false)
+    (swap! state update :first-player other-side)
+
+    (doseq [s (players state)]
+      (swap! state assoc-in [s :register] nil))
+
+    (println (get-in @state [:runner :identity :action-limit]))
+
+    (doseq [s (players state)]
+      (let [clicks-to-gain (get-in @state [s :identity :action-limit] 3)]
+        (println "clicks to gain for " s " : " clicks-to-gain)
+        (gain state s :click clicks-to-gain)))
+
+    (wait-for
+      (trigger-event-simult state (:active-player @state) :turn-begins nil nil)
+      (unregister-lingering-effects state (:active-player @state) :start-of-turn)
+      (unregister-floating-events state (:active-player @state) :start-of-turn)
+      (wait-for
+        (trigger-event-simult state (other-side (:active-player @state)) :turn-begins nil nil)
+        (unregister-lingering-effects state (other-side (:active-player @state)) :start-of-turn)
+        (unregister-floating-events state (other-side (:active-player @state)) :start-of-turn)
+        (effect-completed state (:active-player @state) eid)))))
+
 (defn start-turn
   "Start turn."
   [state side _]
@@ -78,10 +128,6 @@
 
     (doseq [c (filter :new (concat (all-installed-and-scored state side) (get-in @state [side :discard])))]
       (update! state side (dissoc c :new)))
-
-    (swap! state assoc :active-player side :per-turn nil :end-turn false)
-    (doseq [s [:runner :corp]]
-      (swap! state assoc-in [s :register] nil))
 
     (let [phase (if (= side :corp) :corp-phase-12 :runner-phase-12)
           start-cards (filter #(card-flag-fn? state side % phase true)

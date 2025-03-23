@@ -20,7 +20,7 @@
    [game.core.set-up :refer [keep-hand mulligan]]
    [game.core.shuffling :refer [shuffle-deck]]
    [game.core.toasts :refer [ack-toast]]
-   [game.core.turns :refer [end-phase-12 end-turn start-turn]]
+   [game.core.turns :refer [end-phase-12 end-turn start-hubworld-turn]]
    [game.core.winning :refer [concede]]))
 
 (defn checkpoint+clean-up
@@ -83,7 +83,7 @@
    "select" #'select
    "set-property" #'set-property
    "shuffle" #'shuffle-deck
-   "start-turn" #'start-turn
+   "start-turn" #'start-hubworld-turn
    "subroutine" #'play-subroutine
    "system-msg" #(system-msg %1 %2 (:msg %3))
    "toast" #'ack-toast

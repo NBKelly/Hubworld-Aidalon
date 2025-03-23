@@ -69,7 +69,8 @@
              (not (is-disabled-reg? state card))
              ;; actions cannot be used during runs
              (not (and (:action ability)
-                       (:run @state)))
+                       (or (:run @state)
+                           (not= side (:active-player @state)))))
              (can-pay? state side eid card nil cost)
              (can-trigger? state side eid ability card nil))
       (assoc ability :playable true)

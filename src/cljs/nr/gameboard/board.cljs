@@ -2110,7 +2110,7 @@
         run (r/cursor game-state [:run])
         encounters (r/cursor game-state [:encounters])
         side (r/cursor game-state [:side])
-        turn (r/cursor game-state [:turn])
+        turn (r/cursor game-state [:turn :index])
         end-turn (r/cursor game-state [:end-turn])
         corp-phase-12 (r/cursor game-state [:corp-phase-12])
         runner-phase-12 (r/cursor game-state [:runner-phase-12])

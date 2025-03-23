@@ -27,14 +27,15 @@
     [game.core.toasts :refer [toast]]
     [game.core.update :refer [update!]]
     [game.macros :refer [continue-ability req wait-for]]
-    [game.utils :refer [dissoc-in quantify remove-once same-card? same-side? server-cards to-keyword]]))
+    [game.utils :refer [dissoc-in quantify remove-once same-card? same-side? server-cards to-keyword]]
+    [jinteki.utils :refer [other-side]]))
 
 (defn- update-click-state
   "Update :click-states to hold latest 4 moments before performing actions."
   [state ability]
   (when (:action ability)
     (let [state' (dissoc @state :log :history :click-states :turn-state)
-          click-states (vec (take-last 4 (conj (:click-states @state) state')))]
+          click-states (vec (take-last 10 (conj (:click-states @state) state')))]
       (swap! state assoc :click-states click-states))))
 
 (defn- no-blocking-prompt?
@@ -69,6 +70,7 @@
             (trigger-event-simult state side :action-played nil {:ability-idx ability-idx :card stripped-card})
             (wait-for
               (resolve-ability state side ability card targets)
+              (swap! state update :active-player other-side)
               (trigger-event-simult state side eid :action-resolved nil {:ability-idx ability-idx :card stripped-card}))))
         (resolve-ability state side eid ability card targets)))))
 
