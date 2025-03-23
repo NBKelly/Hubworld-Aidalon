@@ -111,7 +111,7 @@
         (let [db-deck (assoc deck
                              :_id (->object-id)
                              :date (inst/now)
-                             :format "standard")
+                             :format "pre-release")
               updated-deck (update-deck db-deck)
               status (calculate-deck-status updated-deck)
               deck (prepare-deck-for-db db-deck username status)]

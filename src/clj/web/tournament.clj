@@ -127,7 +127,7 @@
         (let [username1 (get-in table [:player1 :name])
               username2 (get-in table [:player2 :name])
               base {:tournament-name (:name data)
-                    :tournament-format "standard"
+                    :tournament-format "pre-release"
                     :cobra-link (:cobra-link data)
                     :selected-round (inc selected-round)
                     :table (:table table)

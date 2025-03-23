@@ -638,10 +638,7 @@
 
 (expose-vars
   [game.core.player
-   map->Corp
-   map->Runner
-   new-corp
-   new-runner])
+   new-player])
 
 (expose-vars
   [game.core.prompt-state

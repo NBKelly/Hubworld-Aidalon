@@ -36,7 +36,7 @@
      :lastConnection   registration-date
      :password         (password/encrypt password)
      :isadmin          (or isadmin false)
-     :options          {:default-format "standard"
+     :options          {:default-format "pre-release"
                         :pronouns "none"}}))
 
 (defn active-user?

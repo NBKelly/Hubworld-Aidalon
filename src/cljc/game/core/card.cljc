@@ -436,7 +436,7 @@
        by the argument's :zone and :cid."
        [state {:keys [cid zone side host type] :as card}]
        (when card
-         (if (= type "Identity")
+         (if (= type "Seeker")
            (get-in @state [(to-keyword side) :identity])
            (if zone
              (if host

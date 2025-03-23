@@ -8,8 +8,9 @@
 (defn update!
   "Updates the state so that its copy of the given card matches the argument given."
   [state side {:keys [type zone cid host] :as card}]
+  (println "c: " (:title card) ", type: " type ", card-side: " (:side card) ", p-side: " side)
   (cond
-    (= type "Identity")
+    (= type "Seeker")
     (when (= side (to-keyword (:side card)))
       (swap! state assoc-in [side :identity] card)
       card)

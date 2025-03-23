@@ -96,13 +96,10 @@
      :last-update now
      :players [player]
      :spectators []
-     :corp-spectators []
-     :runner-spectators []
      :messages []
      :pool (join-pool!)
      ;; options
-     :precon (validate-precon format precon gateway-type)
-     :open-decklists (or open-decklists (when (validate-precon format precon gateway-type) true))
+     :open-decklists open-decklists
      :allow-spectator allow-spectator
      :api-access api-access
      :format format
@@ -111,7 +108,6 @@
      :room room
      :save-replay save-replay
      :spectatorhands spectatorhands
-     :singleton (when (some #{format} `("standard" "startup" "casual" "eternal")) singleton)
      :timer timer
      :title title}))
 
@@ -178,7 +174,6 @@
    :date
    :format
    :gameid
-   :precon
    :messages
    :mute-spectators
    :original-players
@@ -189,8 +184,6 @@
    :save-replay
    :singleton
    :spectators
-   :corp-spectators
-   :runner-spectators
    :spectatorhands
    :started
    :timer
@@ -204,8 +197,6 @@
        (update :password boolean)
        (update :players #(prepare-players lobby %))
        (update :spectators #(prepare-players lobby %))
-       (update :corp-spectators #(prepare-players lobby %))
-       (update :runner-spectators #(prepare-players lobby %))
        (update :original-players prepare-original-players)
        (update :messages #(when participating? %))
        (select-non-nil-keys lobby-keys))))
@@ -367,16 +358,12 @@
   (if-let [lobby (app-state/uid->lobby lobbies uid)]
     (let [gameid (:gameid lobby)
           players (remove #(= uid (:uid %)) (:players lobby))
-          spectators (remove #(= uid (:uid %)) (:spectators lobby))
-          corp-spectators (remove #(= uid (:uid %)) (:corp-spectators lobby))
-          runner-spectators (remove #(= uid (:uid %)) (:runner-spectators lobby))]
+          spectators (remove #(= uid (:uid %)) (:spectators lobby))]
       (if (pos? (count players))
         (-> lobbies
             (update gameid send-message leave-message)
             (assoc-in [gameid :players] players)
-            (assoc-in [gameid :spectators] spectators)
-            (assoc-in [gameid :runner-spectators] runner-spectators)
-            (assoc-in [gameid :corp-spectators] corp-spectators))
+            (assoc-in [gameid :spectators] spectators))
         (dissoc lobbies gameid)))
     lobbies))
 
@@ -542,10 +529,10 @@
     (if (and (some? side) (not= side "Any Side"))
       side
       (case request-side
-        "Corp" "Runner"
-        "Runner" "Corp"
+        "Player-A" "Player-B"
+        "Player-B" "Player-A"
         ; else
-        (rand-nth ["Corp" "Runner"])))))
+        (rand-nth ["Player-A" "Player-B"])))))
 
 (defn insert-user-as-player [lobby uid user request-side]
   (if (or (not= 1 (-> lobby :players count))
@@ -554,7 +541,7 @@
     (let [existing-player (-> lobby :players first)
           existing-player-side (determine-player-side existing-player request-side)
           existing-player (assoc existing-player :side existing-player-side)
-          user-side (if (= "Corp" existing-player-side) "Runner" "Corp")
+          user-side (if (= "Player-A" existing-player-side) "Player-B" "Player-A")
           user-as-player {:uid uid
                           :user user
                           :side user-side}]
@@ -610,16 +597,12 @@
 (defn swap-side
   "Returns a new player map with the player's :side switched"
   [player]
-  (-> player
-      (update :side #(if (= % "Corp") "Runner" "Corp"))
-      (dissoc :deck)))
+  (-> player (update :side #(if (= % "Player-A") "Player-B" "Player-A"))))
 
 (defn change-side
   "Returns a new player map with the player's :side set to a new side"
   [player side]
-  (-> player
-      (assoc :side side)
-      (dissoc :deck)))
+  (-> player (assoc :side side)))
 
 (defn update-sides [lobby uid side]
   (let [first-player (first (:players lobby))]
@@ -742,23 +725,16 @@
     (when @changed?
       (broadcast-lobby-list))))
 
-(defn watch-lobby [lobby uid user request-side]
+(defn watch-lobby [lobby uid user]
   (if (already-in-game? user lobby)
     lobby
-    (let [lobby (update lobby :spectators conj {:uid uid
-                                                :user user})]
-      (cond
-        (= request-side "Corp")
-        (update lobby :corp-spectators conj {:uid uid :user user})
-        (= request-side "Runner")
-        (update lobby :runner-spectators conj {:uid uid :user user})
-        :else lobby))))
+    (update lobby :spectators conj {:uid uid :user user})))
 
-(defn handle-watch-lobby [lobbies gameid uid user correct-password? watch-message request-side]
+(defn handle-watch-lobby [lobbies gameid uid user correct-password? watch-message]
   (let [lobby (get lobbies gameid)]
     (if (and user lobby (allowed-in-lobby user lobby) correct-password?)
       (-> lobby
-          (watch-lobby uid user request-side)
+          (watch-lobby uid user)
           (send-message watch-message)
           (->> (assoc lobbies gameid)))
       lobbies)))
@@ -767,7 +743,7 @@
   lobby--watch
   [{{user :user} :ring-req
     uid :uid
-    {:keys [gameid password request-side]} :?data
+    {:keys [gameid password]} :?data
     ?reply-fn :?reply-fn
     id :id
     timestamp :timestamp}]
@@ -775,10 +751,10 @@
     (let [lobby (app-state/get-lobby gameid)]
       (when (and lobby (allowed-in-lobby user lobby))
         (let [correct-password? (check-password lobby user password)
-              watch-message (core/make-system-message (str (:username user) " joined the game as a spectator" (when request-side (str " (" request-side " perspective)")) "."))
+              watch-message (core/make-system-message (str (:username user) " joined the game as a spectator."))
               new-app-state (swap! app-state/app-state
                                    update :lobbies #(-> %
-                                                        (handle-watch-lobby gameid uid user correct-password? watch-message request-side)
+                                                        (handle-watch-lobby gameid uid user correct-password? watch-message)
                                                         (handle-set-last-update gameid uid)))
               lobby? (get-in new-app-state [:lobbies gameid])]
           (cond
