@@ -55,8 +55,8 @@
      (fn [user]
        (swap! s assoc
               :title (str (:username user) "'s game")
-              :side "Corp"
-              :format "standard"
+              :side "Player-A"
+              :format "pre-release"
               :editing false
               :replay true
               :flash-message ""

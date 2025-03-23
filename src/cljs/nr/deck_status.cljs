@@ -31,9 +31,9 @@
 
 (defn- format-deck-status-span
   [{:keys [format] :as deck-status} tooltip? violation-details?]
-  (let [format (or format :standard)
+  (let [format (or format :pre-release)
         status (check-deck-status deck-status)
-        message (str (tr-format (get slug->format (:format deck-status) "Standard"))
+        message (str (tr-format (get slug->format (:format deck-status) "Pre-Release"))
                      " "
                      (if (= "invalid" status)
                        (tr [:deck-builder.illegal "illegal"])

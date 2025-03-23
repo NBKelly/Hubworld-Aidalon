@@ -23,14 +23,11 @@
     [avatar (:user player) {:opts {:size 22}}]
     [user-status-span player]
     (when (not (:password game))
-      (let [side (:side player)
-            faction (:faction (:identity (:deck player)))
+      (let [faction (:faction (:identity (:deck player)))
             identity (:title (:identity (:deck player)))
             specs (:allow-spectator game)]
         (cond
           (and (some? faction)
                (not= "Neutral" faction)
                specs)
-          (faction-icon faction identity)
-          side
-          (str " (" (tr-side side) ")"))))]))
+          (faction-icon faction identity))))]))

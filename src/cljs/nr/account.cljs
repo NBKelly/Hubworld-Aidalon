@@ -361,7 +361,7 @@
           [:section
            [:h3 (tr [:lobby.default-game-format "Default game format"])]
            [:select.format
-            {:value (or (:default-format @s) "standard")
+            {:value (or (:default-format @s) "pre-release")
              :on-change #(swap! s assoc-in [:default-format] (.. % -target -value))}
             (doall
              (for [[k v] slug->format]

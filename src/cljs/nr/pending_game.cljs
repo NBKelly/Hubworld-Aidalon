@@ -1,7 +1,6 @@
 (ns nr.pending-game
   (:require
    [jinteki.validator :refer [trusted-deck-status]]
-   [jinteki.preconstructed :refer [matchup-by-key]]
    [nr.appstate :refer [app-state current-gameid]]
    [nr.cardbrowser :refer [image-url] :as cb]
    [nr.deck-status :refer [deck-format-status-span]]
@@ -15,15 +14,6 @@
    [reagent-modals.modals :as reagent-modals]
    [reagent.core :as r]
    [taoensso.sente :as sente]))
-
-(defn is-constructed?
-  "Games using the starter decks are not constructed"
-  [current-game]
-  (not (:precon @current-game)))
-
-(defn is-preconstructed?
-  [current-game]
-  (not (is-constructed? current-game)))
 
 (defn select-deck [deck]
   (ws/ws-send! [:lobby/deck {:gameid (current-gameid app-state)
@@ -40,8 +30,6 @@
      [:div.deck-collection.lobby-deck-selector
       (let [fmt (:format @current-game)
             players (:players @current-game)
-            side (:side (some #(when (= (-> % :user :_id) (:_id @user)) %) players))
-            same-side? (fn [deck] (= side (get-in deck [:identity :side])))
             legal? (fn [deck fmt] (or (= "casual" fmt)
                                       (get-in deck [:status (keyword fmt) :legal]
                                               (get-in (trusted-deck-status (assoc deck :format fmt))
@@ -49,7 +37,6 @@
                                                       false))))]
         (doall
          (for [deck (->> @decks
-                         (filter same-side?)
                          (filter #(legal? % fmt))
                          (sort-by :date)
                          (reverse))]
@@ -71,7 +58,7 @@
 (defn start-button [current-game user gameid players]
   (when (first-user? @players @user)
     [cond-button (tr [:lobby.start "Start"])
-     (or (every? :deck @players) (is-preconstructed? current-game))
+     (every? :deck @players)
      #(ws/ws-send! [:game/start {:gameid @gameid}])]))
 
 (defn leave-button [gameid]
@@ -85,36 +72,10 @@
                       (swap! app-state assoc :editing false :current-game nil))))}
    (tr [:lobby.leave "Leave"])])
 
-(defn precon-info-box [current-game]
-  (when-let [precon (:precon @current-game)]
-    [:div.infobox.blue-shade
-     [:p (tr (:tr-desc (matchup-by-key precon)))]]))
-
-(defn swap-sides-button [user gameid players]
-  (when (first-user? @players @user)
-    (if (< 1 (count @players))
-      [:button {:on-click #(ws/ws-send! [:lobby/swap {:gameid @gameid}])}
-       (tr [:lobby.swap "Swap sides"])]
-      [:div.dropdown
-       [:button.dropdown-toggle {:data-toggle "dropdown"}
-        (tr [:lobby.swap "Swap sides"])
-        [:b.caret]]
-       (into
-        [:ul.dropdown-menu.blue-shade]
-        (for [side ["Any Side" "Corp" "Runner"]]
-          (let [is-player-side (= side (-> @players first :side))]
-            [:a.block-link
-             (if is-player-side
-               {:style {:color "grey" :cursor "default"} :disabled true}
-               {:on-click #(ws/ws-send! [:lobby/swap {:gameid @gameid
-                                                      :side side}])})
-             [:li (tr-side side)]])))])))
-
 (defn button-bar [current-game user gameid players]
   [:div.button-bar
    [start-button current-game user gameid players]
-   [leave-button gameid]
-   [swap-sides-button user gameid players]])
+   [leave-button gameid]])
 
 (defn player-item [user current-game player]
   (let [player-id (get-in player [:user :_id])
@@ -128,21 +89,17 @@
            (deck-name (:deck player) 25)
            (tr [:lobby.deck-selected "Deck selected"]))]])
      (when-let [deck (:deck player)]
-       [:div.float-right [deck-format-status-span deck (:format @current-game "standard") true]])
-     (when (and (is-constructed? current-game)
-                this-player
-                (not (= (:side player) (tr-side "Any Side"))))
-       [:span.fake-link.deck-load
-        {:on-click #(reagent-modals/modal! [select-deck-modal user current-game])}
-        (tr [:lobby.select-deck "Select Deck"])])]))
+       [:div.float-right [deck-format-status-span deck (:format @current-game "pre-release") true]])
+     [:span.fake-link.deck-load
+      {:on-click #(reagent-modals/modal! [select-deck-modal user current-game])}
+      (tr [:lobby.select-deck "Select Deck"])]]))
 
 (defn player-list [user current-game players]
   [:<>
    [:h3 (tr [:lobby.players "Players"])]
    (into
     [:div.players]
-    (map (fn [player] [player-item user current-game player])
-         @players))])
+    (map (fn [player] [player-item user current-game player]) @players))])
 
 (defn options-list [current-game]
   (let [{:keys [allow-spectator api-access password
@@ -194,9 +151,7 @@
      [button-bar current-game user gameid players]
      [:div.content
       [:h2 (:title @current-game)]
-      [precon-info-box current-game]
-      (when-not (or (every? :deck @players)
-                    (not (is-constructed? current-game)))
+      (when-not (every? :deck @players)
         [:div.flash-message
          (tr [:lobby.waiting "Waiting players deck selection"])])
       [player-list user current-game players]

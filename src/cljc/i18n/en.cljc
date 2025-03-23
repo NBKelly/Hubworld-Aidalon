@@ -13,6 +13,7 @@
              :the-collective "The Collective"
              :the-remnants "The Remnants"}
    :format {:all "All"
+            :casual "Casual"
             :any-format "Any Format"
             :pre-release "Pre-Release"}
    :preconstructed {:worlds-2012-a "Worlds 2012: Ben Marsh (C) vs. Jeremy Zwirn (R)"
@@ -434,25 +435,6 @@
            :api-access-details "This allows access to information about your game to 3rd party extensions. Requires an API Key to be created in Settings."
            :filter "Filter"
            :filtered "(filtered)"}
-   :angel-arena {:cancel-match "Cancel match"
-                 :claim-victory "Claim victory"
-                 :still-here "Need more time"
-                 :abandon-run "Abandon run"
-                 :active-corp-run "Active Corp run"
-                 :active-runner-run "Active Runner run"
-                 :are-you-sure "Are you sure?"
-                 :are-you-sure-no "no"
-                 :are-you-sure-yes "yes"
-                 :format "Format"
-                 :latest-runs "Latest runs"
-                 :no-eligible-decks "No legal decks found for this side and format."
-                 :no-games "No games"
-                 :queue-for-match "Queue for match"
-                 :queueing "Queueing..."
-                 :requesting-run-data "Requesting run data..."
-                 :select-deck "Select your deck"
-                 :start-new-run "Start new run"
-                 :wins "wins"}
    :settings {:invalid-password "Invalid login or password"
               :invalid-email "No account with that email address exists"
               :updated "Profile updated - Please refresh your browser"

@@ -11,16 +11,7 @@
 (defn- load-visible-formats
   "Loading visible formats from localStorage. Accounting for the fact that js->clj doesn't handle sets"
   []
-  (let [default-visible-formats #{"standard"
-                                  "system-gateway"
-                                  "throwback"
-                                  "startup"
-                                  "sunset"
-                                  "eternal"
-                                  "preconstructed"
-                                  "snapshot"
-                                  "snapshot-plus"
-                                  "neo"
+  (let [default-visible-formats #{"pre-release"
                                   "casual"}
         serialized (get-local-value "visible-formats" "")]
     (if (empty? serialized) default-visible-formats (set (.parse js/JSON serialized)))))
