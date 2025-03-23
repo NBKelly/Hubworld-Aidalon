@@ -1,6 +1,6 @@
 (ns nr.pending-game
   (:require
-   [jinteki.validator :refer [singleton-deck? trusted-deck-status]]
+   [jinteki.validator :refer [trusted-deck-status]]
    [jinteki.preconstructed :refer [matchup-by-key]]
    [nr.appstate :refer [app-state current-gameid]]
    [nr.cardbrowser :refer [image-url] :as cb]
@@ -40,9 +40,6 @@
      [:div.deck-collection.lobby-deck-selector
       (let [fmt (:format @current-game)
             players (:players @current-game)
-            singleton? (:singleton @current-game)
-            singleton-fn? (fn [deck] (or (not singleton?) (singleton-deck? deck)))
-            ;;(or (not singleton?) (singleton-id? (get-in deck [:identity])))) -- this one restricts to the ids only
             side (:side (some #(when (= (-> % :user :_id) (:_id @user)) %) players))
             same-side? (fn [deck] (= side (get-in deck [:identity :side])))
             legal? (fn [deck fmt] (or (= "casual" fmt)
@@ -53,7 +50,6 @@
         (doall
          (for [deck (->> @decks
                          (filter same-side?)
-                         (filter singleton-fn?)
                          (filter #(legal? % fmt))
                          (sort-by :date)
                          (reverse))]
@@ -93,11 +89,6 @@
   (when-let [precon (:precon @current-game)]
     [:div.infobox.blue-shade
      [:p (tr (:tr-desc (matchup-by-key precon)))]]))
-
-(defn singleton-info-box [current-game]
-  (when (:singleton @current-game)
-    [:div.infobox.blue-shade
-     [:p (tr [:lobby.singleton-restriction "This lobby is running in singleton mode. This means decklists will be restricted to only those which do not contain any duplicate cards."])]]))
 
 (defn swap-sides-button [user gameid players]
   (when (first-user? @players @user)
@@ -204,7 +195,6 @@
      [:div.content
       [:h2 (:title @current-game)]
       [precon-info-box current-game]
-      [singleton-info-box current-game]
       (when-not (or (every? :deck @players)
                     (not (is-constructed? current-game)))
         [:div.flash-message

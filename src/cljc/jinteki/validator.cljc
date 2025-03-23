@@ -9,50 +9,20 @@
   [cards]
   (reduce (fn [sum line] (+ sum (:qty line))) 0 cards))
 
-;;; Helpers for Alliance cards
-(defn default-alliance-is-free?
-  "Default check if an alliance card is free - 6 non-alliance cards of same faction."
-  [cards line]
-  (<= 6 (card-count (filter #(and (= (get-in line [:card :faction])
-                                     (get-in % [:card :faction]))
-                                  (not (has-subtype? (:card %) "Alliance")))
-                            cards))))
-
-(defn alliance-is-free?
-  "Checks if an alliance card is free"
-  [cards {:keys [card] :as line}]
-  (case (:title card)
-    ("Heritage Committee"
-     "Product Recall"
-     "Jeeves Model Bioroids"
-     "Raman Rai"
-     "Salem's Hospitality"
-     "Executive Search Firm"
-     "Consulting Visit"
-     "Ibrahim Salem")
-    (default-alliance-is-free? cards line)
-    "Mumba Temple"
-    (>= 15 (card-count (filter #(= "ICE" (:type (:card %))) cards)))
-    "Museum of History"
-    (<= 50 (card-count cards))
-    "PAD Factory"
-    (= 3 (card-count (filter #(= "PAD Campaign" (:title (:card %))) cards)))
-    "Mumbad Virtual Tour"
-    (<= 7 (card-count (filter #(= "Asset" (:type (:card %))) cards)))
-    ;; Not an alliance card
-    false))
-
 ;; Basic deck rules
 (defn min-deck-size
   "Contains implementation-specific decksize adjustments, if they need to be different from printed ones."
   [identity]
-  (:minimumdecksize identity 0))
+  (:minimumdecksize identity 36))
 
-(defn min-agenda-points
+(defn max-deck-size
+  "Contains implementation-specific decksize adjustments, if they need to be different from printed ones."
+  [identity]
+  (:maximumdecksize identity 36))
+
+(defn agent-count
   [deck]
-  (let [size (max (card-count (:cards deck))
-                  (min-deck-size (:identity deck)))]
-    (+ 2 (* 2 (quot size 5)))))
+  (count (filter #(= (->> % :card :type) "Agent") (:cards deck))))
 
 (defn draft-id?
   "Check if the specified id is a draft identity"
@@ -65,31 +35,11 @@
   (let [inf (:influencelimit identity)]
     (if (or (nil? inf) (= "∞" inf)) INFINITY inf)))
 
-(defn singleton-id?
-  "Returns true if the given id is singleton"
-  [identity]
-  (or (= "Nova Initiumia: Catalyst & Impetus" (:title identity))
-      (= "Ampère: Cybernetics For Anyone" (:title identity))))
-
-(defn singleton-legal
-  "Returns false if the identity chosen is a singleton id and the there are multiple copies of the given card, otherwise returns true"
-  [identity {:keys [qty card]}]
-  (if (singleton-id? identity)
-    (= 1 qty)
-    true))
-
 (defn legal-num-copies?
   "Returns true if there is a legal number of copies of a particular card."
   [identity {:keys [qty card]}]
-  (and (singleton-legal identity {:qty qty :card card})
-       (or (draft-id? identity)
-           (<= qty (:deck-limit card 3)))))
-
-(defn is-prof-prog?
-  "Check if ID is The Professor and card is a Program"
-  [deck card]
-  (and (= "The Professor: Keeper of Knowledge" (get-in deck [:identity :title]))
-       (= "Program" (:type card))))
+  (and (or (draft-id? identity)
+           (<= qty (:deck-limit card 2)))))
 
 ;; Influence
 ;; Note: line is a map with a :card and a :qty
@@ -104,20 +54,8 @@
 (defn line-influence-cost
   "Returns the influence cost of the specified card"
   [deck line]
-  (let [identity-faction (get-in deck [:identity :faction])
-        base-cost (line-base-cost identity-faction line)]
-    ;; Do not care about discounts if the base cost is 0 (in faction or free neutral)
-    (if (zero? base-cost)
-      0
-      (cond
-        ;; The Professor: Keeper of Knowledge - discount influence cost of first copy of each program
-        (is-prof-prog? deck (:card line))
-        (- base-cost (get-in line [:card :factioncost]))
-        ;; Check if the card is Alliance and fulfills its requirement
-        (alliance-is-free? (:cards deck) line)
-        0
-        :else
-        base-cost))))
+  (let [identity-faction (get-in deck [:identity :faction])]
+    (line-base-cost identity-faction line)))
 
 (defn influence-map
   "Returns a map of faction keywords to influence values from the faction's cards."
@@ -129,56 +67,16 @@
     (reduce infhelper {} (:cards deck))))
 
 ;; Deck attribute calculations
-(defn agenda-points
-  [{:keys [cards]}]
-  (reduce (fn [acc card]
-            (if-let [point (get-in card [:card :agendapoints])]
-              (+ acc (* point (:qty card)))
-              acc))
-          0
-          cards))
-
 (defn influence-count
   "Returns sum of influence count used by a deck."
   [deck]
   (apply + (vals (influence-map deck))))
 
-(defn invalid-singleton-agendas
-  "returns invalid agendas for a singleton deck"
-  [identity cards]
-  (when (singleton-id? identity)
-    ;; filter into only agendas
-    (let [cards (map :card cards)
-          relevant-agendas (filter #(and (= (:type %) "Agenda")
-                                         (not= (:faction %) "Neutral")) cards)
-          factions (distinct (map :faction relevant-agendas))
-          relevant-by-faction (fn [fac] (filter #(= fac (:faction %)) relevant-agendas))
-          faction-count (map #(relevant-by-faction %) factions)
-          offending-cards (into [] cat (filter #(< 2 (count %)) faction-count))]
-      (when-not (empty? offending-cards)
-        offending-cards))))
-
-(defn singleton-agenda-valid?
-  "returns true if the agenda is valid for singleton, or the deck is not singleton"
-  [card identity cards]
-  (if-not (singleton-id? identity)
-    true
-    (let [gendies (invalid-singleton-agendas identity cards)]
-      (not (some #(= (:title card) (:title %)) gendies)))))
-
 ;; Card and deck validity
 (defn allowed?
   "Checks if a card is allowed in deck of a given identity - not accounting for influence"
   [card {:keys [side faction title] :as identity}]
-  (and (not= (:type card) "Identity")
-       (= (:side card) side)
-       (or (not= (:type card) "Agenda")
-           (= (:faction card) "Neutral")
-           (= (:faction card) faction)
-           (draft-id? identity)
-           (singleton-id? identity))
-       (or (not= title "Custom Biotics: Engineered for Success")
-           (not= (:faction card) "Jinteki"))))
+  (not= (:type card) "Seeker"))
 
 (defn valid-deck?
   "Checks that a given deck follows deckbuilding rules"
@@ -186,31 +84,27 @@
   (let [identity? (not (nil? identity))
         card-count (card-count cards)
         min-deck-size (min-deck-size identity)
-        card-count? (>= card-count min-deck-size)
+        max-deck-size (max-deck-size identity)
+        agent-count (agent-count deck)
+        card-count? (>= max-deck-size card-count min-deck-size)
+        correct-agents? (= agent-count 6)
         influence-count (influence-count deck)
         inf-limit (id-inf-limit identity)
         influence-limit? (<= influence-count inf-limit)
         allowed-cards-fn #(allowed? (:card %) identity)
         legal-num-copies-fn #(legal-num-copies? identity %)
         allowed-cards? (every? allowed-cards-fn cards)
-        legal-num-copies? (every? legal-num-copies-fn cards)
-        min-agenda-points (min-agenda-points deck)
-        invalid-singleton-agendas? (invalid-singleton-agendas identity cards)
-        agenda-points (agenda-points deck)
-        agenda-points? (or (= (:side identity) "Runner")
-                           (<= min-agenda-points agenda-points (inc min-agenda-points)))]
-    {:legal (and identity? card-count? influence-limit? allowed-cards? legal-num-copies? agenda-points? (not invalid-singleton-agendas?))
+        legal-num-copies? (every? legal-num-copies-fn cards)]
+    {:legal (and identity? card-count? influence-limit? allowed-cards? legal-num-copies? correct-agents?)
      :reason (cond
                (not identity?) (str "Invalid identity: " (:title identity))
-               (not card-count?) (str "Not enough cards in the deck: " card-count ", Min: " min-deck-size)
+               (not card-count?) (str "Wrong number of cards in the deck: " card-count ", required: 1 seeker + " min-deck-size " other cards")
+               (not correct-agents?) (str "Wrong number of agents in the deck: " agent-count ", required: 6 agents")
                (not influence-limit?) (str "Spent too much influence: " influence-count)
                (not allowed-cards?) (str "Cards aren't legal for chosen identity: "
                                          (get-in (some #(when ((complement allowed-cards-fn) %) %) cards) [:card :title]))
                (not legal-num-copies?) (str "Too many copies of a card: "
-                                            (get-in (some #(when ((complement legal-num-copies-fn) %) %) cards) [:card :title]))
-               invalid-singleton-agendas? (str "Too many agendas from the same factions: " (str/join ", " (map :title invalid-singleton-agendas?)))
-               (not agenda-points?) (str "Incorrect amount of agenda points: " agenda-points
-                                         ", Between: " min-agenda-points " and " (inc min-agenda-points)))}))
+                                            (get-in (some #(when ((complement legal-num-copies-fn) %) %) cards) [:card :title])))}))
 
 (defn combine-id-and-cards
   [deck]
@@ -282,54 +176,11 @@
   [fmt deck]
   (mwl-legal? fmt (combine-id-and-cards deck)))
 
-(defn reject-system-gateway-neutral-ids
-  [fmt deck]
-  (let [id (:title (:identity deck))]
-    (when (and (not= :system-gateway fmt)
-               (or (= id "The Catalyst: Convention Breaker")
-                   (= id "The Syndicate: Profit over Principle")))
-      {:legal false
-       :reason (str "Illegal identity: " id)})))
-
-(defn startup-agenda-restriction
-  "As of 24.09, startup decks may only have 3 agendas worth 3 or more points"
-  [fmt {:keys [cards] :as deck}]
-  (if (= :startup fmt)
-    (let [relevant-agenda (fn [c] (and (= (:type (:card c)) "Agenda")
-                                       (>= (:agendapoints (:card c)) 3)))
-          relevant-agendas (filter relevant-agenda cards)
-          ct (reduce + 0 (map :qty relevant-agendas))]
-      (if (> ct 3)
-        {:reason "Too many agendas worth 3 or more points (startup restriction)"}
-        {:legal true}))
-    {:legal true}))
-
 (defn build-format-legality
   [valid fmt deck]
-  (let [mwl (legal-format? fmt deck)
-        startup-restriction (startup-agenda-restriction fmt deck)]
-    (or (reject-system-gateway-neutral-ids fmt deck)
-        {:legal (and (:legal valid) (:legal mwl) (:legal startup-restriction))
-         :reason (or (:reason valid) (:reason mwl) (:reason startup-restriction))})))
-
-(defn cards-over-one-sg
-  "Returns cards in deck that require more than one copy of System Gateway."
-  [cards]
-  (letfn [(one-box-num-copies? [{:keys [qty card]}] (<= qty (:quantity card 3)))]
-    (remove one-box-num-copies? cards)))
-
-(defn build-system-gateway-legality
-  [valid {:keys [cards] :as deck}]
-  (let [mwl (legal-format? :system-gateway deck)
-        example-card (first (cards-over-one-sg cards))]
-    {:legal (and (nil? example-card)
-                 (:legal valid)
-                 (:legal mwl))
-     :reason (or (when example-card
-                   (str "Only one copy of System Gateway permitted - check: "
-                        (get-in example-card [:card :title])))
-                 (:reason valid)
-                 (:reason mwl))}))
+  (let [mwl (legal-format? fmt deck)]
+    {:legal (and (:legal valid) (:legal mwl))
+     :reason (or (:reason valid) (:reason mwl))}))
 
 (defn calculate-deck-status
   "Calculates all the deck's validity for the basic deckbuilding rules,
@@ -338,36 +189,13 @@
   (let [valid (valid-deck? deck)]
     {:format (:format deck)
      :casual valid
-     :standard (build-format-legality valid :standard deck)
-     :startup (build-format-legality valid :startup deck)
-     :throwback (build-format-legality valid :throwback deck)
-     :sunset (build-format-legality valid :sunset deck)
-     :system-gateway (build-system-gateway-legality valid deck)
-     :eternal (build-format-legality valid :eternal deck)
-     :neo (build-format-legality valid :neo deck)
-     :snapshot (build-format-legality valid :snapshot deck)
-     :snapshot-plus (build-format-legality valid :snapshot-plus deck)}))
+     :pre-release (build-format-legality valid :pre-release deck)}))
 
 (defn trusted-deck-status
   [{:keys [status] :as deck}]
     (if status
       status
       (calculate-deck-status deck)))
-
-(defn singleton-deck-status
-  "Calculates if a deck is singleton"
-  [deck]
-  (let [cards (:cards deck)
-        duplicates (filter #(not= 1 (:qty %)) cards)
-        is-singleton (zero? (count duplicates))]
-    {:singleton is-singleton}))
-
-(defn singleton-deck? [deck]
-  (if-let [deck (get-in deck [:status :singleton])]
-    deck
-    (get-in (singleton-deck-status deck)
-            [:singleton]
-            false)))
 
 (defn legal-deck?
  ([deck] (legal-deck? deck (:format deck)))

@@ -30,7 +30,7 @@
   [format card]
   (get-in card [:format (keyword format)] "unknown"))
 
-(def format-status (fnil format-status-impl :standard {}))
+(def format-status (fnil format-status-impl :pre-release {}))
 
 (defn identical-cards?
   [cards]
@@ -57,10 +57,10 @@
           cards))
 
 (defn lookup
-  "Lookup the card title (query) looking at all cards on specified side"
-  [side card]
+  "Lookup the card title (query) looking at all cards"
+  [card]
   (let [id (:id card)
-        cards (filter #(= (:side %) side) (vals @all-cards))
+        cards (vals @all-cards)
         first-id (first (filter #(= id (:code %)) cards))]
     (if (and id first-id)
       first-id
@@ -92,10 +92,10 @@
 
 (defn parse-identity
   "Parse an id to the corresponding card map"
-  [{:keys [side title setname]}]
+  [{:keys [title setname]}]
   (if (empty? title)
     {:display-name "Missing Identity"}
-    (let [card (lookup side {:title title})]
+    (let [card (lookup {:title title})]
       (assoc card :display-name (build-identity-name (tr-data :title card) setname)))))
 
 (defn add-params-to-card
@@ -170,17 +170,17 @@
 
 (defn lookup-deck
   "Takes a list of {:qty n :card title} and looks up each title and replaces it with the corresponding cardmap"
-  [side card-list]
+  [card-list]
   (let [card-list (collate-deck card-list)]
     ;; lookup each card and replace title with cardmap
-    (map #(assoc % :card (lookup side (assoc % :title (:card %)))) card-list)))
+    (map #(assoc % :card (lookup (assoc % :title (:card %)))) card-list)))
 
 (defn process-cards-in-deck
   "Process the raw deck from the database into a more useful format"
   [deck]
   (if (:parsed? deck)
     deck
-    (let [cards (lookup-deck (:side (:identity deck)) (:cards deck))]
+    (let [cards (lookup-deck (:cards deck))]
       (assoc deck :cards cards :parsed? true))))
 
 (defn load-decks [decks]
@@ -274,20 +274,19 @@
   (or (= "casual" format)
       (get-in card [:format (keyword format) :legal])))
 
-(defn side-identities [side format]
+(defn identities [format]
   (let [cards (->> (vals @all-cards)
-                   (filter #(and (= (:side %) side)
-                                 (= (:type %) "Identity")
-                                 (legal-in-format % format))))
+                   (filter #(= (:type %) "Seeker"))
+                   (filter #(legal-in-format % format)))
         all-titles (map :title cards)
         add-deck (partial add-deck-name all-titles)]
     (map add-deck cards)))
 
 (defn new-deck
-  ([s side] (new-deck s side (tr [:deck-builder.new-deck "New Deck"]) "standard" [] nil))
-  ([s side name format cards id]
+  ([s] (new-deck s (tr [:deck-builder.new-deck "New Deck"]) "pre-release" [] nil))
+  ([s name format cards id]
   (let [old-deck (:deck @s)
-        identities (->> (side-identities side format)
+        identities (->> (identities format)
                         (sort-by :title))
         id (or id (first identities))]
     (set-deck-on-state s {:name name
@@ -310,7 +309,7 @@
 
 (defn copy-deck [s]
   (let [deck (:deck @s)]
-    (new-deck s (:side (:identity deck)) (name-copy deck) (:format deck) (:cards deck) (:identity deck))))
+    (new-deck s (name-copy deck) (:format deck) (:cards deck) (:identity deck))))
 
 (defn- send-import [s]
   (ws/ws-send! [:decks/import {:input (:msg @s)}])
@@ -363,7 +362,7 @@
                       (conj card-id {:art (:art card)})
                       card-id))
             ;; only include keys that are relevant
-            id (select-keys (:identity deck) [:title :side :code])
+            id (select-keys (:identity deck) [:title :code])
             deck (if new? (dissoc deck :_id) deck)
             data (assoc deck :cards cards :identity id)]
         (go (let [response (<! (if new?
@@ -461,7 +460,7 @@
 (defn update-decklist-cards
   [s edit]
   (let [card (:card edit)
-        max-qty (:deck-limit card 3)
+        max-qty (:deck-limit card 2)
         cards (vec (get-in @s [:deck :cards]))
         match? (fn [idx item]
                  (when (= (lower-case (get-in item [:card :title] ""))
@@ -496,23 +495,23 @@
   (.preventDefault event)
   (let [qty (str->int (:quantity @card-state))
         card (nth (:matches @card-state) (:selected @card-state) nil)
-        best-card (lookup (:side card) card)]
+        best-card (lookup card)]
     (if (js/isNaN qty)
-      (swap! card-state assoc :quantity 3)
-      (let [max-qty (:deck-limit best-card 3)
+      (swap! card-state assoc :quantity 2)
+      (let [max-qty (:deck-limit best-card 2)
             limit-qty (if (> qty max-qty) max-qty qty)]
         (update-decklist-cards s {:qty limit-qty
                                   :card best-card})
         (reset! card-state {:query ""
                             :matches []
-                            :quantity 3
+                            :quantity 2
                             :selected 0})
         (-> ".deckedit .lookup" js/$ .select)))))
 
 (defn card-lookup []
   (let [card-state (r/atom {:query ""
                             :matches []
-                            :quantity 3
+                            :quantity 2
                             :selected 0})]
     (fn [s]
       [:div
@@ -596,14 +595,8 @@
      [:span (tr-data :title (:identity deck))]
      [deck-stats-line deck]]))
 
-(def all-sides-filter "Any Side")
 (def all-factions-filter "Any Faction")
 (def all-formats-filter "Any Format")
-
-(defn- filter-side [side-filter decks]
-  (if (= all-sides-filter @side-filter)
-    decks
-    (filter #(= (get-in % [:identity :side]) @side-filter) decks)))
 
 (defn- filter-faction [faction-filter decks]
   (if (= all-factions-filter @faction-filter)
@@ -616,9 +609,8 @@
     (let [fmt-slug (format->slug @fmt-filter)]
       (filter #(= (:format %) fmt-slug) decks))))
 
-(defn- filter-selected [side-filter faction-filter fmt-filter]
-  (not (and (= all-sides-filter @side-filter)
-            (= all-factions-filter @faction-filter)
+(defn- filter-selected [faction-filter fmt-filter]
+  (not (and (= all-factions-filter @faction-filter)
             (= all-formats-filter @fmt-filter))))
 
 (defn decks-list [_ _ scroll-top]
@@ -635,8 +627,7 @@
 
 (defn deck-collection
   [state decks decks-loaded scroll-top]
-  (r/with-let [side-filter (r/cursor state [:side-filter])
-               faction-filter (r/cursor state [:faction-filter])
+  (r/with-let [faction-filter (r/cursor state [:faction-filter])
                fmt-filter (r/cursor state [:format-filter])]
     (when-not (:edit @state)
       (cond
@@ -648,14 +639,13 @@
          [:h4 (tr [:deck-builder.no-decks "No decks"])]]
         :else
         (let [filtered-decks (->> @decks
-                                  (filter-side side-filter)
                                   (filter-faction faction-filter)
                                   (filter-format fmt-filter))
               n (count filtered-decks)
               deck-str (tr [:deck-builder.deck-count] n)]
           [:<>
            [:div.deck-count
-            [:h4 (str deck-str (when (filter-selected side-filter faction-filter fmt-filter)
+            [:h4 (str deck-str (when (filter-selected faction-filter fmt-filter)
                                  (str "  " (tr [:deck-builder.filtered "(filtered)"]))))]]
            [decks-list filtered-decks state scroll-top]])))))
 
@@ -668,11 +658,8 @@
            card-status (format-status format card)
            banned (:banned card-status)
            rotated (:rotated card-status)
-           allied (validator/alliance-is-free? cards line)
            valid (and (validator/allowed? card identity)
-                      (validator/singleton-agenda-valid? card identity cards)
-                      (validator/legal-num-copies? identity line))
-           modqty (if (validator/is-prof-prog? deck card) (- qty 1) qty)]
+                      (validator/legal-num-copies? identity line))]
        [:span
         [:span {:class (str "fake-link"
                             (cond rotated " casual"
@@ -680,7 +667,7 @@
                                   (not valid) " invalid"))
                 :on-mouse-enter #(when (:setname card) (put! zoom-channel line))
                 :on-mouse-leave #(put! zoom-channel false)} title]
-        [card-influence-html format card modqty infaction allied]])
+        [card-influence-html format card qty infaction nil]])
      card)])
 
 (defn line-qty-span
@@ -696,13 +683,8 @@
                  card-status (format-status format card)
                  banned (:banned card-status)
                  rotated (:rotated card-status)
-                 allied (validator/alliance-is-free? cards line)
                  valid (and (validator/allowed? card identity)
-                            (validator/legal-num-copies? identity line)
-                            (validator/singleton-agenda-valid? card identity cards))
-                 modqty (if (validator/is-prof-prog? deck card)
-                          (- qty 1)
-                          qty)]
+                            (validator/legal-num-copies? identity line))]
              [:span
               [:span {:class (str "fake-link"
                                   (cond rotated " casual"
@@ -710,7 +692,7 @@
                                         (not valid) " invalid"))
                       :on-mouse-enter #(when (:setname card) (put! zoom-channel line))
                       :on-mouse-leave #(put! zoom-channel false)} name]
-              [card-influence-html format card modqty infaction allied]])
+              [card-influence-html format card qty infaction nil]])
            card)])
 
 (defn- build-deck-points-tooltip [deck]
@@ -759,32 +741,36 @@
                (:rotated status) rotated-span
                (:points status) (deck-points-card-span (:points status))))]
       (let [count (validator/card-count cards)
-            min-count (validator/min-deck-size id)]
+            min-count (validator/min-deck-size id)
+            max-count 36];;_(validator/max-deck-size id)]
         [:div count (str " " (tr [:deck-builder.cards "cards"]))
-         (when (< count min-count)
-           [:span.invalid (str " (" (tr [:deck-builder.min "minimum"]) " " min-count ")")])])
-      (let [inf (validator/influence-count deck)
-            id-limit (validator/id-inf-limit id)]
-        [:div (str (tr [:deck-builder.influence "Influence"]) ": ")
-         ;; we don't use valid? and mwl-legal? functions here, since it concerns influence only
-         [:span {:class (if (> inf id-limit)
-                          (if (> inf id-limit)
-                            "invalid"
-                            "casual")
-                          "legal")}
-          inf]
-         "/" (if (= INFINITY id-limit) "∞" id-limit)
-         " "
-         (when (pos? inf)
-           (deck-influence-html deck))])
-      (when (= (:side id) "Corp")
-        (let [min-point (validator/min-agenda-points deck)
-              points (validator/agenda-points deck)]
-          [:div (str (tr [:deck-builder.agenda-points "Agenda points"]) ": " points)
-           (when (< points min-point)
-             [:span.invalid " (" (tr [:deck-builder.min "minimum"]) " " min-point ")"])
-           (when (> points (inc min-point))
-             [:span.invalid " (" (tr [:deck-builder.max "maximum"]) " " (inc min-point) ")"])]))
+         (when-not (<= min-count count max-count)
+           [:span.invalid (str " (" (tr [:deck-builder.expected "expected:"]) " " min-count ")")])])
+      ;; TODO - figure out how the inf works once enough info is out
+      ;; (let [inf (validator/influence-count deck)
+      ;;       id-limit (validator/id-inf-limit id)]
+      ;;   [:div (str (tr [:deck-builder.influence "Influence"]) ": ")
+      ;;    ;; we don't use valid? and mwl-legal? functions here, since it concerns influence only
+      ;;    [:span {:class (if (> inf id-limit)
+      ;;                     (if (> inf id-limit)
+      ;;                       "invalid"
+      ;;                       "casual")
+      ;;                     "legal")}
+      ;;     inf]
+      ;;    "/" (if (= INFINITY id-limit) "∞" id-limit)
+      ;;    " "
+      ;;    (when (pos? inf)
+      ;;      (deck-influence-html deck))])
+
+      ;; TODO - agent count
+      ;; (when (= (:side id) "Corp")
+      ;;   (let [min-point (validator/min-agenda-points deck)
+      ;;         points (validator/agenda-points deck)]
+      ;;     [:div (str (tr [:deck-builder.agenda-points "Agenda points"]) ": " points)
+      ;;      (when (< points min-point)
+      ;;        [:span.invalid " (" (tr [:deck-builder.min "minimum"]) " " min-point ")"])
+      ;;      (when (> points (inc min-point))
+      ;;        [:span.invalid " (" (tr [:deck-builder.max "maximum"]) " " (inc min-point) ")"])]))
       (when (validator/format-point-limit (:format deck))
         [:div [deck-points-span deck]])
       [:div [deck-status-span deck true true false]]]]))
@@ -834,7 +820,6 @@
 
 (defn- reset-deck-filters [state]
   (swap! state assoc
-         :side-filter all-sides-filter
          :faction-filter all-factions-filter
          :format-filter all-formats-filter))
 
@@ -864,20 +849,6 @@
    ;;    (tr [:deck-builder.create-game "Create Game"])])
    ])
 
-(defn view-toggles
-  [s deck]
-  [:div.decklist-view-options
-   [:h4 "View Options"]
-   (when (= (:side (:identity deck)) "Runner")
-     [:div
-      [:input {:type "checkbox" :checked (:show-mu-cost @s)
-               :on-change #(swap! s assoc :show-mu-cost (.. % -target -checked))}]
-      [:span "Show Memory Cost"]])
-   [:div
-    [:input {:type "checkbox" :checked (:show-credit-cost @s)
-             :on-change #(swap! s assoc :show-credit-cost (.. % -target -checked))}]
-    [:span "Show Credit Cost"]]])
-
 (defn selected-panel
   [s]
   [:div.decklist
@@ -891,7 +862,6 @@
           :else [view-buttons s deck])
         [:h3 (:name deck)]
         [decklist-header deck cards]
-        [view-toggles s deck]
         [decklist-contents s deck cards]
         (when-not (:edit @s)
           [decklist-notes deck])]))])
@@ -911,8 +881,7 @@
   [s new-format]
   (swap! s assoc-in [:deck :format] new-format)
   (when-not (legal-in-format (get-in @s [:deck :identity]) new-format)
-    (let [side (get-in @s [:deck :identity :side])
-          new-id (first (sort-by :title (side-identities side new-format)))]
+    (let [new-id (first (sort-by :title (identities new-format)))]
       (when new-id
         (swap! s assoc-in [:deck :identity] new-id)))))
 
@@ -920,7 +889,7 @@
   [s]
   [:div
    [:h3 (tr [:deck-builder.format "Format"])]
-   [:select.format {:value (get-in @s [:deck :format] "standard")
+   [:select.format {:value (get-in @s [:deck :format] "pre-release")
                     :on-change #(change-format s (.. % -target -value))}
     (doall
       (for [[k v] slug->format]
@@ -934,10 +903,9 @@
 
 (defn- create-identity
   [s target-value]
-  (let [side (get-in @s [:deck :identity :side])
-        json-map (.parse js/JSON (.. target-value -target -value))
+  (let [json-map (.parse js/JSON (.. target-value -target -value))
         id-map (js->clj json-map :keywordize-keys true)]
-    (lookup side id-map)))
+    (lookup id-map)))
 
 (defn identity-editor
   [s]
@@ -945,7 +913,7 @@
    [:h3 (tr [:deck-builder.identity "Identity"])]
    [:select.identity {:value (identity-option-string (get-in @s [:deck :identity]))
                       :on-change #(swap! s assoc-in [:deck :identity] (create-identity s %))}
-    (let [idents (side-identities (get-in @s [:deck :identity :side]) (get-in @s [:deck :format]))]
+    (let [idents (identities (get-in @s [:deck :format]))]
       (for [card (sort-by :display-name idents)]
         ^{:key (:display-name card)}
         [:option
@@ -954,14 +922,13 @@
 
 (defn parse-deck-string
   "Parses a string containing the decklist and returns a list of lines {:qty :card}"
-  [side deck-string]
+  [deck-string]
   (let [raw-deck-list (deck-string->list deck-string)]
-    (lookup-deck side raw-deck-list)))
+    (lookup-deck raw-deck-list)))
 
 (defn handle-edit [s]
   (let [text (.-value (:deckedit @db-dom))
-        side (get-in @s [:deck :identity :side])
-        cards (parse-deck-string side text)]
+        cards (parse-deck-string text)]
     (swap! s assoc :deck-edit text)
     (swap! s assoc-in [:deck :cards] cards)))
 
@@ -996,14 +963,10 @@
 
 (defn collection-buttons [s user decks-loaded]
   [:div.button-bar
-   [cond-button (tr [:deck-builder.new-corp "New Corp deck"])
+   [cond-button (tr [:deck-builder.new-deck "New Deck"])
    (and @user @decks-loaded) #(do
                                 (reset-deck-filters s)
-                                (new-deck s "Corp"))]
-   [cond-button (tr [:deck-builder.new-runner "New Runner deck"])
-    (and @user @decks-loaded) #(do
-                                 (reset-deck-filters s)
-                                 (new-deck s "Runner"))]
+                                (new-deck s))]
    [cond-button (tr [:deck-builder.import-button "Import deck"]) (and @user @decks-loaded)
     #(reagent-modals/modal! [import-deck-modal]
                             {:shown (fn [] (.focus (.getElementById js/document "nrdb-input")))})]])
@@ -1023,17 +986,13 @@
                                    :key option
                                    :dangerouslySetInnerHTML #js {:__html (translator option)}}]))])
 
-(defn- handle-side-changed [state]
-  (swap! state assoc :faction-filter all-factions-filter))
-
 (defn- filter-builder
   [state decks-loaded scroll-top]
   (let [formats (-> format->slug keys butlast)]
     [:div.deckfilter
      (doall
        (for [[state-key options callback translator]
-             [[:side-filter [all-sides-filter "Corp" "Runner"] handle-side-changed tr-side]
-              [:faction-filter (cons all-factions-filter (factions (:side-filter @state))) nil tr-faction]
+             [[:faction-filter (cons all-factions-filter factions) nil tr-faction]
               [:format-filter (cons all-formats-filter formats) nil tr-format]]]
          ^{:key state-key}
          [simple-filter-builder state state-key options decks-loaded callback scroll-top translator]))
@@ -1077,7 +1036,6 @@
   (let [s (r/atom {:edit false
                    :old-deck nil
                    :deck nil
-                   :side-filter all-sides-filter
                    :faction-filter all-factions-filter
                    :format-filter all-formats-filter
                    :show-credit-cost false
