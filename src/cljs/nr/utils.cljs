@@ -120,29 +120,11 @@
         (apply map-longest f default (map rest colls))))))
 
 (def slug->format
-  {"standard" "Standard"
-   "throwback" "Throwback"
-   "startup" "Startup"
-   "system-gateway" "System Gateway"
-   "preconstructed" "Preconstructed"
-   "sunset" "Sunset"
-   "eternal" "Eternal"
-   "snapshot" "Snapshot"
-   "snapshot-plus" "Snapshot Plus"
-   "neo" "Neo"
+  {"pre-release" "Pre-Release"
    "casual" "Casual"})
 
 (def format->slug
-  {"Standard" "standard"
-   "Throwback" "throwback"
-   "Startup" "startup"
-   "System Gateway" "system-gateway"
-   "Preconstructed" "preconstructed"
-   "Sunset" "sunset"
-   "Eternal" "eternal"
-   "Snapshot" "snapshot"
-   "Snapshot Plus" "snapshot-plus"
-   "Neo" "neo"
+  {"Pre-Release" "pre-release"
    "Casual" "casual"})
 
 (defn regex-escape

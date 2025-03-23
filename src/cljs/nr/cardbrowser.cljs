@@ -83,16 +83,7 @@
 
 (defn- insert-starter-info
   [card]
-  (-> card
-      (assoc :influencelimit "∞")
-      (assoc-in [:format :standard] {:banned true})
-      (assoc-in [:format :startup] {:banned true})
-      (assoc-in [:format :sunset] {:banned true})
-      (assoc-in [:format :throwback] {:banned true})
-      (assoc-in [:format :eternal] {:banned true})
-      (assoc-in [:format :snapshot] {:banned true})
-      (assoc-in [:format :snapshot-plus] {:banned true})
-      (assoc-in [:format :neo] {:banned true})))
+  (-> card (assoc :influencelimit "∞")))
 
 (defn- insert-starter-ids
   "Add special case info for the Starter Deck IDs"
@@ -368,23 +359,9 @@
                 {:on-click #(select-alt-art card)}
                 (tr [:card-browser.select-art "Select Art"])])))])]]))
 
-(defn types [side]
-  (let [runner-types ["Identity" "Program" "Hardware" "Resource" "Event"]
-        corp-types ["Agenda" "Asset" "ICE" "Operation" "Upgrade"]]
-    (case side
-      "All" (concat runner-types corp-types)
-      "Runner" runner-types
-      "Corp" (cons "Identity" corp-types))))
+(def types ["Agent" "Moment" "Obstacle" "Seeker" "Source"])
 
-(defn factions [side]
-  (let [runner-factions ["Anarch" "Criminal" "Shaper" "Adam" "Apex" "Sunny Lebeau"]
-        corp-factions ["Jinteki" "Haas-Bioroid" "NBN" "Weyland Consortium" "Neutral"]]
-    (case side
-      "All" (concat runner-factions corp-factions)
-      "Any Side" (concat runner-factions corp-factions)
-      "Runner" (conj runner-factions "Neutral")
-      "Corp" corp-factions
-      (concat runner-factions corp-factions))))
+(def factions ["Old Aidalon" "Omniworks" "The Collective" "The Remnants"])
 
 (defn- filter-alt-art-cards [cards]
   (let [lang (get-in @app-state [:options :language] "en")
@@ -425,10 +402,10 @@
 (defn sort-field [fieldname]
   (case fieldname
     "Name" :title
-    "Influence" (juxt :factioncost :side :faction :title)
+    "Influence" (juxt :factioncost :faction :title)
     "Cost" (juxt :cost :title)
-    "Faction" (juxt :side :faction :title)
-    "Type" (juxt :side :type :faction :title)
+    "Faction" (juxt :faction :title)
+    "Type" (juxt :type :faction :title)
     "Set number" :number))
 
 (defn selected-set-name [state]
@@ -482,7 +459,6 @@
                                   :else
                                   [nil (filter #(= (:setname %) selected) combined-cards)])
              cards (->> cards
-                        (filter-cards (:side-filter @state) :side)
                         (filter-cards (:faction-filter @state) :faction)
                         (filter-cards (:type-filter @state) :type)
                         (filter-format (:format-filter @state))
@@ -572,9 +548,8 @@
        (for [[title state-key options translator]
              [[(tr [:card-browser.format "Format"]) :format-filter formats tr-format]
               [(tr [:card-browser.set "Set"]) :set-filter sets-to-display tr-set]
-              [(tr [:card-browser.side "Side"]) :side-filter ["Corp" "Runner"] tr-side]
-              [(tr [:card-browser.faction "Faction"]) :faction-filter (factions (:side-filter @state)) tr-faction]
-              [(tr [:card-browser.type "Type"]) :type-filter (types (:side-filter @state)) tr-type]]]
+              [(tr [:card-browser.faction "Faction"]) :faction-filter factions tr-faction]
+              [(tr [:card-browser.type "Type"]) :type-filter types tr-type]]]
          ^{:key title}
          [simple-filter-builder title state state-key options translator]))]))
 
@@ -587,7 +562,6 @@
                           :format-filter "All"
                           :set-filter "All"
                           :type-filter "All"
-                          :side-filter "All"
                           :faction-filter "All")}
        (tr [:card-browser.clear "Clear"])]])
 
@@ -612,7 +586,6 @@
                        :format-filter "All"
                        :set-filter "All"
                        :type-filter "All"
-                       :side-filter "All"
                        :faction-filter "All"
                        :page 1
                        :decorate-card true

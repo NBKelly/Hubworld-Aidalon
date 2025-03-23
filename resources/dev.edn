@@ -1,7 +1,7 @@
 {:server/mode "dev"
  :mongodb/connection {:address "localhost"
                       :port 27017
-                      :name "netrunner"
+                      :name "hubworld"
                       ; Monger requires a db name in the URI string, be sure to specify
                       :connection-string #or [#env MONGO_CONNECTION_URI nil]}
  :web/app-state nil
