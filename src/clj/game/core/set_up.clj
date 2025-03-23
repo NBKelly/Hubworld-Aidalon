@@ -19,15 +19,15 @@
    [game.utils :refer [server-card]]))
 
 (defn build-card
-  [card]
+  [card side]
   (let [s-card (or (server-card (:title card)) card)]
-    (assoc (make-card s-card) :art (:art card))))
+    (assoc (make-card s-card) :art (:art card) :side side)))
 
 (defn create-deck
   "Creates a shuffled draw deck (R&D/Stack) from the given list of cards.
   Loads card data from the server-card map if available."
-  [deck]
-  (shuffle (mapcat #(map build-card (repeat (:qty %) (assoc (:card %) :art (:art %))))
+  [deck side]
+  (shuffle (mapcat #(map (fn [c] (build-card c side)) (repeat (:qty %) (assoc (:card %) :art (:art %))))
                    (shuffle (vec (:cards deck))))))
 
 ;;; Functions for the creation of games and the progression of turns.
@@ -79,22 +79,22 @@
 (defn- init-game-state
   "Initialises the game state"
   [{:keys [players gameid timer spectatorhands api-access save-replay room] :as game}]
-  (let [corp (some #(when (corp? %) %) players)
+  (let [corp (some #(when (= (:side %) "Corp") %) players)
         runner (some #(when (runner? %) %) players)
-        corp-deck (create-deck (:deck corp))
-        runner-deck (create-deck (:deck runner))
+        corp-deck (create-deck (:deck corp) "Corp")
+        runner-deck (create-deck (:deck runner) "Runner")
         corp-deck-id (get-in corp [:deck :_id])
         runner-deck-id (get-in runner [:deck :_id])
         corp-options (get-in corp [:options])
         runner-options (get-in runner [:options])
         corp-identity (build-card (or (get-in corp [:deck :identity])
-                                      {:side "Corp"
-                                       :type "Identity"
-                                       :title "Custom Biotics: Engineered for Success"}))
+                                      {:type "Seeker"
+                                       :title "Abnus Orzo"})
+                                  "Corp")
         runner-identity (build-card (or (get-in runner [:deck :identity])
-                                        {:side "Runner"
-                                         :type "Identity"
-                                         :title "The Professor: Keeper of Knowledge"}))
+                                        {:type "Seeker"
+                                         :title "Goldie Xin"})
+                                    "Runner")
         corp-quote (quotes/make-quote corp-identity runner-identity)
         runner-quote (quotes/make-quote runner-identity corp-identity)
         fmt (:format game)]

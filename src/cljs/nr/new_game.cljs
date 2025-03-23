@@ -176,7 +176,7 @@
   (r/with-let [state (r/atom {:flash-message ""
                               :format (or (get-in @app-state [:options :default-format]) "pre-release")
                               :room (:room @lobby-state)
-                              :side "Player A"
+                              :side "Corp"
                               :title (str (:username @user) "'s game")})
                options (r/atom {:allow-spectator true
                                 :api-access false

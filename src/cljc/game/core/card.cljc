@@ -226,6 +226,38 @@
 
 (declare facedown?)
 
+;; these are for hubworld
+(defn moment?
+  [card]
+  (is-type? card "Moment"))
+
+(defn agent?
+  [card]
+  (is-type? card "Agent"))
+
+(defn source?
+  [card]
+  (is-type? card "Source"))
+
+(defn obstacle?
+  [card]
+  (is-type? card "Obstacle"))
+
+(defn seeker?
+  [card]
+  (is-type? card "Seeker"))
+
+(defn fake-identity?
+  [card]
+  (is-type? card "Fake-Identity"))
+
+(defn identity?
+  [card]
+  (or (is-type? card "Identity")
+      (is-type? card "Seeker")
+      (fake-identity? card)))
+
+;; these are for netrunner
 (defn agenda?
   [card]
   (is-type? card "Agenda"))
@@ -247,15 +279,6 @@
 (defn ice?
   [card]
   (is-type? card "ICE"))
-
-(defn fake-identity?
-  [card]
-  (is-type? card "Fake-Identity"))
-
-(defn identity?
-  [card]
-  (or (is-type? card "Identity")
-      (fake-identity? card)))
 
 (defn operation?
   [card]
@@ -435,6 +458,7 @@
        "Returns the most recent copy of the card from the current state, as identified
        by the argument's :zone and :cid."
        [state {:keys [cid zone side host type] :as card}]
+       (println "zone: " zone ", side: " side)
        (when card
          (if (= type "Seeker")
            (get-in @state [(to-keyword side) :identity])
