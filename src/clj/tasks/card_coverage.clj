@@ -86,6 +86,7 @@
   "Determine which cards have tests written for them. Takes an `--only <Type>` argument to limit output to a specific card type."
   [& args]
   (println "Loading all tests and cards")
+  ;; TODO - adjust this for the new types
   (require '[game.cards.agendas-test]
            '[game.cards.assets-test]
            '[game.cards.events-test]
