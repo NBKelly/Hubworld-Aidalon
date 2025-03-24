@@ -918,7 +918,7 @@
 
 (defn identity-view [render-side identity hand-count]
   (let [is-runner (= :runner render-side)
-        title (if is-runner (tr [:game.grip "Grip"]) (tr [:game.hq "HQ"]))]
+        title (tr [:game.council "Council"])]
     [:div.blue-shade.identity
      [card-view @identity]
      [:div.header {:class "darkbg server-label"}
@@ -926,14 +926,15 @@
 
 (defn deck-view [render-side player-side identity deck deck-count]
   (let [is-runner (= :runner render-side)
-        title (if is-runner (tr [:game.stack "Stack"]) (tr [:game.r&d "R&D"]))
-        ref (if is-runner "stack" "rd")
+        title (tr [:game.commons "Commons"])
+        ref (str "commons-" (name render-side)) ;;if is-runner "stack" "rd")
         menu-ref (keyword (str ref "-menu"))
         content-ref (keyword (str ref "-content"))]
     (fn [render-side player-side identity deck]
+      (js/console.log (str "player side: " player-side))
       ;; deck-count is only sent to live games and does not exist in the replay
       (let [deck-count-number (if (nil? @deck-count) (count @deck) @deck-count)]
-        [:div.deck-container (drop-area title {})
+        [:div.deck-container (drop-area (str title "-"(name (utils/other-side player-side))) {})
          [:div.blue-shade.deck {:on-click (when (and (= render-side player-side) (not-spectator?))
                                             #(let [popup-display (-> (content-ref @board-dom) .-style .-display)]
                                                (if (or (empty? popup-display)
@@ -985,7 +986,7 @@
 (defn exile-view [exile-side player-side exile]
   (let [s (r/atom {})]
     (fn [exile-side player-side exile]
-      [:div.discard-container (drop-area (str "Exile-" (name exile-side)) {})
+      [:div.discard-container (drop-area (str "Exile-" (utils/other-side player-side)) {})
        [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
         (when-not (empty? @exile)
           [card-view (last @exile) nil true])
@@ -1009,7 +1010,7 @@
                                  (spectator-view-hidden?))
                            [:div.unseen [card-view %1 nil %2]]
                            [facedown-card "corp"]))] ;; TODO - this becomes whatever the facedown is
-        [:div.discard-container (drop-area (str "Archives-" (name discard-side)) {})
+        [:div.discard-container (drop-area (str "Archives-" (name (utils/other-side player-side))) {})
          [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
           (when-not (empty? @discard)
             [:<> {:key (str "discard-" (name discard-side))} (draw-card (last @discard) true)])

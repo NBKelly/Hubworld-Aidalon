@@ -143,7 +143,9 @@
         last-zone (last (:zone c))
         src (name-zone (:side c) (:zone c))
         from-str (card-str state c)
-        s (if (#{"HQ" "R&D" "Archives-corp"} server) :corp :runner)]
+        s (if (or (string/includes? server "-corp") (= "HQ" server))
+            :corp :runner)
+        server (first (string/split server #"-" 2))]
     ;; allow moving from play-area always, otherwise only when same side, and to valid zone
     (when (and (not= src server)
                (same-side? s (:side card))
@@ -157,7 +159,7 @@
                                                    (when (seq text)
                                                      (apply str " " text)))))]
         (case server
-          ("Heap" "Archives" "Archives-corp" "Archives-runner")
+          ("Heap" "Archives")
           (do (when (pos? (count card-prompts))
                 ;; Remove all prompts associated with the trashed card
                 (doseq [prompt card-prompts]
@@ -169,12 +171,12 @@
                     (log-move "discards"))
                 (do (trash state s (make-eid state) c {:unpreventable true})
                     (log-move "trashes"))))
-          ("the Grip" "HQ")
+          ("the Grip" "HQ" "[their] Council")
           (do (move-card-to :hand {:force true})
-              (log-move "moves" "to " server))
-          ("Stack" "R&D")
+              (log-move "moves" "to [their] Council"))
+          ("Stack" "R&D" "Commons")
           (do (move-card-to :deck {:front true :force true})
-              (log-move "moves" "to the top of " server))
+              (log-move "moves" "to the top of [their] Commons"))
           ;; default
           nil)))))
 
