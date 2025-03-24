@@ -37,7 +37,7 @@
 
 (defn hubworld-start-turn-message [state]
   (let [[s1 s2] (players state)
-        text (str "[hr]Turn " (get-in @state [:turn :index]) " begins, with "
+        text (str "[hr]Round " (get-in @state [:turn :index]) " begins, with "
                   (get-in @state [s1 :user :username] "(disconnected)")
                   " as the first player")
         t1 (str (get-in @state [s1 :user :username] "(disconnected)") " has "

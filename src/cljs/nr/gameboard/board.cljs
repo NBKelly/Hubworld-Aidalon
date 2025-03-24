@@ -1852,65 +1852,71 @@
                           #(card-highlight-mouse-out % value button-channel)}
                  (render-message (or (not-empty (get-title value)) value))])))]))
 
-(defn basic-actions [{:keys [side active-player end-turn runner-phase-12 corp-phase-12 me]}]
+(defn basic-actions [{:keys [side active-player end-turn runner-phase-12 corp-phase-12 me opponent]}]
   [:div.panel.blue-shade
    (if (= (keyword @active-player) side)
      ;; !!here
-     (when (and (not (or @runner-phase-12 @corp-phase-12))
-                (zero? (:click @me))
-                (not @end-turn))
+     (if (and (zero? (:click @me))
+              ;; TODO - not during a delve!
+              (pos? (:click @opponent)))
        [:button {:on-click #(do (close-card-menu)
-                                (send-command "end-turn"))}
-        (tr [:game.end-turn "End Turn"])])
+                                (send-command "pass"))}
+        (tr [:game.pass "Pass Turn"])]
+       (when (and (not (or @runner-phase-12 @corp-phase-12))
+                  (zero? (:click @me))
+                  (not @end-turn))
+         [:button {:on-click #(do (close-card-menu)
+                                  (send-command "end-turn"))}
+          (tr [:game.end-turn "End Turn"])]))
      (when @end-turn
        [:button {:on-click #(do
                               (swap! app-state assoc :start-shown true)
                               (send-command "start-turn"))}
         (tr [:game.start-turn "Start Turn"])]))
-   (when (and (= (keyword @active-player) side)
-              (or @runner-phase-12 @corp-phase-12))
-     [:button {:on-click #(send-command "end-phase-12")}
-      (if (= side :corp)
-        (tr [:game.mandatory-draw "Mandatory Draw"])
-        (tr [:game.take-clicks "Take Clicks"]))])
-   (when (= side :runner)
-     [:div
-      [cond-button (tr [:game.remove-tag "Remove Tag"])
-       (and (not (or @runner-phase-12 @corp-phase-12))
-            (playable? (get-in @me [:basic-action-card :abilities 5]))
-            (pos? (get-in @me [:tag :base])))
-       #(send-command "remove-tag")]
-      [:div.run-button.menu-container
-       [cond-button (tr [:game.run "Run"])
-        (and (not (or @runner-phase-12 @corp-phase-12))
-             (pos? (:click @me)))
-        #(do (send-command "generate-runnable-zones")
-             (if (= :run-button (:source @card-menu))
-               (close-card-menu)
-               (open-card-menu :run-button)))]
-       [:div.panel.blue-shade.servers-menu (when (= :run-button (:source @card-menu))
-                                             {:class "active-menu"
-                                              :style {:display "inline"}})
-        [:ul
-         (let [servers (get-in @game-state [:runner :runnable-list])]
-           (doall
-             (map-indexed (fn [_ label]
-                            ^{:key label}
-                            [card-menu-item (tr-game-prompt label)
-                             #(do (close-card-menu)
-                                  (send-command "run" {:server label}))])
-                          servers)))]]]])
-   (when (= side :corp)
-     [cond-button (tr [:game.purge "Purge"])
-      (and (not (or @runner-phase-12 @corp-phase-12))
-           (playable? (get-in @me [:basic-action-card :abilities 6])))
-      #(send-command "purge")])
-   (when (= side :corp)
-     [cond-button (tr [:game.trash-resource "Trash Resource"])
-      (and (not (or @runner-phase-12 @corp-phase-12))
-           (playable? (get-in @me [:basic-action-card :abilities 5]))
-           (is-tagged? game-state))
-      #(send-command "trash-resource")])
+   ;; (when (and (= (keyword @active-player) side)
+   ;;            (or @runner-phase-12 @corp-phase-12))
+   ;;   [:button {:on-click #(send-command "end-phase-12")}
+   ;;    (if (= side :corp)
+   ;;      (tr [:game.mandatory-draw "Mandatory Draw"])
+   ;;      (tr [:game.take-clicks "Take Clicks"]))])
+   ;; (when (= side :runner)
+   ;;   [:div
+   ;;    [cond-button (tr [:game.remove-tag "Remove Tag"])
+   ;;     (and (not (or @runner-phase-12 @corp-phase-12))
+   ;;          (playable? (get-in @me [:basic-action-card :abilities 5]))
+   ;;          (pos? (get-in @me [:tag :base])))
+   ;;     #(send-command "remove-tag")]
+   ;;    [:div.run-button.menu-container
+   ;;     [cond-button (tr [:game.run "Run"])
+   ;;      (and (not (or @runner-phase-12 @corp-phase-12))
+   ;;           (pos? (:click @me)))
+   ;;      #(do (send-command "generate-runnable-zones")
+   ;;           (if (= :run-button (:source @card-menu))
+   ;;             (close-card-menu)
+   ;;             (open-card-menu :run-button)))]
+   ;;     [:div.panel.blue-shade.servers-menu (when (= :run-button (:source @card-menu))
+   ;;                                           {:class "active-menu"
+   ;;                                            :style {:display "inline"}})
+   ;;      [:ul
+   ;;       (let [servers (get-in @game-state [:runner :runnable-list])]
+   ;;         (doall
+   ;;           (map-indexed (fn [_ label]
+   ;;                          ^{:key label}
+   ;;                          [card-menu-item (tr-game-prompt label)
+   ;;                           #(do (close-card-menu)
+   ;;                                (send-command "run" {:server label}))])
+   ;;                        servers)))]]]])
+   ;; (when (= side :corp)
+   ;;   [cond-button (tr [:game.purge "Purge"])
+   ;;    (and (not (or @runner-phase-12 @corp-phase-12))
+   ;;         (playable? (get-in @me [:basic-action-card :abilities 6])))
+   ;;    #(send-command "purge")])
+   ;; (when (= side :corp)
+   ;;   [cond-button (tr [:game.trash-resource "Trash Resource"])
+   ;;    (and (not (or @runner-phase-12 @corp-phase-12))
+   ;;         (playable? (get-in @me [:basic-action-card :abilities 5]))
+   ;;         (is-tagged? game-state))
+   ;;    #(send-command "trash-resource")])
    [cond-button (tr [:game.draw "Draw"])
     (and (not (or @runner-phase-12 @corp-phase-12))
          (playable? (get-in @me [:basic-action-card :abilities 1]))
@@ -1944,7 +1950,7 @@
            (-> "#card-title" js/$ .focus)))
 
        :reagent-render
-       (fn [{:keys [side run encounters prompt-state me] :as button-pane-args}]
+       (fn [{:keys [side run encounters prompt-state me opponent] :as button-pane-args}]
          [:div.button-pane {:on-mouse-over #(card-preview-mouse-over % zoom-channel)
                             :on-mouse-out  #(card-preview-mouse-out % zoom-channel)}
           (cond
