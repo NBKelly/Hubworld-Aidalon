@@ -786,8 +786,38 @@
                     margin-left: 16px
                     margin-right: 16px
 
+                .server
+                    position: relative
+                    min-width: 84px
+                    margin: 4px 4px
+                    height: 400px
+                    display-flex()
+                    flex-direction(column)
+                    justify-content(flex-end)
+                    align-items(center)
+
+                    .ices
+                        position: relative
+                        display-flex()
+                        flex-direction(column-reverse)
+                        justify-content(flex-end)
+                        align-items(center)
+
+                        .grid-slot
+                            margin 6px 4px;
+                            background-color: coral;
+                            height: 84px;
+                            width: 84px
+
         .runner-board.opponent
             opacity: 0.99
+
+            .runner-centrals
+                .server
+                    flex-direction(column-reverse)
+
+                    .ices
+                        flex-direction(column)
 
             > div:first-child
                 margin-top: 0
@@ -878,6 +908,11 @@
 
                             &:before
                                 border-bottom: 22px solid alpha(gold-base, o-70)
+
+                    .grid-slot
+                        background-color: coral;
+                        height: 84px;
+                        width: 84px
 
                     .ice
                         margin: -7px 0

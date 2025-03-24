@@ -986,7 +986,7 @@
 (defn exile-view [exile-side player-side exile]
   (let [s (r/atom {})]
     (fn [exile-side player-side exile]
-      [:div.discard-container (drop-area (str "Exile-" (utils/other-side player-side)) {})
+      [:div.discard-container (drop-area (str "Exile-" (name (utils/other-side player-side))) {})
        [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
         (when-not (empty? @exile)
           [card-view (last @exile) nil true])
@@ -1236,14 +1236,23 @@
            (-> ss1 :content first :hosted empty?)
            (-> ss2 :content first :hosted empty?)))))
 
+(defn hubworld-server-view [side server-name slots server]
+  [:div.server
+   [:div.ices
+    (doall
+      (for [slot (range slots)]
+        ^{:key (str side "-" server-name "-" slot)}
+        [:div.grid-slot (str "placeholder: " slot)]))]
+   server])
+
 (defn replacement-board-view [viewing-side player-side identity deck deck-count hand hand-count discard rfg]
   (let [side-class (if (= player-side viewing-side) "opponent" "me")
         hand-count-number (if (nil? @hand-count) (count @hand) @hand-count)
         centrals [:div.runner-centrals
-                  [exile-view (utils/other-side viewing-side) player-side rfg]
-                  [discard-view (utils/other-side viewing-side) player-side discard]
-                  [identity-view (utils/other-side viewing-side) identity hand-count-number]
-                  [deck-view (utils/other-side viewing-side) player-side identity deck deck-count]]]
+                  [hubworld-server-view player-side "exile"   0 [exile-view (utils/other-side viewing-side) player-side rfg]]
+                  [hubworld-server-view player-side "archive" 3 [discard-view (utils/other-side viewing-side) player-side discard]]
+                  [hubworld-server-view player-side "council" 3 [identity-view (utils/other-side viewing-side) identity hand-count-number]]
+                  [hubworld-server-view player-side "commons" 3 [deck-view (utils/other-side viewing-side) player-side identity deck deck-count]]]]
     ;; [:div.outer-corp-board {:class [side-class
     ;;                                 (when (get-in @app-state [:options :sides-overlap]) "overlap")]}
     [:div.runner-board {:class side-class}
