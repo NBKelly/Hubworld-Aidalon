@@ -16,7 +16,6 @@
    [game.core.hosting :refer [host]]
    [game.core.identities :refer [disable-identity disable-card enable-card]]
    [game.core.initializing :refer [card-init deactivate make-card]]
-   [game.core.installing :refer [corp-install runner-install]]
    [game.core.mark :refer [identify-mark set-mark]]
    [game.core.moving :refer [move swap-ice swap-installed trash]]
    [game.core.prompt-state :refer [remove-from-prompt-queue]]
@@ -111,15 +110,6 @@
 (defn command-enable-api-access [state _]
   (swap! state assoc-in [:options :api-access] true))
 
-(defn command-facedown [state side]
-  (resolve-ability state side
-                   {:prompt "Choose a card to install facedown"
-                    :choices {:card #(and (runner? %)
-                                          (in-hand? %))}
-                    :async true
-                    :effect (effect (runner-install (make-eid state eid) target {:facedown true}))}
-                   (make-card {:title "/faceup command"}) nil))
-
 (defn command-counter [state side args]
   (cond
     (empty? args)
@@ -198,21 +188,20 @@
   "Resets the game state back to start of the click"
   [state side]
   (when-let [last-click-state (peek (:click-states @state))]
-    (when (= (:active-player @state) side)
-      (let [current-log (:log @state)
-            current-history (:history @state)
-            previous-click-states (pop (:click-states @state))
-            turn-state (:turn-state @state)
-            last-click-state (assoc last-click-state
-                               :log current-log
-                               :click-states previous-click-states
-                               :turn-state turn-state
-                               :history current-history
-                               :run nil)]
-        (reset! state last-click-state))
-      (system-say state side (str "[!] " (if (= side :corp) "Corp" "Runner") " uses the undo-click command"))
-      (doseq [s [:runner :corp]]
-        (toast state s "Game reset to start of click")))))
+    (let [current-log (:log @state)
+          current-history (:history @state)
+          previous-click-states (pop (:click-states @state))
+          turn-state (:turn-state @state)
+          last-click-state (assoc last-click-state
+                                  :log current-log
+                                  :click-states previous-click-states
+                                  :turn-state turn-state
+                                  :history current-history
+                                  :run nil)]
+      (reset! state last-click-state))
+    (system-say state side (str "[!] " (if (= side :corp) "Corp" "Runner") " uses the undo-click command"))
+    (doseq [s [:runner :corp]]
+      (toast state s "Game reset to start of click"))))
 
 (defn command-undo-turn
   "Resets the entire game state to how it was at end-of-turn if both players agree"
@@ -247,60 +236,6 @@
     (remove-from-prompt-queue state side prompt)
     (swap! state dissoc-in [side :selected])
     (effect-completed state side (:eid prompt))))
-
-(defn command-install
-  ([state side] (command-install state side nil))
-  ([state side {:keys [ignore-all-cost] :as args}]
-   (resolve-ability
-     state side
-     (if (= side :corp)
-       {:prompt (str "Choose a card to install" (when ignore-all-cost " (ignoring all costs)"))
-        :choices {:card #(and (corp? %)
-                              (not (installed? %)))}
-        :async true
-        :effect (req (corp-install state side eid target nil {:ignore-all-cost ignore-all-cost}))}
-       {:prompt (str "Choose a card to install" (when ignore-all-cost " (ignoring all costs)"))
-        :choices {:card #(and (runner? %)
-                              (not (installed? %)))}
-        :async true
-        :effect (req (runner-install state side eid target {:ignore-all-cost ignore-all-cost}))})
-     (make-card {:title (str "/install" (when ignore-all-cost "-free") " command")}) nil)))
-
-(defn command-install-free
-  [state side]
-  (command-install state side {:ignore-all-cost true}))
-
-(defn command-install-ice
-  [state side]
-  (when (= side :corp)
-    (resolve-ability
-      state side
-      {:prompt "Choose a piece of ice to install"
-       :choices {:card #(and (ice? %)
-                             (#{[:hand]} (:zone %)))}
-       :async true
-       :effect (effect
-                 (continue-ability
-                   (let [chosen-ice target]
-                     {:prompt "Choose a server"
-                      :choices (req servers)
-                      :async true
-                      :effect (effect
-                                (continue-ability
-                                  (let [chosen-server target
-                                        num-ice (count (get-in (:corp @state)
-                                                               (conj (server->zone state target) :ices)))]
-                                    {:prompt "Which position to install in? (0 is innermost)"
-                                     :choices (vec (reverse (map str (range (inc num-ice)))))
-                                     :async true
-                                     :effect (effect (corp-install
-                                                       (make-eid state eid)
-                                                       chosen-ice chosen-server
-                                                       {:no-install-cost true
-                                                        :index (str->int target)}))})
-                                  card nil))})
-                   card nil))}
-      (make-card {:title "/install-ice command"}) nil)))
 
 (defn command-peek
   [state side n]
@@ -490,14 +425,10 @@
                               (end-run state side (make-eid state) nil)))
             "/enable-api-access" command-enable-api-access
             "/error"      show-error-toast
-            "/facedown"   #(when (= %2 :runner) (command-facedown %1 %2))
             "/handsize"   #(change %1 %2 {:key :hand-size
                                           :delta (- (constrain-value value -1000 1000)
                                                     (get-in @%1 [%2 :hand-size :total]))})
             "/host"       command-host
-            "/install" command-install
-            "/install-ice" command-install-ice
-            "/install-free" command-install-free
             "/jack-out"   (fn [state side]
                             (when (and (= side :runner)
                                        (or (:run @state)
