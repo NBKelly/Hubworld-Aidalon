@@ -653,7 +653,7 @@
   "Make the view of a single line in the deck - returns a span"
   [{:keys [identity cards format] :as deck} {:keys [qty card] :as line}]
   [:span qty "  "
-   (if-let [title (tr-data :title card)]
+   (if-let [title (tr-data :alias card)]
      (let [infaction (no-inf-cost? identity card)
            card-status (format-status format card)
            banned (:banned card-status)
@@ -678,7 +678,7 @@
 (defn line-name-span
   "Make the view of a single line in the deck - returns a span"
   [{:keys [identity cards format] :as deck} {:keys [qty card] :as line}]
-  [:span (if-let [name (tr-data :title card)]
+  [:span (if-let [name (tr-data :alias card)]
            (let [infaction (no-inf-cost? identity card)
                  card-status (format-status format card)
                  banned (:banned card-status)
