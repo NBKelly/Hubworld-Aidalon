@@ -246,8 +246,6 @@
 
 (expose-vars
   [game.core.commands
-   command-adv-counter
-   command-counter
    command-undo-click
    command-undo-turn
    parse-command])

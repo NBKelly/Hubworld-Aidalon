@@ -1242,8 +1242,8 @@
         centrals [:div.runner-centrals
                   [exile-view (utils/other-side viewing-side) player-side rfg]
                   [discard-view (utils/other-side viewing-side) player-side discard]
-                  [deck-view (utils/other-side viewing-side) player-side identity deck deck-count]
-                  [identity-view (utils/other-side viewing-side) identity hand-count-number]]]
+                  [identity-view (utils/other-side viewing-side) identity hand-count-number]
+                  [deck-view (utils/other-side viewing-side) player-side identity deck deck-count]]]
     ;; [:div.outer-corp-board {:class [side-class
     ;;                                 (when (get-in @app-state [:options :sides-overlap]) "overlap")]}
     [:div.runner-board {:class side-class}

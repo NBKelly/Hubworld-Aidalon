@@ -219,6 +219,14 @@
   [card]
   (card-is? card :side "Corp"))
 
+(defn side-fn
+  "Gets the side-fn based on a given side"
+  [side]
+  (cond
+    (contains? #{:corp "Corp"} side) corp?
+    (contains? #{:runner "Runner"} side) runner?
+    :else nil))
+
 (defn is-type?
   "Checks if the card is of the specified type, where the type is a string."
   [card type]
@@ -246,6 +254,12 @@
 (defn seeker?
   [card]
   (is-type? card "Seeker"))
+
+(defn stageable?
+  [card]
+  (or (obstacle? card)
+      (source? card)
+      (agent? card)))
 
 (defn fake-identity?
   [card]
