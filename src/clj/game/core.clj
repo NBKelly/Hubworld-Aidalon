@@ -760,9 +760,7 @@
   [game.core.set-up
    build-card
    create-deck
-   init-game
-   keep-hand
-   mulligan])
+   init-game])
 
 (expose-vars
   [game.core.shuffling
@@ -806,10 +804,7 @@
    init-trace])
 
 (expose-vars
-  [game.core.turns
-   end-phase-12
-   end-turn
-   start-turn])
+  [game.core.turns])
 
 (expose-vars
   [game.core.update
