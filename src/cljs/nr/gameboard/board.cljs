@@ -1242,7 +1242,8 @@
     (doall
       (for [slot (range slots)]
         ^{:key (str side "-" server-name "-" slot)}
-        [:div.grid-slot (str "placeholder: " slot)]))]
+        [:div.grid-slot {:class server-name}
+         (str "placeholder: " slot)]))]
    server])
 
 (defn replacement-board-view [viewing-side player-side identity deck deck-count hand hand-count discard rfg]
