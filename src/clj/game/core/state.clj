@@ -62,13 +62,12 @@
     {:gameid gameid
      :log []
      :active-player :runner
-     :first-player (first (shuffle [:corp :runner]))
      :end-turn true
      :format (keyword fmt)
      :history []
      :mark nil
      :room room
-     :rid 1 :turn {:index 0} :eid 0
+     :rid 1 :turn {:index 0 :first-player (first (shuffle [:corp :runner]))} :eid 0
      :sfx [] :sfx-current-id 0
      :stats {:time {:started now}}
      :start-date now
