@@ -143,7 +143,7 @@
         last-zone (last (:zone c))
         src (name-zone (:side c) (:zone c))
         from-str (card-str state c)
-        s (if (#{"HQ" "R&D" "Archives"} server) :corp :runner)]
+        s (if (#{"HQ" "R&D" "Archives-corp"} server) :corp :runner)]
     ;; allow moving from play-area always, otherwise only when same side, and to valid zone
     (when (and (not= src server)
                (same-side? s (:side card))
@@ -157,7 +157,7 @@
                                                    (when (seq text)
                                                      (apply str " " text)))))]
         (case server
-          ("Heap" "Archives")
+          ("Heap" "Archives" "Archives-corp" "Archives-runner")
           (do (when (pos? (count card-prompts))
                 ;; Remove all prompts associated with the trashed card
                 (doseq [prompt card-prompts]

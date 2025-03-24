@@ -11,7 +11,7 @@
    [game.core.engine :refer [trigger-event trigger-event-sync resolve-ability]]
    [game.core.initializing :refer [card-init make-card]]
    [game.core.moving :refer [move]]
-   [game.core.player :refer [new-corp new-runner]]
+   [game.core.player :refer [new-player]] ;;new-corp new-runner]]
    [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
    [game.core.say :refer [system-msg system-say implementation-msg]]
    [game.core.shuffling :refer [shuffle-into-deck shuffle!]]
@@ -123,8 +123,8 @@
          :spectatorhands spectatorhands
          :api-access api-access
          :save-replay save-replay}
-        (new-corp (:user corp) corp-identity corp-options (map #(assoc % :zone [:deck]) corp-deck) corp-deck-id corp-quote)
-        (new-runner (:user runner) runner-identity runner-options (map #(assoc % :zone [:deck]) runner-deck) runner-deck-id runner-quote)))))
+        (new-player (:user corp) corp-identity corp-options (map #(assoc % :zone [:deck]) corp-deck) corp-deck-id corp-quote)
+        (new-player (:user runner) runner-identity runner-options (map #(assoc % :zone [:deck]) runner-deck) runner-deck-id runner-quote)))))
 
 (defn- create-basic-action-cards
   [state]

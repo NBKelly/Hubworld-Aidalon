@@ -245,6 +245,7 @@
 (defn handle-drop [e server]
   (-> e .-target js/$ (.removeClass "dragover"))
   (let [card (-> e .-dataTransfer (.getData "card") ((.-parse js/JSON)) (js->clj :keywordize-keys true))]
+    (js/console.log (str "server: " server))
     (when (not= "Identity" (:type card))
       (send-command "move" {:card card :server server}))))
 
@@ -960,54 +961,66 @@
                 ^{:key (:cid card)}
                 [card-view card]))])]))))
 
-(defn discard-view-runner [player-side discard]
+;; (defn discard-view-runner [player-side discard]
+;;   (let [s (r/atom {})]
+;;     (fn [player-side discard]
+;;       [:div.discard-container (drop-area "Heap" {})
+;;        [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
+;;         (when-not (empty? @discard)
+;;           [card-view (last @discard) nil true])
+;;         [:div.header {:class (str "server-label "
+;;                                   (if (some graveyard-highlight-card? @discard)
+;;                                     "graveyard-highlight-bg"
+;;                                     "darkbg"))}
+;;          (str (tr [:game.heap "Heap"]) " (" (count @discard) ")")]]
+;;        [:div.panel.blue-shade.popup {:ref #(swap! s assoc :popup %)
+;;                                      :class (if (= player-side :runner) "me" "opponent")}
+;;         [:div
+;;          [:a {:on-click #(close-popup % (:popup @s) nil false false)} (tr [:game.close "Close"])]]
+;;         (doall
+;;           (for [card (if (sort-heap?) (sort-heap @discard) @discard)]
+;;             ^{:key (:cid card)}
+;;             [card-view card]))]])))
+
+(defn exile-view [exile-side player-side exile]
   (let [s (r/atom {})]
-    (fn [player-side discard]
-      [:div.discard-container (drop-area "Heap" {})
+    (fn [exile-side player-side exile]
+      [:div.discard-container (drop-area (str "Exile-" (name exile-side)) {})
        [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
-        (when-not (empty? @discard)
-          [card-view (last @discard) nil true])
-        [:div.header {:class (str "server-label "
-                                  (if (some graveyard-highlight-card? @discard)
-                                    "graveyard-highlight-bg"
-                                    "darkbg"))}
-         (str (tr [:game.heap "Heap"]) " (" (count @discard) ")")]]
+        (when-not (empty? @exile)
+          [card-view (last @exile) nil true])
+        [:div.header {:class (str "server-label darkbg")}
+         (str (tr [:game.exile "Exile"]) " (" (count @exile) ")")]]
        [:div.panel.blue-shade.popup {:ref #(swap! s assoc :popup %)
-                                     :class (if (= player-side :runner) "me" "opponent")}
+                                     :class (if (not= player-side (utils/other-side exile-side)) "me" "opponent")}
         [:div
          [:a {:on-click #(close-popup % (:popup @s) nil false false)} (tr [:game.close "Close"])]]
         (doall
-          (for [card (if (sort-heap?) (sort-heap @discard) @discard)]
+          (for [card (if (sort-heap?) (sort-heap @exile) @exile)]
             ^{:key (:cid card)}
             [card-view card]))]])))
 
-(defn discard-view-corp [player-side discard]
+(defn discard-view [discard-side player-side discard]
   (let [s (r/atom {})]
-    (fn [player-side discard]
+    (fn [discard-side player-side discard]
       (let [draw-card #(if (faceup? %1)
                          [card-view %1 nil %2]
-                         (if (or (= player-side :corp)
+                         (if (or (= player-side discard-side)
                                  (spectator-view-hidden?))
                            [:div.unseen [card-view %1 nil %2]]
-                           [facedown-card "corp"]))]
-        [:div.discard-container (drop-area "Archives" {})
+                           [facedown-card "corp"]))] ;; TODO - this becomes whatever the facedown is
+        [:div.discard-container (drop-area (str "Archives-" (name discard-side)) {})
          [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
           (when-not (empty? @discard)
-            [:<> {:key "discard"} (draw-card (last @discard) true)])
-          [:div.header {:class (str "server-label "
-                                    (if (some (if (or (= player-side :corp) (spectator-view-hidden?))
-                                                graveyard-highlight-card?
-                                                (every-pred graveyard-highlight-card? :seen))
-                                              @discard)
-                                      "graveyard-highlight-bg"
-                                      "darkbg"))}
+            [:<> {:key (str "discard-" (name discard-side))} (draw-card (last @discard) true)])
+          [:div.header {:class "server-label darkbg"}
            (let [total (count @discard)
                  face-up (count (filter faceup? @discard))]
              (str (tr [:game.archives "Archives"])
                   ;; use non-breaking space to keep counts on same line
                   " (" (tr [:game.up-down-count] total face-up) ")"))]]
          [:div.panel.blue-shade.popup {:ref #(swap! s assoc :popup %)
-                                       :class (if (= (:side @game-state) :runner) "opponent" "me")}
+                                       :class (if (not= player-side (utils/other-side discard-side)) "me" "opponent")}
           [:div
            [:a {:on-click #(close-popup % (:popup @s) nil false false)} (tr [:game.close "Close"])]
            [:label (let [total (count @discard)
@@ -1017,6 +1030,43 @@
             (for [[idx c] (map-indexed vector (if (sort-archives?) (sort-archives @discard) @discard))]
               ^{:key idx}
               [:div (draw-card c false)]))]]))))
+
+;; (defn discard-view-corp [player-side discard]
+;;   (let [s (r/atom {})]
+;;     (fn [player-side discard]
+;;       (let [draw-card #(if (faceup? %1)
+;;                          [card-view %1 nil %2]
+;;                          (if (or (= player-side :corp)
+;;                                  (spectator-view-hidden?))
+;;                            [:div.unseen [card-view %1 nil %2]]
+;;                            [facedown-card "corp"]))]
+;;         [:div.discard-container (drop-area "Archives" {})
+;;          [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
+;;           (when-not (empty? @discard)
+;;             [:<> {:key "discard"} (draw-card (last @discard) true)])
+;;           [:div.header {:class (str "server-label "
+;;                                     (if (some (if (or (= player-side :corp) (spectator-view-hidden?))
+;;                                                 graveyard-highlight-card?
+;;                                                 (every-pred graveyard-highlight-card? :seen))
+;;                                               @discard)
+;;                                       "graveyard-highlight-bg"
+;;                                       "darkbg"))}
+;;            (let [total (count @discard)
+;;                  face-up (count (filter faceup? @discard))]
+;;              (str (tr [:game.archives "Archives"])
+;;                   ;; use non-breaking space to keep counts on same line
+;;                   " (" (tr [:game.up-down-count] total face-up) ")"))]]
+;;          [:div.panel.blue-shade.popup {:ref #(swap! s assoc :popup %)
+;;                                        :class (if (= (:side @game-state) :runner) "opponent" "me")}
+;;           [:div
+;;            [:a {:on-click #(close-popup % (:popup @s) nil false false)} (tr [:game.close "Close"])]
+;;            [:label (let [total (count @discard)
+;;                          face-up (count (filter faceup? @discard))]
+;;                      (tr [:game.face-down-count] total face-up))]]
+;;           (doall
+;;             (for [[idx c] (map-indexed vector (if (sort-archives?) (sort-archives @discard) @discard))]
+;;               ^{:key idx}
+;;               [:div (draw-card c false)]))]]))))
 
 (defn rfg-view
   ([cards name popup] (rfg-view cards name popup nil))
@@ -1185,6 +1235,19 @@
            (-> ss1 :content first :hosted empty?)
            (-> ss2 :content first :hosted empty?)))))
 
+(defn replacement-board-view [viewing-side player-side identity deck deck-count hand hand-count discard rfg]
+  (let [side-class (if (= player-side viewing-side) "opponent" "me")
+        hand-count-number (if (nil? @hand-count) (count @hand) @hand-count)
+        centrals [:div.runner-centrals
+                  [exile-view (utils/other-side viewing-side) player-side rfg]
+                  [discard-view (utils/other-side viewing-side) player-side discard]
+                  [deck-view (utils/other-side viewing-side) player-side identity deck deck-count]
+                  [identity-view (utils/other-side viewing-side) identity hand-count-number]]]
+    ;; [:div.outer-corp-board {:class [side-class
+    ;;                                 (when (get-in @app-state [:options :sides-overlap]) "overlap")]}
+    [:div.runner-board {:class side-class}
+     centrals]))
+
 (defn board-view-corp [player-side identity deck deck-count hand hand-count discard servers run]
   (let [rs (:server @run)
         server-type (first rs)
@@ -1225,7 +1288,11 @@
                     :run (when (= server-type "rd") @run)}]
       [server-view {:key "archives"
                     :server (:archives @servers)
-                    :central-view [discard-view-corp player-side discard]
+                    :central-view [discard-view :corp player-side discard]
+                    :run (when (= server-type "archives") @run)}]
+      [server-view {:key "exile"
+                    :server (:archives @servers)
+                    :central-view [discard-view :corp player-side discard]
                     :run (when (= server-type "archives") @run)}]]]))
 
 (defn- ghost-card
@@ -1243,11 +1310,12 @@
         hosted-programs (filter program? hosted)]
     (map ghost-card hosted-programs)))
 
-(defn board-view-runner [player-side identity deck deck-count hand hand-count discard rig run servers]
+(defn board-view-runner [player-side identity deck deck-count hand hand-count discard rig run servers rfg]
   (let [is-me (= player-side :runner)
         hand-count-number (if (nil? @hand-count) (count @hand) @hand-count)
         centrals [:div.runner-centrals
-                  [discard-view-runner player-side discard]
+                  [exile-view :runner player-side rfg]
+                  [discard-view :runner player-side discard]
                   [deck-view :runner player-side identity deck deck-count]
                   [identity-view :runner identity hand-count-number]]
         runner-f (if (and (not is-me)
@@ -2188,6 +2256,8 @@
                  ;; discards
                  me-discard (r/cursor game-state [me-side :discard])
                  op-discard (r/cursor game-state [op-side :discard])
+                 me-rfg (r/cursor game-state [me-side :rfg])
+                 op-rfg (r/cursor game-state [op-side :rfg])
                  ;; user settings
                  me-user (r/cursor game-state [me-side :user])
                  op-user (r/cursor game-state [op-side :user])
@@ -2241,11 +2311,15 @@
 
                [:div.centralpane
                 (if (= op-side :corp)
-                  [board-view-corp me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard corp-servers run]
-                  [board-view-runner me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard runner-rig run corp-servers])
+                  [replacement-board-view :runner me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard op-rfg]
+                  [replacement-board-view :corp me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard op-rfg])
+                  ;;[board-view-corp me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard corp-servers run]
+                  ;;[board-view-runner me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard runner-rig run corp-servers op-rfg])
                 (if (= me-side :corp)
-                  [board-view-corp me-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard corp-servers run]
-                  [board-view-runner me-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard runner-rig run corp-servers])]
+                  [replacement-board-view :corp op-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard me-rfg]
+                  [replacement-board-view :runner op-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard me-rfg])]
+                  ;;[board-view-corp me-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard corp-servers run]
+               ;;[board-view-runner me-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard runner-rig run corp-servers me-rfg])]
 
                [:div.leftpane
                 [:div.opponent
@@ -2261,27 +2335,26 @@
                    [stats-view me]]]
 
                  [:div.right-inner-leftpane
-                  (let [op-rfg (r/cursor game-state [op-side :rfg])
-                        op-set-aside (r/cursor game-state [op-side :set-aside])
+                  (let [op-set-aside (r/cursor game-state [op-side :set-aside])
                         op-current (r/cursor game-state [op-side :current])
                         op-play-area (r/cursor game-state [op-side :play-area])
                         last-revealed (r/cursor game-state [:last-revealed])
-                        me-rfg (r/cursor game-state [me-side :rfg])
                         me-set-aside (r/cursor game-state [me-side :set-aside])
                         me-current (r/cursor game-state [me-side :current])
                         me-play-area (r/cursor game-state [me-side :play-area])]
                     [:div
                      (when-not (:replay @game-state)
                        [starting-timestamp @start-date @timer])
-                     [rfg-view op-rfg (tr [:game.rfg "Removed from the game"]) true]
-                     [rfg-view me-rfg (tr [:game.rfg "Removed from the game"]) true]
+                     ;;[rfg-view op-rfg (tr [:game.rfg "Removed from the game"]) true]
+                     ;;[rfg-view me-rfg (tr [:game.rfg "Removed from the game"]) true]
                      [rfg-view op-set-aside (tr [:game.set-aside "Set aside"]) false]
                      [rfg-view me-set-aside (tr [:game.set-aside "Set aside"]) false]
                      [play-area-view op-user (tr [:game.play-area "Play Area"]) op-play-area]
                      [play-area-view me-user (tr [:game.play-area "Play Area"]) me-play-area]
-                     [rfg-view op-current (tr [:game.current "Current"]) false]
-                     [rfg-view me-current (tr [:game.current "Current"]) false]
-                     [rfg-view last-revealed (tr [:game.last-revealed "Last Revealed"]) false true]])
+                     ;;[rfg-view op-current (tr [:game.current "Current"]) false]
+                     ;;[rfg-view me-current (tr [:game.current "Current"]) false]
+                     ;;[rfg-view last-revealed (tr [:game.last-revealed "Last Revealed"]) false true]
+                     ])
                   (when (or (not= @side :spectator)
                             (and (spectator-view-hidden?) (spectate-side)))
                     [button-pane {:side me-side :active-player active-player :run run :encounters encounters

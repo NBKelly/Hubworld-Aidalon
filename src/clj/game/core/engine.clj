@@ -1210,7 +1210,7 @@
        ;; update the disabled-card registry here
        (update-disabled-cards state)
        ;; c: Check winning or tying by agenda points
-       (check-win-by-agenda state)
+       ;;(check-win-by-agenda state)
        ;; d: uniqueness/console check
        (wait-for
          (check-unique-and-consoles state nil (make-eid state eid))
