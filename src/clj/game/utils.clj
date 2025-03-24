@@ -13,7 +13,7 @@
    (let [card (get @all-cards title)]
      (cond
        (and title card) card
-       (or (= title "Corp Basic Action Card") (= title "Runner Basic Action Card")) {}
+       (= title "Hubworld Basic Action Card") {}
        :else (when strict?
                (throw (Exception. (str "Tried to select server-card for " title))))))))
 
