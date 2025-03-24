@@ -1,20 +1,22 @@
 (ns game.core.set-up
   (:require
    [cljc.java-time.instant :as inst]
-   [game.core.card :refer [corp? runner?]]
+   [clojure.string :as str]
+   [game.core.card :refer [corp? runner? in-hand?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.diffs :refer [public-states]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [make-eid effect-completed]]
-   [game.core.engine :refer [trigger-event trigger-event-sync]]
+   [game.core.engine :refer [trigger-event trigger-event-sync resolve-ability]]
    [game.core.initializing :refer [card-init make-card]]
+   [game.core.moving :refer [move]]
    [game.core.player :refer [new-corp new-runner]]
    [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
    [game.core.say :refer [system-msg system-say implementation-msg]]
-   [game.core.shuffling :refer [shuffle-into-deck]]
+   [game.core.shuffling :refer [shuffle-into-deck shuffle!]]
    [game.core.state :refer [new-state]]
-   [game.macros :refer [wait-for]]
+   [game.macros :refer [wait-for req]]
    [game.quotes :as quotes]
    [game.utils :refer [server-card]]))
 
@@ -31,46 +33,59 @@
                    (shuffle (vec (:cards deck))))))
 
 ;;; Functions for the creation of games and the progression of turns.
-(defn mulligan
-  "Mulligan starting hand."
-  [state side _]
-  (shuffle-into-deck state side :hand)
-  (draw state side (make-eid state) 5 {:suppress-event true :no-update-draw-stats true})
-  (let [card (get-in @state [side :identity])]
-    (when-let [cdef (card-def card)]
-      (when-let [mul (:mulligan cdef)]
-        (mul state side (make-eid state) card nil))))
-  (swap! state assoc-in [side :keep] :mulligan)
-  (system-msg state side "takes a mulligan")
-  (trigger-event state side :pre-first-turn)
+(defn draw-limit [state side] (get-in @state [side :identity :draw-limit]))
+
+(defn- toggle-wait-prompts
+  [state side]
   (when (and (= side :corp) (-> @state :runner :identity :title))
     (clear-wait-prompt state :runner)
     (show-wait-prompt state :corp "Runner to keep hand or mulligan"))
   (when (and (= side :runner)  (-> @state :corp :identity :title))
     (clear-wait-prompt state :corp)))
+
+(defn mulligan
+  "Mulligan starting hand."
+  [state side eid]
+  (resolve-ability
+    state side eid
+    {:prompt "Choose any number of cards to put back"
+     :async true
+     :choices {:req (req (in-hand? target))
+               :max (draw-limit state side)}
+     :cancel-effect (req (system-msg state side "Keeps their hand")
+                         (swap! state assoc-in [side :keep] :keep)
+                         (toggle-wait-prompts state side)
+                         (effect-completed state side eid))
+     :effect (req (wait-for
+                    (draw state side (count targets) {:suppress-event true})
+                    (system-msg state side (str "mulligans for " (count targets) " cards"))
+                    (doseq [t targets]
+                      (move state side t :deck))
+                    (shuffle! state side :deck)
+                    (swap! state assoc-in [side :keep] :mulligan)
+                    (toggle-wait-prompts state side)
+                    (effect-completed state side eid)))}
+    nil nil))
 
 (defn keep-hand
   "Choose not to mulligan."
-  [state side _]
+  [state side eid]
   (swap! state assoc-in [side :keep] :keep)
   (system-msg state side "keeps [their] hand")
   (trigger-event state side :pre-first-turn)
-  (when (and (= side :corp) (-> @state :runner :identity :title))
-    (clear-wait-prompt state :runner)
-    (show-wait-prompt state :corp "Runner to keep hand or mulligan"))
-  (when (and (= side :runner)  (-> @state :corp :identity :title))
-    (clear-wait-prompt state :corp)))
+  (toggle-wait-prompts state side)
+  (effect-completed state side eid))
 
 (defn- init-hands [state]
-  (draw state :corp (make-eid state) 5 {:suppress-event true})
-  (draw state :runner (make-eid state) 5 {:suppress-event true})
+  (draw state :corp (make-eid state) (draw-limit state :corp) {:suppress-event true})
+  (draw state :runner (make-eid state) (draw-limit state :runner) {:suppress-event true})
   (doseq [side [:corp :runner]]
     (when (-> @state side :identity :title)
       (show-prompt state side nil "Keep hand?"
                    ["Keep" "Mulligan"]
                    #(if (= (:value %) "Keep")
-                      (keep-hand state side nil)
-                      (mulligan state side nil))
+                      (keep-hand state side (make-eid state))
+                      (mulligan state side (make-eid state)))
                    {:prompt-type :mulligan})))
   (when (and (-> @state :corp :identity :title)
              (-> @state :runner :identity :title))
@@ -117,12 +132,12 @@
          assoc-in [:corp :basic-action-card]
          (make-card {:side "Corp"
                      :type "Basic Action"
-                     :title "Corp Basic Action Card"}))
+                     :title "Hubworld Basic Action Card"}))
   (swap! state
          assoc-in [:runner :basic-action-card]
          (make-card {:side "Runner"
                      :type "Basic Action"
-                     :title "Runner Basic Action Card"})))
+                     :title "Hubworld Basic Action Card"})))
 
 (defn- set-deck-lists
   [state]
