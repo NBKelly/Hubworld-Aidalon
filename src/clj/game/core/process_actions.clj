@@ -20,7 +20,7 @@
    [game.core.set-up :refer [keep-hand mulligan]]
    [game.core.shuffling :refer [shuffle-deck]]
    [game.core.toasts :refer [ack-toast]]
-   [game.core.turns :refer [end-phase-12 end-turn start-hubworld-turn]]
+   [game.core.turns :refer [start-hubworld-turn hubworld-refresh-phase]]
    [game.core.winning :refer [concede]]))
 
 (defn checkpoint+clean-up
@@ -62,9 +62,8 @@
    "derez" #(derez %1 %2 (:card %3))
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
-   "end-phase-12" #'end-phase-12
    "start-next-phase" #'start-next-phase
-   "end-turn" #'end-turn
+   "end-turn" #'hubworld-refresh-phase
    "generate-install-list" #'generate-install-list
    "generate-runnable-zones" #'generate-runnable-zones
    "indicate-action" #'indicate-action
