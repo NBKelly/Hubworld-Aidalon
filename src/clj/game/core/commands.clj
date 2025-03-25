@@ -15,7 +15,7 @@
    [game.core.initializing :refer [card-init deactivate make-card]]
    [game.core.moving :refer [move swap-ice swap-installed trash]]
    [game.core.prompt-state :refer [remove-from-prompt-queue]]
-   [game.core.prompts :refer [show-prompt]]
+   [game.core.prompts :refer [show-prompt show-stage-prompt]]
    [game.core.props :refer [set-prop]]
    [game.core.say :refer [system-msg system-say unsafe-say]]
    [game.core.set-up :refer [build-card]]
@@ -192,7 +192,14 @@
       state side
       {:prompt "Choose a card to stage"
        :choices {:card (every-pred f in-hand? stageable?)}
-       :effect (req (system-msg state side "time to stage"))}
+       :async true
+       :effect (req (system-msg state side "time to stage")
+                    (show-stage-prompt state side eid card
+                                       (str "Stage " (:title target) " where?")
+                                       {:msg (msg context)}
+                                       {:waiting-prompt true
+                                        :req (req (println context) true)} ;; no targets
+                                       ))}
       nil nil)))
 
 (defn command-swap-sides

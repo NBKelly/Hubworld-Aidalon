@@ -81,6 +81,29 @@
                                   other-choices f args))
                   args))))
 
+(defn show-stage-prompt
+  "Specific function for showing a staging prompt"
+  ([state side card message ab args] (show-stage-prompt state side (make-eid state) card message ab args))
+  ([state side eid card message ab {:keys [waiting-prompt targets req] :as args}]
+   (let [prompt (if (string? message) message (message state side eid card targets))
+         newitem {:eid eid
+                  :msg prompt
+                  :req req
+                  :ability ab
+                  :card card
+                  :prompt-type :stage}]
+     (when waiting-prompt
+         (add-to-prompt-queue
+           state (if (= :corp side) :runner :corp)
+           {:eid (select-keys eid [:eid])
+            :card card
+            :prompt-type :waiting
+            :msg (str "Waiting for "
+                      (if (true? waiting-prompt)
+                        (str (side-str side) " to make a decision")
+                        waiting-prompt))}))
+     (add-to-prompt-queue state side newitem))))
+
 (defn show-trace-prompt
   "Specific function for displaying a trace prompt. Works like `show-prompt` with some extensions.
    Always uses `:credit` as the `choices` variable, and passes on some extra properties, such as base and bonus."
@@ -106,6 +129,17 @@
                   :beat-trace beat-trace
                   :link link}]
      (add-to-prompt-queue state side newitem))))
+
+(defn resolve-stage
+  [state side card {:keys [server slot cancel] :as context} update! resolve-ability]
+  (let [prompt (first (filter #(= :stage (:prompt-type %)) (get-in @state [side :prompt])))]
+    (when prompt
+      ;; todo - case for cancel/done
+      (when (or (not (:req prompt))
+                ((:req prompt) state side (make-eid state) card [context]))
+        (println "staging in:" server ", slot:" slot))
+        (remove-from-prompt-queue state side prompt)
+        (resolve-ability state side (:ability prompt) card [context]))))
 
 (defn resolve-select
   "Resolves a selection prompt by invoking the prompt's ability with the targeted cards.

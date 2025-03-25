@@ -810,7 +810,15 @@
                             height: 84px;
                             width: 84px
 
-                        .grid-slot.archive
+                        .grid-slot.staging
+                            cursor: pointer
+                            background-color: rgba(50, 60, 80, 0.65);
+                            transition: background-color 0.3s ease; /* fade effect */
+
+                        .grid-slot.staging:hover
+                            background-color: rgba(0, 255, 0, 0.15); /* subtle bright green highlight on hover - TODO - pick another color later?*/
+
+                        .grid-slot.archives
                                 border: 2px solid #00FFFF; /* Bright cyan border */
 
                         .grid-slot.council

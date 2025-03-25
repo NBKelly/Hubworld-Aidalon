@@ -6,7 +6,7 @@
                               generate-runnable-zones move-card expend-ability
                               pass play play-ability play-corp-ability
                               play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
-                              resolve-prompt score select trash-resource view-deck]]
+                              resolve-prompt score select stage-select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
    [game.core.change-vals :refer [change]]
    [game.core.checkpoint :refer [fake-checkpoint]]
@@ -84,6 +84,7 @@
    "set-property" #'set-property
    "shuffle" #'shuffle-deck
    "start-turn" #'start-hubworld-turn
+   "stage-select" #'stage-select
    "subroutine" #'play-subroutine
    "system-msg" #(system-msg %1 %2 (:msg %3))
    "toast" #'ack-toast

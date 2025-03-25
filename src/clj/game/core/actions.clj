@@ -18,7 +18,7 @@
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
     [game.core.expend :refer [expend expendable?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
-    [game.core.prompts :refer [resolve-select]]
+    [game.core.prompts :refer [resolve-select resolve-stage]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.runs :refer [continue get-runnable-zones]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
@@ -277,6 +277,15 @@
 
       :else
       (prompt-error "in an unknown prompt type" prompt args))))
+
+(defn stage-select
+  [state side {:keys [server slot shift-key-held]}]
+  (let [prompt (first (get-in @state [side :prompt]))
+        card (:card prompt)]
+    (swap! state assoc-in [side :shift-key-select] shift-key-held)
+    (resolve-stage state side card {:server (keyword server) :slot slot} update! resolve-ability)
+       ;; if shift held, skip asking about overwriting :)
+    nil))
 
 (defn select
   "Attempt to select the given card to satisfy the current select prompt. Calls resolve-select
