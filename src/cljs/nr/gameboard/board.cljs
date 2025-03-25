@@ -185,32 +185,39 @@
         (send-command "choice" {:choice {:uuid (prompt-button-from-card? card (get-in @game-state [side :prompt-state]))}})
 
         ;; Card is an identity of player's side
-        (and (= (:type card) "Identity")
+        (and (= (:type card) "Seeker")
              (= side (keyword (lower-case (:side card)))))
         (handle-abilities side card)
 
-        ;; Runner clicking on a runner card
-        (and (= side :runner)
-             (= "Runner" (:side card))
-             ;;(not (any-prompt-open? side))
+        ;; player clicking on their own playable card
+        (and (or (and (= side :runner) (= "Runner" (:side card)))
+                 (and (= side :corp) (= "Corp" (:side card))))
              (= "hand" (first zone))
              (playable? card))
         (send-command "play" {:card (card-for-click card) :shift-key-held shift-key-held})
 
-        ;; Corp clicking on a corp card
-        (and (= side :corp)
-             (= "Corp" (:side card))
-             ;;(not (any-prompt-open? side))
-             (= "hand" (first zone))
-             (playable? card))
-        (if (= "Operation" type)
-          (send-command "play" {:card (card-for-click card)})
-          (if (= (:cid card) (:source @card-menu))
-            (do (send-command "generate-install-list" nil)
-                (close-card-menu))
-            (do (send-command "generate-install-list" {:card (card-for-click card)
-                                                       :shift-key-held shift-key-held})
-                (open-card-menu (:cid card)))))
+        ;; ;; Runner clicking on a runner card
+        ;; (and (= side :runner)
+        ;;      (= "Runner" (:side card))
+        ;;      ;;(not (any-prompt-open? side))
+        ;;      (= "hand" (first zone))
+        ;;      (playable? card))
+        ;; (send-command "play" {:card (card-for-click card) :shift-key-held shift-key-held})
+
+        ;; ;; Corp clicking on a corp card
+        ;; (and (= side :corp)
+        ;;      (= "Corp" (:side card))
+        ;;      ;;(not (any-prompt-open? side))
+        ;;      (= "hand" (first zone))
+        ;;      (playable? card))
+        ;; (if (= "Operation" type)
+        ;;   (send-command "play" {:card (card-for-click card)})
+        ;;   (if (= (:cid card) (:source @card-menu))
+        ;;     (do (send-command "generate-install-list" nil)
+        ;;         (close-card-menu))
+        ;;     (do (send-command "generate-install-list" {:card (card-for-click card)
+        ;;                                                :shift-key-held shift-key-held})
+        ;;         (open-card-menu (:cid card)))))
 
         :else
         (case (first zone)
@@ -1182,8 +1189,8 @@
   [:div.server
    [:div.ices
     (doall
-      (for [slot (reverse (range slots))]
-        ^{:key (str player-side "-" server-name "-" slot)}
+      (for [slot (take slots [:inner :middle :outer])]
+        ^{:key (str player-side "-" server-name "-" (name slot))}
         [:div.grid-slot {:class (str (when (and (not= viewing-side player-side)
                                                 (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
                                        "staging ")
@@ -1191,7 +1198,10 @@
                          :on-click (when (and (not= viewing-side player-side)
                                               (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
                                      #(send-command "stage-select" {:server server-name :slot slot}))}
-         (str "placeholder: " slot)]))]
+         (if-let [staged-card (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
+           [:div.staged-card {:key (:cid staged-card)}
+            [card-view staged-card]]
+           (str "placeholder: " (name slot)))]))]
    server])
 
 (defn replacement-board-view [viewing-side player-side identity deck deck-count hand hand-count discard rfg]
@@ -1752,6 +1762,11 @@
        ;; trace prompts require their own logic
        (= prompt-type "trace")
        [trace-div prompt-state]
+
+       ;; stage prompts just provide a done button
+       (= prompt-type "stage")
+       [:div [:button#stage-done {:on-click #(send-command "stage-done" {})}
+              (tr [:game.done "Done"])]]
 
        ;; choice of number of credits
        (= choices "credit")

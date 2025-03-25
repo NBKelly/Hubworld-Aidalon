@@ -130,6 +130,13 @@
                   :link link}]
      (add-to-prompt-queue state side newitem))))
 
+(defn cancel-stage
+  [state side card update! resolve-ability]
+  (let [prompt (first (filter #(= :stage (:prompt-type %)) (get-in @state [side :prompt])))]
+    (when prompt
+      (remove-from-prompt-queue state side prompt)
+      (resolve-ability state side (:eid prompt) (:cancel-ability prompt) card nil))))
+
 (defn resolve-stage
   [state side card {:keys [server slot cancel] :as context} update! resolve-ability]
   (let [prompt (first (filter #(= :stage (:prompt-type %)) (get-in @state [side :prompt])))]

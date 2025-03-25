@@ -18,21 +18,28 @@
         installed-card row]
     installed-card))
 
+(defn get-cards-from-paths [state side]
+  (apply concat (for [path [:archives :council :commons]
+                      slot [:inner :middle :outer]
+                      :let [val (get-in @state [side :paths path slot])]
+                      :when (seq val)]
+                  val)))
+
 (defn get-all-cards
   "Every single card in the game. All cards in the hand, deck, discard, play-area, set-aside,
   score zone, currents, and removed from the game. And all cards that are installed and hosted"
   [state]
-  (let [installed-corp (corp-servers-cards state)
-        installed-runner (runner-rig-cards state)
-        corp (:corp @state)
+  (let [corp (:corp @state)
         runner (:runner @state)
         cards-in-zones (for [side [corp runner]
-                             zone [:deck :hand :discard :current :scored :play-area :rfg :set-aside]
+                             zone [:deck :hand :discard :scored :play-area :rfg :set-aside]
                              card (zone side)]
                          card)
+        from-corp-paths (seq (get-cards-from-paths state :corp))
+        from-runner-paths (seq (get-cards-from-paths state :runner))
         identities (list (:identity corp) (:identity runner))]
     (loop [checked (transient [])
-           unchecked (concat installed-corp installed-runner cards-in-zones identities)]
+           unchecked (concat cards-in-zones identities from-corp-paths from-runner-paths)]
       (if (empty? unchecked)
         (persistent! checked)
         (let [[card & remaining] unchecked]

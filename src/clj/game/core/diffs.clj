@@ -13,45 +13,60 @@
    [game.core.play-instants :refer [can-play-instant?]]
    [game.core.winning :refer [agenda-points-required-to-win]]
    [game.utils :refer [dissoc-in]]
-   [jinteki.utils :refer [select-non-nil-keys]]
+   [jinteki.utils :refer [other-side select-non-nil-keys]]
    [medley.core :refer [update-existing]]))
 
-(defn playable? [card state side]
-  (if (and ((if (= :corp side) corp? runner?) card)
-           (in-hand? card)
-           (not (:corp-phase-12 @state))
-           (not (:runner-phase-12 @state))
-           (cond+
-             [(or (agenda? card)
-                  (asset? card)
-                  (ice? card)
-                  (upgrade? card))
-              (some
-                (fn [server]
-                  (corp-can-pay-and-install?
-                    state :corp {:source card :source-type :corp-install}
-                    card server {:base-cost [(->c :click 1)]
-                                 :action :corp-click-install
-                                 :no-toast true}))
-                (installable-servers state card))]
-             [(or (hardware? card)
-                  (program? card)
-                  (resource? card))
-              (and (not (:run @state))
-                   (runner-can-pay-and-install?
-                     state :runner {:source card :source-type :runner-install}
-                     card {:base-cost [(->c :click 1)]
-                           :no-toast true}))]
-             [(or (event? card)
-                  (operation? card))
-              (and (not (:run @state))
-                   (can-play-instant?
-                     state side {:source card :source-type :play}
-                     card {:base-cost [(->c :click 1)]
-                           :silent true}))])
-           true)
-    (assoc card :playable true)
-    card))
+(defn hubworld-playable? [card state side]
+  (let [bac (get-in @state [side :basic-action-card])]
+    (if (and ((if (= :corp side) corp? runner?) card)
+             (in-hand? card)
+             (= side (:active-player @state))
+             (cond
+               (and (or (obstacle? card)
+                        (agent? card)
+                        (source? card))
+                    ;; TODO delving, breaching, or discovering
+                    (can-pay? state side {:source bac :source-type ::stage} card nil (get-in bac [:abilities 3 :cost])))
+               true))
+      (assoc card :playable true)
+      card)))
+
+;; (defn playable? [card state side]
+;;   (if (and ((if (= :corp side) corp? runner?) card)
+;;            (in-hand? card)
+;;            (not (:corp-phase-12 @state))
+;;            (not (:runner-phase-12 @state))
+;;            (cond+
+;;              [(or (agenda? card)
+;;                   (asset? card)
+;;                   (ice? card)
+;;                   (upgrade? card))
+;;               (some
+;;                 (fn [server]
+;;                   (corp-can-pay-and-install?
+;;                     state :corp {:source card :source-type :corp-install}
+;;                     card server {:base-cost [(->c :click 1)]
+;;                                  :action :corp-click-install
+;;                                  :no-toast true}))
+;;                 (installable-servers state card))]
+;;              [(or (hardware? card)
+;;                   (program? card)
+;;                   (resource? card))
+;;               (and (not (:run @state))
+;;                    (runner-can-pay-and-install?
+;;                      state :runner {:source card :source-type :runner-install}
+;;                      card {:base-cost [(->c :click 1)]
+;;                            :no-toast true}))]
+;;              [(or (event? card)
+;;                   (operation? card))
+;;               (and (not (:run @state))
+;;                    (can-play-instant?
+;;                      state side {:source card :source-type :play}
+;;                      card {:base-cost [(->c :click 1)]
+;;                            :silent true}))])
+;;            true)
+;;     (assoc card :playable true)
+;;     card))
 
 (defn ability-playable? [ability ability-idx state side card]
   (let [cost (card-ability-cost state side ability card)
@@ -185,7 +200,7 @@
           (:host card) (-> (dissoc-in [:host :hosted])
                            (update :host card-summary state side))
           (:hosted card) (update :hosted cards-summary state side))
-        (playable? state side)
+        (hubworld-playable? state side)
         (card-abilities-summary state side)
         (select-non-nil-keys card-keys))
     (-> (cond-> card
@@ -197,6 +212,17 @@
 (defn cards-summary [cards state side]
   (when (seq cards)
     (mapv #(card-summary % state side) cards)))
+
+(defn- path-summary [path state side]
+  {:inner  (mapv #(card-summary % state side) (:inner path))
+   :middle (mapv #(card-summary % state side) (:middle path))
+   :outer  (mapv #(card-summary % state side) (:outer path))})
+
+(defn paths-summary [player state side same-side?]
+  (let [{:keys [commons council archives]} (:paths player)]
+    {:commons  (path-summary commons state side)
+     :council  (path-summary council state side)
+     :archives (path-summary archives state side)}))
 
 (def prompt-keys
   [:msg
@@ -253,7 +279,6 @@
    :paths
    :heat
    :play-area
-   :current
    :set-aside
    :click
    :credit
@@ -267,23 +292,17 @@
    :agenda-point-req])
 
 (defn player-summary
-  [player state side same-side? additional-keys]
+  [player state side same-side?]
   (-> player
       (update :identity card-summary state side)
       (update :basic-action-card card-summary state side)
-      (update :current cards-summary state side)
       (update :play-area cards-summary state side)
       (update :rfg cards-summary state side)
       (update :scored cards-summary state side)
       (update :set-aside cards-summary state side)
       (update :prompt-state prompt-summary same-side?)
       (update :toast toast-summary same-side?)
-      ;;(assoc :agenda-point-req (agenda-points-required-to-win state side))
-      (select-non-nil-keys (into player-keys additional-keys))))
-
-(def corp-keys
-  [:servers
-   :bad-publicity])
+      (select-non-nil-keys player-keys)))
 
 (defn servers-summary
   [state side]
@@ -319,49 +338,56 @@
     (cards-summary discard state :corp)
     (cards-summary discard state side)))
 
-(defn corp-summary
-  [corp state side]
-  (let [corp-player? (= side :corp)
-        install-list (:install-list corp)]
-    (-> (player-summary corp state side corp-player? corp-keys)
-        (update :deck deck-summary corp-player? corp)
-        (update :hand hand-summary state corp-player? :corp corp)
-        (update :discard discard-summary state corp-player? side corp)
+(defn hubworld-player-summary
+  [player state side same-side?]
+  (let [player-side (if same-side? side (other-side side))
+        oppo-side (other-side player-side)]
+    (-> (player-summary player state side same-side?)
+        (update :deck deck-summary same-side? player)
+        (update :hand hand-summary state same-side? player-side player)
+        (update :discard discard-summary state same-side? side player)
         (assoc
-          :deck-count (count (:deck corp))
-          :hand-count (count (:hand corp))
-          :servers (servers-summary state side))
-        (cond-> (and corp-player? install-list) (assoc :install-list install-list)))))
+          :deck-count (count (:deck player))
+          :hand-count (count (:hand player))
+          :paths (paths-summary player state side same-side?)
+          ;; paths ->> ???
+          ))))
 
-(def runner-keys
-  [:rig
-   :run-credit
-   :link
-   :tag
-   :memory
-   :brain-damage])
+;; (defn corp-summary
+;;   [corp state side]
+;;   (let [corp-player? (= side :corp)
+;;         install-list (:install-list corp)]
+;;     (-> (player-summary corp state side corp-player? corp-keys)
+;;         (update :deck deck-summary corp-player? corp)
+;;         (update :hand hand-summary state corp-player? :corp corp)
+;;         (update :discard discard-summary state corp-player? side corp)
+;;         (assoc
+;;           :deck-count (count (:deck corp))
+;;           :hand-count (count (:hand corp))
+;;           :servers (servers-summary state side))
+;;         (cond-> (and corp-player? install-list) (assoc :install-list install-list)))))
 
-(defn rig-summary
-  [state side]
-  (-> (:rig (:runner @state))
-      (update :hardware cards-summary state side)
-      (update :facedown cards-summary state side)
-      (update :program cards-summary state side)
-      (update :resource cards-summary state side)))
+;; (defn rig-summary
+;;   [state side]
+;;   (-> (:rig (:runner @state))
+;;       (update :hardware cards-summary state side)
+;;       (update :facedown cards-summary state side)
+;;       (update :program cards-summary state side)
+;;       (update :resource cards-summary state side)))
 
-(defn runner-summary
-  [runner state side]
-  (let [runner-player? (= side :runner)
-        runnable-list (:runnable-list runner)]
-    (-> (player-summary runner state side runner-player? runner-keys)
-        (update :deck deck-summary runner-player? runner)
-        (update :hand hand-summary state runner-player? :runner runner)
-        (update :discard prune-cards)
-        (assoc
-          :deck-count (count (:deck runner))
-          :hand-count (count (:hand runner))
-          :rig (rig-summary state side))
-        (cond-> (and runner-player? runnable-list) (assoc :runnable-list runnable-list)))))
+;; (defn runner-summary
+;;   [runner state side]
+;;   (let [runner-player? (= side :runner)
+;;         runnable-list (:runnable-list runner)]
+;;     (-> (player-summary runner state side runner-player? runner-keys)
+;;         (update :deck deck-summary runner-player? runner)
+;;         (update :hand hand-summary state runner-player? :runner runner)
+;;         (update :discard prune-cards)
+;;         (assoc
+;;           :deck-count (count (:deck runner))
+;;           :hand-count (count (:hand runner))
+;;           :rig (rig-summary state side))
+;;         (cond-> (and runner-player? runnable-list) (assoc :runnable-list runnable-list)))))
 
 (def options-keys
   [:alt-arts
@@ -470,8 +496,8 @@
 (defn state-summary
   [stripped-state state side]
   (-> stripped-state
-      (update :corp corp-summary state side)
-      (update :runner runner-summary state side)))
+      (update :corp hubworld-player-summary state side (= side :corp)) ;;         [player state side same-side?]   ;;corp-summary state side)
+      (update :runner hubworld-player-summary state side (= side :runner))))
 
 (defn strip-for-replay
   [stripped-state corp-player runner-player]

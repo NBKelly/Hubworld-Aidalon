@@ -18,7 +18,7 @@
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
     [game.core.expend :refer [expend expendable?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
-    [game.core.prompts :refer [resolve-select resolve-stage]]
+    [game.core.prompts :refer [cancel-stage resolve-select show-stage-prompt resolve-stage]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.runs :refer [continue get-runnable-zones]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
@@ -113,10 +113,45 @@
     (when (not (get-in @state [side :prompt :prompt-type]))
       (let [context (assoc context :card card)]
         (case (:type card)
-          ("Agent" "Obstacle" "Seeker")
-          (play-ability state side {:card (get-in @state [side :basic-action-card])
-                                    :ability 3
-                                    :targets [context]})
+          ("Agent" "Obstacle" "Source")
+          (let [card-to-stage card
+                bac (get-in @state [side :basic-action-card])
+                eid (make-eid state {:source bac})]
+            (show-stage-prompt
+              state side eid bac
+              (str "Stage " (:title card-to-stage) " where?")
+              {:async true
+               :effect (req (let [server (:server context)
+                                  slot (:slot context)
+                                  old-card (get-in @state [side :paths server slot 0])]
+                              (if old-card
+                                (resolve-ability
+                                  state side eid
+                                  ;; TODO - distinguish between archive/exile here
+                                  {:optional
+                                   {:prompt (str "trash " (:title old-card) " in the " (name slot) " row of your " (string/upper-case (name server)) "?")
+                                    :waiting-prompt true
+                                    :yes-ability {:async true
+                                                  :effect (req
+                                                            (system-msg state side (str "trashes " (card-str state old-card)))
+                                                            (wait-for
+                                                              (trash state side old-card {:unpreventable true})
+                                                              (play-ability
+                                                                state side eid
+                                                                {:card bac
+                                                                 :ability 3
+                                                                 :targets [{:card card-to-stage
+                                                                            :server server
+                                                                            :slot slot}]})))}}}
+                                  bac nil)
+                                (play-ability
+                                  state side eid
+                                  {:card bac
+                                   :ability 3
+                                   :targets [{:card card-to-stage
+                                              :server (:server context)
+                                              :slot (:slot context)}]}))))}
+              {:waiting-prompt true}))
           nil)))))
 
 ;; (defn play
@@ -278,13 +313,19 @@
       :else
       (prompt-error "in an unknown prompt type" prompt args))))
 
+(defn stage-done
+  [state side args]
+  (let [prompt (first (get-in @state [side :prompt]))
+        card (:card prompt)]
+    (cancel-stage state side card update! resolve-ability)))
+
 (defn stage-select
   [state side {:keys [server slot shift-key-held]}]
   (let [prompt (first (get-in @state [side :prompt]))
         card (:card prompt)]
     (swap! state assoc-in [side :shift-key-select] shift-key-held)
     (resolve-stage state side card {:server (keyword server) :slot slot} update! resolve-ability)
-       ;; if shift held, skip asking about overwriting :)
+       ;; TODO - if shift held, skip asking about overwriting :)
     nil))
 
 (defn select

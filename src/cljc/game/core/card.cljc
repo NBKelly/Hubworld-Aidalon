@@ -506,6 +506,9 @@
   "Returns if a given card should be visible to the opponent"
   ([card] (is-public? (to-keyword (:side card))))
   ([card side]
+   ;; (when (and (:zone card)
+   ;;            (not= (:zone card) [:hand]))
+   ;;   (println "is " (:title card) " on side " (:side card) " in zone " (:zone card) " public to " side "?"))
    ;; public cards for both sides:
    ;; * basic action
    ;; * identity
@@ -517,29 +520,15 @@
        (in-play-area? card)
        (in-rfg? card)
        (set-aside-visible? card side)
-       (if (= side :corp)
-         ;; public runner cards:
-         ;; * installed/hosted and not facedown
-         ;; * in heap
-         (or (and (corp? card)
-                  (not (in-set-aside? card)))
-             (and (or (installed? card)
-                      (:host card))
-                  (or (faceup? card)
-                      (not (facedown? card))))
-             (in-discard? card))
-         ;; public corp cards:
-         ;; * installed and rezzed
-         ;; * in archives and faceup
-         (or (and (runner? card)
-                  (not (in-set-aside? card)))
-             (and (or (installed? card)
-                      (:host card))
-                  (or (operation? card)
-                      (condition-counter? card)
-                      (faceup? card)))
-             (and (in-discard? card)
-                  (faceup? card)))))))
+       (and (or (and (= side :corp) (corp? card))
+                (and (= side :runner) (runner? card)))
+            (not (in-set-aside? card)))
+       (and (not (facedown? card))
+            (and (in-discard? card)
+                 (faceup? card))
+            (and (installed? card)
+                 (or (condition-counter? card)
+                     (faceup? card)))))))
 
 ;; CR 1.8
 ;; 10.1.3. Some abilities add a card to a player’s score area “as an agenda”. When this

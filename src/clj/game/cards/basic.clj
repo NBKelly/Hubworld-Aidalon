@@ -1,26 +1,14 @@
 (ns game.cards.basic
   (:require
-   [game.core.agendas :refer [update-advancement-requirement]]
-   [game.core.board :refer [all-active-installed installable-servers]]
    [game.core.card :refer [agenda? asset? event? get-card hardware? ice?
                            in-hand? operation? program? resource? upgrade?]]
    [game.core.def-helpers :refer [defcard]]
-   [game.core.drawing :refer [draw use-bonus-click-draws!]]
+   [game.core.drawing :refer [draw]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
-   [game.core.effects :refer [get-effects]]
-   [game.core.engine :refer [pay resolve-ability trigger-event]]
-   [game.core.flags :refer [untrashable-while-resources?]]
    [game.core.gaining :refer [gain-credits]]
-   [game.core.installing :refer [corp-can-pay-and-install? corp-install
-                                 runner-can-pay-and-install? runner-install]]
-   [game.core.moving :refer [trash]]
-   [game.core.payment :refer [build-cost-string can-pay? merge-costs ->c]]
-   [game.core.play-instants :refer [can-play-instant? play-instant]]
-   [game.core.props :refer [add-prop]]
-   [game.core.purging :refer [purge]]
-   [game.core.runs :refer [make-run]]
+   [game.core.payment :refer [->c]]
    [game.core.say :refer [play-sfx system-msg]]
-   [game.core.tags :refer [lose-tags]]
+   [game.core.staging :refer [stage]]
    [game.core.to-string :refer [card-str]]
    [game.macros :refer [effect msg req wait-for]]
    [game.utils :refer :all]
@@ -54,6 +42,14 @@
                 :effect (req ;; TODO - sound effect for passing
                           (swap! state update-in [:stats side :click :pass] (fnil inc 0))
                           (effect-completed state side eid))}
+               {:action :true
+                :label "Stage a card"
+                :cost [(->c :click 1)]
+                :msg (msg "stage a card from [their] council in the " (name (:slot context)) " row of [their] " (capitalize (name (:server context))))
+                :async true
+                :effect (req (stage state side eid (:card context) (:server context) (:slot context)))}
+                          ;; if there's already a card there, it gets trashed
+                          ;; than can be handled by stage itself, though
                ;; TODO - stage a card
                ;; TODO - shift a card
                ;; TODO - play a moment with an action cost
