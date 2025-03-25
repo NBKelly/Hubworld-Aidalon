@@ -19,6 +19,7 @@
    [game.core.props :refer [set-prop]]
    [game.core.say :refer [system-msg system-say unsafe-say]]
    [game.core.set-up :refer [build-card]]
+   [game.core.staging :refer [stage]]
    [game.core.to-string :refer [card-str]]
    [game.core.toasts :refer [show-error-toast toast]]
    [game.core.update :refer [update!]]
@@ -194,12 +195,15 @@
        :choices {:card (every-pred f in-hand? stageable?)}
        :async true
        :effect (req (system-msg state side "time to stage")
-                    (show-stage-prompt state side eid card
-                                       (str "Stage " (:title target) " where?")
-                                       {:msg (msg context)}
-                                       {:waiting-prompt true
-                                        :req (req (println context) true)} ;; no targets
-                                       ))}
+                    (let [target-card target]
+                      (show-stage-prompt state side eid card
+                                         (str "Stage " (:title target) " where?")
+                                         {:msg (msg context)
+                                          :async true
+                                          :effect (req (stage state side eid target-card
+                                                              (:server context)
+                                                              (:slot context)))}
+                                         {:waiting-prompt true})))}
       nil nil)))
 
 (defn command-swap-sides

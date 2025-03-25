@@ -250,6 +250,8 @@
    :discard
    :scored
    :rfg
+   :paths
+   :heat
    :play-area
    :current
    :set-aside

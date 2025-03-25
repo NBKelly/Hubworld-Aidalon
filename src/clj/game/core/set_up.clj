@@ -161,6 +161,7 @@
     (card-init state :runner runner-identity)
     (implementation-msg state runner-identity)
     (create-basic-action-cards state)
+    (println (get-in @state [:corp :paths]))
     (fake-checkpoint state)
     (let [eid (make-eid state)]
       (wait-for (trigger-event-sync state :corp :pre-start-game nil)

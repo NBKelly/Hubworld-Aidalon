@@ -137,9 +137,8 @@
       ;; todo - case for cancel/done
       (when (or (not (:req prompt))
                 ((:req prompt) state side (make-eid state) card [context]))
-        (println "staging in:" server ", slot:" slot))
         (remove-from-prompt-queue state side prompt)
-        (resolve-ability state side (:ability prompt) card [context]))))
+        (resolve-ability state side (:eid prompt) (:ability prompt) card [context])))))
 
 (defn resolve-select
   "Resolves a selection prompt by invoking the prompt's ability with the targeted cards.
