@@ -55,8 +55,8 @@
         same-zone? (= src-zone target-zone)
         dest (if (sequential? to) (vec to) [to])
         to-facedown (= dest [:rig :facedown])
-        to-installed (#{:servers :rig} (first dest))
-        from-installed (#{:servers :rig} src-zone)
+        to-installed (#{:servers :rig :paths} (first dest))
+        from-installed (#{:servers :rig :paths} src-zone)
         trash-hosted (fn [h]
                        (engine/move* state side
                                     (make-eid state)
@@ -102,7 +102,7 @@
                              (#{:hand :deck :discard :rfg} target-zone)))
                    (or installed
                        host
-                       (#{:servers :scored :current :play-area} src-zone))
+                       (#{:servers :scored :current :play-area :paths} src-zone))
                    (or (#{:hand :deck :discard :rfg} target-zone)
                        to-facedown)
                    (not (facedown? c)))

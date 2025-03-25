@@ -700,11 +700,9 @@
   "Returns true if the installed card should be drawn face down."
   [{:keys [host] :as card}]
   (or (facedown? card)
-      (and (corp? card)
-           (not (or (operation? card)
-                    (condition-counter? card)
-                    (faceup? card)
-                    (= (:side host) "Runner"))))))
+      (and (:installed card)
+           (not (or (faceup? card)
+                    (condition-counter? card))))))
 
 (defn card-view
   [{:keys [zone code type abilities counter
@@ -1198,9 +1196,12 @@
                          :on-click (when (and (not= viewing-side player-side)
                                               (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
                                      #(send-command "stage-select" {:server server-name :slot slot}))}
-         (if-let [staged-card (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
+         ;; todo - make these seen while discovery occurs
+         ;; that might be a backend task though
+         (if-let [{:keys [rezzed seen] :as staged-card}
+                  (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
            [:div.staged-card {:key (:cid staged-card)}
-            [card-view staged-card]]
+            [card-view staged-card (not (or rezzed seen))]]
            (str "placeholder: " (name slot)))]))]
    server])
 
@@ -1276,44 +1277,6 @@
         hosted (mapcat :hosted ices)
         hosted-programs (filter program? hosted)]
     (map ghost-card hosted-programs)))
-
-(defn board-view-runner [player-side identity deck deck-count hand hand-count discard rig run servers rfg]
-  (let [is-me (= player-side :runner)
-        hand-count-number (if (nil? @hand-count) (count @hand) @hand-count)
-        centrals [:div.runner-centrals
-                  [exile-view :runner player-side rfg]
-                  [discard-view :runner player-side discard]
-                  [deck-view :runner player-side identity deck deck-count]
-                  [identity-view :runner identity hand-count-number]]
-        runner-f (if (and (not is-me)
-                          (= "irl" (get-in @app-state [:options :runner-board-order])))
-                   reverse
-                   seq)]
-    [:div.runner-board {:class [(if is-me "me" "opponent")
-                                (when (get-in @app-state [:options :sides-overlap]) "overlap")]}
-     (when-not is-me centrals)
-     (let [hosted-programs (when (get-in @app-state [:options :ghost-trojans])
-                             (find-hosted-programs servers))]
-       (doall
-         (for [zone (runner-f [:program :hardware :resource :facedown])]
-           ^{:key zone}
-           [:div
-            (if (get-in @app-state [:options :stacked-cards] false)
-                                        ; stacked mode
-              (let [cards (get @rig zone)
-                    cards (if (= zone :program)
-                            (concat cards hosted-programs)
-                            cards)
-                    distinct-cards (vals (group-by get-title cards))]
-                (show-distinct-cards distinct-cards))
-                                        ; not in stacked mode
-              (doall (for [c (if (= zone :program)
-                               (concat (get @rig zone) hosted-programs)
-                               (get @rig zone))]
-                       ^{:key (:cid c)}
-                       [:div.card-wrapper {:class (when (playable? c) "playable")}
-                        [card-view c]])))])))
-       (when is-me centrals)]))
 
 (defn build-win-box
   "Builds the end of game pop up game end"
