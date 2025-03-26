@@ -12,6 +12,7 @@
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.commands :refer [parse-command]]
    [game.core.eid :refer [make-eid]]
+   [game.core.exhausting :refer [exhaust unexhaust]]
    [game.core.moving :refer [trash]]
    [game.core.rezzing :refer [derez rez]]
    [game.core.runs :refer [check-for-empty-server continue handle-end-run
@@ -62,6 +63,7 @@
    "derez" #(derez %1 %2 (:card %3))
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
+   "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
    "start-next-phase" #'start-next-phase
    "end-turn" #'hubworld-refresh-phase
    "generate-install-list" #'generate-install-list
@@ -92,6 +94,7 @@
    "toggle-auto-no-action" #'toggle-auto-no-action
    "trash" #(trash %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
    "trash-resource" #'trash-resource
+   "unexhaust" #(unexhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
    "unbroken-subroutines" #'play-unbroken-subroutines
    "view-deck" #'view-deck})
 

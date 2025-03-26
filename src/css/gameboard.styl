@@ -57,6 +57,9 @@
     .card-frame
         position: relative
 
+    .exhausted
+        transform: rotate(90deg);
+
     .card
         position: relative
         height: 84px
@@ -64,6 +67,7 @@
         border-radius: 4px
         outline: none
         display-flex()
+        transition: transform 0.3s ease;
 
         .cardname
             float: left

@@ -67,37 +67,30 @@
 
 (defn action-list
   [{:keys [type zone rezzed advanceable
-           advancementcost current-advancement-requirement] :as card}]
+           advancementcost current-advancement-requirement exhausted] :as card}]
   (r/with-let [active-player (r/cursor game-state [:active-player])
                side (r/cursor game-state [:side])]
+    ;; TODO -> rezzed items can be exiled
+    ;;      -> facedown items can be archived
     (cond->> []
-      ;; advance
-      (or (and (= type "Agenda")
-               (#{"servers" "onhost"} (first zone)))
-          (= advanceable "always")
-          (and rezzed
-               (= advanceable "while-rezzed"))
-          (and (not rezzed)
-               (= advanceable "while-unrezzed")))
-      (cons "advance")
-      ;; score
-      (and (= type "Agenda")
-           (#{"servers" "onhost"} (first zone))
-           (= (keyword @active-player) @side)
-           (>= (get-counters card :advancement)
-               (or current-advancement-requirement advancementcost)))
-      (cons "score")
-      ;; trash
-      (#{"ICE" "Program"} type)
-      (cons "trash")
-      ;; rez
-      (and (#{"Asset" "ICE" "Upgrade"} type)
-           (not rezzed))
-      (cons "rez")
-      ;; derez
-      (and (#{"Asset" "ICE" "Upgrade"} type)
-           rezzed)
-      (cons "derez"))))
+      ;; archive -> unrezzed (unforged) items are archived on trash
+      (and (#{"Agent" "Obstacle" "Source"} type) (not rezzed))
+      (cons "archive")
+      ;; exile   -> rezzed (forged) items are exiled on trash
+      (and (#{"Agent" "Obstacle" "Source"} type) rezzed)
+      (cons "exile")
+      ;; exhaust  -> manually exhaust a card
+      (and (#{"Agent" "Obstacle" "Source" "Seeker"} type) (not exhausted))
+      (cons "exhaust")
+      ;; unexhaust -> manually unexhaust a card
+      (and (#{"Agent" "Obstacle" "Source" "Seeker"} type) exhausted)
+      (cons "unexhaust")
+      ;; forge     -> forge a card
+      (and (#{"Agent" "Obstacle" "Source"} type) (not rezzed))
+      (cons "forge")
+      ;; unforge   -> manually unforge a card
+      (and (#{"Agent" "Obstacle" "Source"} type) rezzed)
+      (cons "unforge"))))
 
 (def click-card-keys
   [:cid :side :host :type :zone :ghost])
@@ -118,34 +111,31 @@
         c (+ (count actions) (count abilities))
         card-side (keyword (lower-case (:side card)))]
     (swap! card-menu dissoc :keep-menu-open)
-    (when-not (and (= card-side :runner) facedown)
-      (cond
+    (js/console.log
+    (cond
 
         ;; Toggle abilities panel
-        (or (< 1 c)
-            (pos? (+ (count corp-abilities)
-                     (count runner-abilities)
-                     (count subroutines)))
-            (some #{"rez" "derez" "advance" "trash"} actions)
-            (and (corp? card)
-                 (not (faceup? card))))
-        (do (when (= side card-side)
-              (if (and (= (:cid card) (:source @card-menu))
-                       (= (:ghost card) (:ghost @card-menu)))
-                (close-card-menu)
-                (open-card-menu (:cid card) (:ghost card))))
-            (when (and (= :runner card-side)
-                       (= :corp side)
-                       corp-abilities)
-              (if (= (:cid card) (:source @card-menu))
-                (close-card-menu)
-                (open-card-menu (:cid card) (:ghost card))))
-            (when (and (= :corp card-side)
-                       (= :runner side)
-                       (or subroutines runner-abilities))
-              (if (= (:cid card) (:source @card-menu))
-                (close-card-menu)
-                (open-card-menu (:cid card) (:ghost card)))))
+      (or (< 1 c)
+          (pos? (+ (count corp-abilities)
+                   (count runner-abilities)
+                   (count subroutines)))
+          (some #{"forge" "unforge" "archive" "exile"} actions))
+      (do (when (= side card-side)
+            (if (= (:cid card) (:source @card-menu))
+              (close-card-menu)
+              (open-card-menu (:cid card) (:ghost card))))
+          (when (and (= :runner card-side)
+                     (= :corp side)
+                     corp-abilities)
+            (if (= (:cid card) (:source @card-menu))
+              (close-card-menu)
+              (open-card-menu (:cid card) (:ghost card))))
+          (when (and (= :corp card-side)
+                     (= :runner side)
+                     (or subroutines runner-abilities))
+            (if (= (:cid card) (:source @card-menu))
+              (close-card-menu)
+              (open-card-menu (:cid card) (:ghost card)))))
 
         ;; Trigger first (and only) ability / action
         (and (= c 1)
@@ -153,15 +143,7 @@
         (if (= (count abilities) 1)
           (when (playable? (first abilities))
             (send-command "ability" {:card (card-for-click card) :ability 0}))
-          (send-command (first actions) {:card (card-for-click card)}))))))
-
-(defn- graveyard-highlight-card?
-  [card]
-  (and
-    (= (first (:zone card)) "discard")
-    (or (= "Agenda" (:type card))
-        (:poison card)
-        (:highlight-in-discard card))))
+          (send-command (first actions) {:card (card-for-click card)})))))
 
 (defn- prompt-button-from-card?
   [clicked-card {:keys [card msg prompt-type choices] :as prompt-state}]
@@ -221,7 +203,7 @@
 
         :else
         (case (first zone)
-          ("current" "onhost" "play-area" "scored" "servers" "rig")
+          ("onhost" "play-area" "scored" "paths")
           (handle-abilities side card)
           ; else
           nil)))))
@@ -252,7 +234,7 @@
   (-> e .-target js/$ (.removeClass "dragover"))
   (let [card (-> e .-dataTransfer (.getData "card") ((.-parse js/JSON)) (js->clj :keywordize-keys true))]
     (js/console.log (str "server: " server))
-    (when (not= "Identity" (:type card))
+    (when (not= "Seeker" (:type card))
       (send-command "move" {:card card :server server}))))
 
 ;; touch support
@@ -630,8 +612,7 @@
                (or (pos? (+ (count actions)
                             (count abilities)
                             (count subroutines)))
-                   (some #{"derez" "rez" "advance" "trash"} actions)
-                   (= type "ICE")))
+                   (some #{"forge" "unforge" "archive" "exile"} actions)))
       [:div.panel.blue-shade.abilities.active-menu {:style {:display "inline"}}
        [:button.win-right {:on-click #(close-card-menu) :type "button"} "✘"]
        (when (seq actions)
@@ -642,11 +623,10 @@
             (map-indexed
               (fn [_ action]
                 (let [keep-menu-open (case action
-                                       "derez" false
-                                       "rez" :if-abilities-available
-                                       "trash" false
-                                       "advance" :for-agendas
-                                       "score" false
+                                       "unforge" false
+                                       "forge" :if-abilities-available
+                                       "archive" false
+                                       "exile" false
                                        false)]
                   ^{:key action}
                   [card-menu-item (capitalize (tr-game-prompt action))
@@ -661,40 +641,7 @@
          [:span.float-center (tr [:game.abilities "Abilities"]) ":"])
        [:ul
         (when (seq abilities)
-          (list-abilities :ability card abilities))
-        (when (and (active? card)
-                   (seq (remove #(or (:fired %) (:broken %)) subroutines)))
-          [card-menu-item (tr [:game.fire-unbroken "Fire unbroken subroutines"])
-           #(do (send-command "unbroken-subroutines" {:card card})
-                (close-card-menu))])]
-       (when (seq subroutines)
-         [:span.float-center (tr [:game.subs "Subroutines"]) ":"])
-       (when (seq subroutines)
-         [:ul
-          (doall
-            (map-indexed
-              (fn [i sub]
-                (let [fire-sub #(do (send-command "subroutine" {:card card
-                                                                :subroutine i})
-                                    (close-card-menu))]
-                  [:li {:key i
-                        :tab-index 0
-                        :on-click fire-sub
-                        :on-key-down #(when (= "Enter" (.-key %))
-                                        (fire-sub))
-                        :on-key-up #(when (= " " (.-key %))
-                                      (fire-sub))}
-                   [:span (cond (:broken sub)
-                                {:class :disabled
-                                 :style {:font-style :italic}}
-                                (false? (:resolve sub))
-                                {:class :dont-resolve
-                                 :style {:text-decoration :line-through}})
-                    (render-icons (str " [Subroutine] " (:label sub)))]
-                   [:span.float-right
-                    (cond (:broken sub) banned-span
-                          (:fired sub) "✅")]]))
-              subroutines))])])))
+          (list-abilities :ability card abilities))]])))
 
 (defn draw-facedown?
   "Returns true if the installed card should be drawn face down."
@@ -705,7 +652,7 @@
                     (condition-counter? card))))))
 
 (defn card-view
-  [{:keys [zone code type abilities counter
+  [{:keys [zone code type abilities counter exhausted
            subtypes strength current-strength selected hosted
            side facedown card-target icon new ghost runner-abilities subroutines
            subtype-target corp-abilities]
@@ -717,10 +664,10 @@
                                                 (contains? (into #{} (get-in @prompt-state [:selectable])) (:cid card)) "selectable"
                                                 (same-card? card (:button @app-state)) "hovered"
                                                 (same-card? card (-> @game-state :encounters :ice)) "encountered"
-                                              (and (not (any-prompt-open? side)) (playable? card)) "playable"
-                                              ghost "ghost"
-                                              (graveyard-highlight-card? card) "graveyard-highlight"
-                                              new "new"))
+                                                (and (not (any-prompt-open? side)) (playable? card)) "playable"
+                                                ghost "ghost"
+                                                new "new")
+                                          (when exhausted " exhausted"))
                             :tab-index (when (and (not disable-click)
                                                   (or (active? card)
                                                       (playable? card)))

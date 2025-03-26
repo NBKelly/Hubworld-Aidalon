@@ -5,13 +5,14 @@
     [game.core.board :refer [all-installed]]
     [game.core.card :refer [active? can-be-advanced? corp? faceup? get-card get-counters has-subtype? in-discard? runner? in-hand?]]
     [game.core.card-defs :as card-defs]
+    [game.core.drawing :refer [draw]]
     [game.core.damage :refer [damage]]
     [game.core.eid :refer [effect-completed make-eid]]
     [game.core.engine :refer [queue-event register-events resolve-ability trigger-event-sync unregister-event-by-uuid]]
-    [game.core.effects :refer [is-disabled-reg?]]
+    [game.core.effects :refer [is-disabled-reg? sum-effects]]
     [game.core.gaining :refer [gain-credits]]
     [game.core.moving :refer [move trash]]
-    [game.core.payment :refer [build-cost-string can-pay?]]
+    [game.core.payment :refer [build-cost-string can-pay? ->c]]
     [game.core.play-instants :refer [async-rfg]]
     [game.core.prompts :refer [clear-wait-prompt]]
     [game.core.props :refer [add-counter]]
@@ -21,7 +22,7 @@
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
     [game.macros :refer [continue-ability effect msg req wait-for]]
-    [game.utils :refer [enumerate-str remove-once same-card? server-card to-keyword]]
+    [game.utils :refer [enumerate-str remove-once same-card? server-card to-keyword  quantify]]
     [jinteki.utils :refer [other-side]]))
 
 (defn combine-abilities
@@ -283,6 +284,43 @@
                        (pred %))}
     :msg (msg "add " (card-str state target {:visible (faceup? target)}) " to HQ")
     :effect (effect (move :corp target :hand))}))
+
+(defn collect-ability
+  [base-shards base-cards]
+  (letfn [(total-shards [state side card] (max 0 (+ base-shards (sum-effects state side :collect-shards-bonus card))))
+          (total-cards  [state side card] (max 0 (+ base-cards  (sum-effects state side :collect-cards-bonus card))))]
+    {:label (str "collect " (when (pos? base-shards) base-shards " [Credits]")
+                 (when (and (pos? base-shards) (pos? base-cards)) " and ")
+                 (when (pos? base-cards) (quantify base-cards "card")))
+     :async true
+     :cost [(->c :exhaust-self)]
+     :req (req (or (pos? (total-shards state side card))
+                   (pos? (total-cards state side card))))
+     :msg (msg (let [shards (total-shards state side card)
+                     cards (total-cards state side card)]
+                 (str "collect " (when (pos? shards) (str shards " [Credits]"))
+                      (when (and (pos? shards) (pos? cards)) " and ")
+                      (when (pos? cards) (quantify cards "card")))))
+     :effect (req (let [shards (total-shards state side card)
+                        cards (total-cards state side card)]
+                    (cond
+                      ;; do both
+                      (and (pos? shards) (pos? cards))
+                      (wait-for (gain-credits state side shards {:suppress-checkpoint true})
+                                (draw state side eid cards))
+                      ;; just gain
+                      (pos? shards)
+                      (gain-credits state side eid shards)
+                      ;; just draw
+                      (pos? cards)
+                      (draw state side eid cards)
+                      ;; shouldn't be possible
+                      :else (effect-completed state side eid))))}))
+
+(defn collect
+  "Makes a card which collects n shards and n cards"
+  [{:keys [shards cards]} cdef]
+  (assoc cdef :abilities (concat [(collect-ability (or shards 0) (or cards 0))] (:abilities cdef))))
 
 (def card-defs-cache (atom {}))
 

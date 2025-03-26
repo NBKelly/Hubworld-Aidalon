@@ -1,13 +1,14 @@
 (ns game.core.costs
   (:require
    [game.core.bad-publicity :refer [gain-bad-publicity]]
-   [game.core.board :refer [all-active all-active-installed all-installed all-installed-runner-type]]
-   [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand? installed? program? resource? rezzed? runner?]]
+   [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
+   [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand? installed? program? resource? rezzed? runner? seeker?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
    [game.core.eid :refer [complete-with-result make-eid]]
    [game.core.engine :refer [checkpoint queue-event resolve-ability]]
    [game.core.effects :refer [any-effects is-disabled-reg?]]
+   [game.core.exhausting :refer [exhaust]]
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards]]
@@ -1155,3 +1156,56 @@
                                   " from on " title)
                    :paid/type :virus
                    :paid/value (value cost)})))))
+
+;; HUBWORLD COSTS
+;; exhaust self
+(defmethod value :exhaust-self [cost] (:cost/amount cost))
+(defmethod label :exhaust-self [cost] "Exhaust")
+(defmethod payable? :exhaust-self
+  [cost state side eid card]
+  (and (not (:exhausted card))
+       (or (seeker? card)
+           (rezzed? card))))
+(defmethod handler :exhaust-self
+  [cost state side eid card]
+  (wait-for (exhaust state side card {:unpreventable true :suppress-checkpoint true :no-msg true})
+            (complete-with-result state side eid {:paid/msg (str "exhausts " (card-str state card))
+                                                  :paid/type :exhaust-self
+                                                  :paid/value 1
+                                                  :paid/targets [card]})))
+
+;; exhaust any number of cards - this may target the source card (itself)
+(defmethod value :exhaust [cost] (:cost/amount cost))
+(defmethod label :exhaust [cost] (str "exhaust " (quantify (value cost) " cards")))
+(defmethod payable? :exhaust
+  [cost state side eid card]
+  (<= 0 (- (count (filter (complement :exhausted)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) " card") " to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (or (installed? %)
+                               (= "Seeker" (:type %)))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map #(card-str state %) targets)) ")")
+                               :paid/type :trash-installed
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+;; exhaust any
+;;(defmethod value :exhaust [cost] (:cost/amount cost))

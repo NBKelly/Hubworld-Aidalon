@@ -146,6 +146,7 @@
    :current-strength
    :disabled
    :extra-advance-counter
+   :exhausted
    :face
    :faces
    :facedown
@@ -178,6 +179,7 @@
   [:advance-counter
    :cid
    :counter
+   :exhausted
    :extra-advance-counter
    :host
    :hosted

@@ -79,6 +79,11 @@
               installed)
             (into remaining (:hosted card))))))))
 
+(defn hubworld-all-installed
+  [state side]
+  ;; TODO - if hosting ever happens, deal with that
+  (seq (concat (seq (get-cards-from-paths state side)) [(get-in @state [side :identity])])))
+
 (defn all-installed
   "Returns a vector of all installed cards for the given side, including those hosted on other cards,
   but not including 'inactive hosting' like Personal Workshop."

@@ -145,13 +145,13 @@
 
 (defn command-reload-id
   [state side]
-  (let [card-name (:title (get-in @state [side :identity]))]
+  (let [card-name (:title (get-in @state [side :identity]))
+        card-side (:side (get-in @state [side :identity]))]
     (try
       (let [s-card (server-card card-name)
-            card (when (and s-card (same-side? (:side s-card) side))
-                   (build-card s-card))]
+            card (when s-card (build-card s-card))]
         (if card
-          (let [new-id (-> card :title server-card make-card (assoc :zone [:identity] :type "Identity"))]
+          (let [new-id (-> card :title server-card make-card (assoc :zone [:identity] :type "Seeker" :side card-side))]
             (disable-identity state side)
             (swap! state assoc-in [side :identity] new-id)
             (card-init state side new-id {:resolve-effect true :init-data true}))

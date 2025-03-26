@@ -39,6 +39,11 @@
   [state]
   (or (get-in @state [:runner :tag :total]) 0))
 
+(defn count-heat
+  "Counts number of tags runner has (real + additional)"
+  [state side]
+  (or (get-in @state [side :heat :total]) 0))
+
 (defn count-real-tags
   "Count number of non-additional tags"
   [state]
