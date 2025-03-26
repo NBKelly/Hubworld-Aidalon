@@ -60,7 +60,7 @@
    "continue" #'continue
    "corp-ability" #'play-corp-ability
    "credit" #'click-credit
-   "derez" #(derez %1 %2 (:card %3))
+   "unforge" #(derez %1 %2 (:card %3))
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
@@ -78,7 +78,7 @@
    "pass" #'pass
    "purge" #'do-purge
    "remove-tag" #'remove-tag
-   "rez" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
+   "forge" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
    "run" #'click-run
    "runner-ability" #'play-runner-ability
    "score" #(score %1 %2 (make-eid %1) (get-card %1 (:card %3)) nil)

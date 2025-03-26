@@ -38,6 +38,14 @@
   (or (central->name zone)
       (remote->name zone)))
 
+(defn path-name
+  [side [_ server slot]]
+  (str "the " (case slot
+                :inner  "innermost"
+                :middle "middle"
+                :outer  "outermost")
+       " position of [their] " (string/capitalize (name server))))
+
 (defn name-zone
   "Gets a string representation for the given zone."
   [side zone]
@@ -46,14 +54,12 @@
                    :else side)
         zone (if (keyword? zone) [zone] (vec zone))]
   (cond
-    (= zone [:hand]) (if (= side "Runner") "the Grip" "HQ")
-    (= zone [:discard]) (if (= side "Runner") "the Heap" "Archives")
-    (= zone [:deck]) (if (= side "Runner") "the Stack" "R&D")
+    (= zone [:hand])      "Council"
+    (= zone [:discard])   "Archives"
+    (= zone [:rfg])       "Exile"
+    (= zone [:deck])      "Commons"
     (= zone [:set-aside]) "set-aside cards"
-    (= (take 1 zone) [:rig]) "Rig"
-    (= (take 2 zone) [:servers :hq]) "the root of HQ"
-    (= (take 2 zone) [:servers :rd]) "the root of R&D"
-    (= (take 2 zone) [:servers :archives]) "the root of Archives"
+    (= (first zone) :paths) (path-name side zone)
     :else (zone->name (second zone)))))
 
 (defn zone->sort-key

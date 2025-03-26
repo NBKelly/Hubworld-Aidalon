@@ -1,6 +1,6 @@
 (ns game.core.rezzing
   (:require
-    [game.core.card :refer [asset? condition-counter? get-card ice? upgrade?]]
+    [game.core.card :refer [asset? condition-counter? get-card ice? upgrade? source? obstacle? agent?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [rez-additional-cost-bonus rez-cost]]
     [game.core.effects :refer [is-disabled? unregister-static-abilities update-disabled-cards]]
@@ -55,7 +55,7 @@
               (let [{:keys [msg cost-paid]} async-result]
                 (if-not msg
                   (effect-completed state side eid)
-                  (let [_ (when (:derezzed-events cdef)
+                  (let [_ (when (:unforged-events cdef)
                             (unregister-events state side card))
                         card (if disabled
                                (update! state side (assoc card :rezzed :this-turn))
@@ -66,30 +66,24 @@
                                               (update-in [:host :zone] #(map to-keyword %)))))
                     (when-not no-msg
                       (system-msg state side
-                                  (str (build-spend-msg msg "rez" "rezzes")
+                                  (str (build-spend-msg msg "forge" "forges")
                                        (:title card)
                                        (cond
                                          alternative-cost " by paying its alternative cost"
                                          ignore-cost " at no cost")))
                       (implementation-msg state card))
-                    (when (and (not no-warning) (:corp-phase-12 @state))
-                      (toast state :corp "You are not allowed to rez cards between Start of Turn and Mandatory Draw.
-                                         Please rez prior to clicking Start Turn in the future." "warning"
-                             {:time-out 0 :close-button true}))
                     (let [rez-byte (:rez-sound (card-def card))]
-                      (if (ice? card)
-                        (do (update-ice-strength state side card)
-                            (when-not (:silent args) (play-sfx state side (or rez-byte "rez-ice"))))
-                      (when-not (:silent args) (play-sfx state side (or rez-byte "rez-other")))))
-                    (swap! state update-in [:stats :corp :cards :rezzed] (fnil inc 0))
-                    (when-let [card-ability (:on-rez cdef)]
-                      (register-pending-event state :rez card card-ability))
-                    (queue-event state :rez {:card (get-card state card)
-                                             :cost cost-paid})
+                      ;; TODO - sounds for agent, source, obstacle, etc
+                      (when-not (:silent args) (play-sfx state side (or rez-byte "rez-other"))))
+                    (swap! state update-in [:stats side :cards :forged] (fnil inc 0))
+                    (when-let [card-ability (:on-forge cdef)]
+                      (register-pending-event state :forge card card-ability))
+                    (queue-event state :forge {:card (get-card state card)
+                                               :cost cost-paid})
                     (wait-for
                       (trash-hosted-cards state side (make-eid state eid) (get-card state card))
                       (wait-for
-                        (checkpoint state nil (make-eid state eid) {:duration :rez})
+                        (checkpoint state nil (make-eid state eid) {:duration :forge})
                         (when press-continue
                           (continue state side nil))
                         (complete-with-result state side eid {:card (get-card state card)})))))))))
@@ -122,9 +116,9 @@
      (if (and card
               (or force
                   (can-rez? state side card))
-              (or (asset? card)
-                  (ice? card)
-                  (upgrade? card)
+              (or (source? card)
+                  (agent? card)
+                  (obstacle? card)
                   (:install-rezzed (card-def card))))
        (if (and alternative-cost
                 (not ignore-cost)
@@ -150,16 +144,16 @@
    (let [card (get-card state card)]
      (when-not no-msg
        (system-msg state side (str (if source-card
-                                     (str "uses " (:title source-card) " to derez ")
-                                     "derezzes ")
+                                     (str "uses " (:title source-card) " to unforge ")
+                                     "unforges ")
                                    (:title card))))
      (unregister-events state side card)
-     (update! state :corp (deactivate state :corp card true))
+     (update! state side (deactivate state side card true))
      (let [cdef (card-def card)]
-       (when-let [derez-effect (:derez-effect cdef)]
+       (when-let [derez-effect (:unforge-effect cdef)]
          (resolve-ability state side derez-effect (get-card state card) nil))
-       (when-let [derezzed-events (:derezzed-events cdef)]
+       (when-let [derezzed-events (:unforged-events cdef)]
          (register-events state side card (map #(assoc % :condition :derezzed) derezzed-events))))
      (unregister-static-abilities state side card)
      (update-disabled-cards state)
-     (trigger-event state side :derez {:card card :side side}))))
+     (trigger-event state side :unforge {:card card :side side}))))
