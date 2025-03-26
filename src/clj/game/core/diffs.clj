@@ -336,9 +336,10 @@
 
 (defn discard-summary
   [discard state same-side? side player]
-  (if (or same-side? (:openhand player))
-    (cards-summary discard state :corp)
-    (cards-summary discard state side)))
+  (let [player-side (if same-side? side (other-side side))]
+    (if (or same-side? (:openhand player))
+      (cards-summary discard state player-side)
+      (cards-summary discard state side))))
 
 (defn hubworld-player-summary
   [player state side same-side?]
