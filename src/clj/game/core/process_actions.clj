@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.actions :refer [click-advance click-credit click-draw click-run
-                              close-deck do-purge generate-install-list
+                              close-deck do-purge generate-install-list cmd-shift
                               generate-runnable-zones move-card expend-ability
                               pass play play-ability play-corp-ability
                               play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
@@ -84,6 +84,7 @@
    "score" #(score %1 %2 (make-eid %1) (get-card %1 (:card %3)) nil)
    "select" #'select
    "set-property" #'set-property
+   "shift" #'cmd-shift
    "shuffle" #'shuffle-deck
    "start-turn" #'start-hubworld-turn
    "stage-done" #'stage-done

@@ -5,7 +5,7 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
-    [game.core.card :refer [get-agenda-points get-card]]
+    [game.core.card :refer [get-agenda-points get-card installed?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus]]
     [game.core.effects :refer [any-effects is-disabled-reg?]]
@@ -18,7 +18,7 @@
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
     [game.core.expend :refer [expend expendable?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
-    [game.core.prompts :refer [cancel-stage resolve-select show-stage-prompt resolve-stage]]
+    [game.core.prompts :refer [cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.runs :refer [continue get-runnable-zones]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
@@ -28,7 +28,7 @@
     [game.core.update :refer [update!]]
     [game.macros :refer [continue-ability req wait-for]]
     [game.utils :refer [dissoc-in quantify remove-once same-card? same-side? server-cards to-keyword]]
-    [jinteki.utils :refer [other-side]]))
+    [jinteki.utils :refer [adjacent-zones card-side other-side]]))
 
 (defn- update-click-state
   "Update :click-states to hold latest 4 moments before performing actions."
@@ -158,6 +158,33 @@
                                               :slot (:slot context)}]}))))}
               {:waiting-prompt true}))
           nil)))))
+
+(defn cmd-shift
+  "Called when the player clicks the shift button"
+  [state side _]
+  (if (no-blocking-or-prevent-prompt? state side)
+    (resolve-ability
+      state side (make-eid state)
+      {:prompt "Choose an installed card to shift"
+       :choices {:req (req (and (installed? target)
+                                (= side (card-side target))))}
+       :waiting-prompt true
+       :async true
+       :effect (req (let [card-to-shift target
+                          bac (get-in @state [side :basic-action-card])]
+                      (show-shift-prompt
+                        state side eid bac (adjacent-zones card-to-shift)
+                        (str "Shift " (:title card-to-shift) " where?")
+                        {:async true
+                         :effect (req (play-ability
+                                        state side eid
+                                        {:card bac
+                                         :ability 5
+                                         :targets [{:card card-to-shift
+                                                    :server (:server context)
+                                                    :slot (:slot context)}]}))}
+                        nil)))}
+      nil nil)))
 
 ;; (defn play
 ;;   "Called when the player clicks a card from hand."
@@ -322,15 +349,19 @@
   [state side args]
   (let [prompt (first (get-in @state [side :prompt]))
         card (:card prompt)]
-    (cancel-stage state side card update! resolve-ability)))
+    (case (:prompt-type prompt)
+      :stage (cancel-stage state side card update! resolve-ability)
+      :shift (cancel-shift state side card update! resolve-ability))))
 
 (defn stage-select
   [state side {:keys [server slot shift-key-held]}]
   (let [prompt (first (get-in @state [side :prompt]))
         card (:card prompt)]
     (swap! state assoc-in [side :shift-key-select] shift-key-held)
-    (resolve-stage state side card {:server (keyword server) :slot slot} update! resolve-ability)
-       ;; TODO - if shift held, skip asking about overwriting :)
+    (case (:prompt-type prompt)
+      :stage (resolve-stage state side card {:server (keyword server) :slot slot} update! resolve-ability)
+      :shift (resolve-shift state side card {:server (keyword server) :slot slot} update! resolve-ability))
+    ;; TODO - if shift held, skip asking about overwriting :)
     nil))
 
 (defn select

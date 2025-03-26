@@ -238,6 +238,8 @@
    :prompt-type
    :show-discard
    :selectable
+   ;; hubworld stuff
+   :target-paths
    ;; traces
    :player
    :base

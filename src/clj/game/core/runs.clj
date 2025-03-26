@@ -21,7 +21,7 @@
     [game.core.update :refer [update!]]
     [game.macros :refer [continue-ability effect req wait-for]]
     [game.utils :refer [dissoc-in same-card?]]
-    [jinteki.utils :refer [count-bad-pub other-side]]
+    [jinteki.utils :refer [other-side]]
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.string :as string]))
 
@@ -158,8 +158,7 @@
                    (wait-for
                      (gain-run-credits state side
                                        (make-eid state eid)
-                                       (+ (or (get-in @state [:runner :next-run-credit]) 0)
-                                          (count-bad-pub state)))
+                                       (+ (or (get-in @state [:runner :next-run-credit]) 0)))
                      (swap! state assoc-in [:runner :next-run-credit] 0)
                      (swap! state update-in [:runner :register :made-run] conj (first s))
                      (swap! state update-in [:stats side :runs :started] (fnil inc 0))

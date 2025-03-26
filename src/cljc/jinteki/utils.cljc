@@ -32,26 +32,31 @@
 (defn other-player-name [state side]
   (player-name state (other-side side)))
 
-(def slot-order [:inner :middle :outer])
-(def server-order [:archive :council :commons])
-(defn index-of [coll val]
-  (.indexOf coll val))
+(defn- adjacent-server
+  [a b]
+  (and (not= a b)
+       (or (= #{a b} #{:archives :council}) (= #{a b} #{:commons :council}))))
+
+(defn- adjacent-slot [a b]
+  (and (not= a b)
+       (or (= #{a b} #{:inner :middle}) (= #{a b} #{:middle :outer}))))
 
 (defn adjacent-zones
   [card]
   (let [[_ server slot] (:zone card)
-        slot-idx   (index-of slot-order slot)
-        server-idx (index-of server-order server)
-        neighbors  (for [d-slot   [-1 0 1]
-                         d-server [-1 0 1]
-                         :when (not (and (= d-slot 0) (= d-server 0)))]
-                     [(+ slot-idx d-slot) (+ server-idx d-server)])
-        in-bounds? (fn [[s i]] (and (<= 0 s 2) (<= 0 i 2)))]
-    (->> neighbors
-         (filter in-bounds?)
-         (mapv (fn [[s i]]
-                {:slot (nth slot-order s)
-                 :server (nth server-order i)})))))
+        neighbors  (for [sr [:archives :council :commons]
+                         sl [:inner :middle :outer]
+                         :when (and (or (and (adjacent-server sr server)
+                                             (= sl slot))
+                                        (and (adjacent-slot sl slot)
+                                             (= sr server))))]
+                     {:slot sl
+                      :server sr})]
+    (reduce
+      (fn [acc {:keys [server slot]}]
+        (update acc server #(assoc (or % {}) slot true)))
+      {}
+      neighbors)))
 
 (defn count-heat
   "Counts number of bad pub corp has (real + additional)"

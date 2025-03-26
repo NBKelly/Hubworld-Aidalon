@@ -11,7 +11,7 @@
                            get-counters get-title has-subtype? ice? program? rezzed?
                            same-card? operation? condition-counter?]]
    [jinteki.cards :refer [all-cards]]
-   [jinteki.utils :refer [add-cost-to-label is-tagged? select-non-nil-keys
+   [jinteki.utils :refer [add-cost-to-label select-non-nil-keys
                           str->int] :as utils]
    [nr.appstate :refer [app-state current-gameid]]
    [nr.cardbrowser :refer [card-as-text]]
@@ -36,8 +36,8 @@
 (defonce board-dom (atom {}))
 (defonce card-menu (r/atom {}))
 
-(defonce corp-prompt-state (r/cursor game-state [:corp :prompt :prompt-state]))
-(defonce runner-prompt-state (r/cursor game-state [:runner :prompt :prompt-state]))
+(defonce corp-prompt-state (r/cursor game-state [:corp :prompt-state]))
+(defonce runner-prompt-state (r/cursor game-state [:runner :prompt-state]))
 
 (defn is-replay? [] (= "local-replay" (:gameid @app-state [:gameid])))
 
@@ -156,7 +156,8 @@
 
 (defn handle-card-click [{:keys [type zone] :as card} shift-key-held]
   (let [side (:side @game-state)]
-    (when (not-spectator?)
+    (when (and (not-spectator?)
+               (not (contains? #{"stage" "shift"} (get-in @game-state [side :prompt-state :prompt-type]))))
       (cond
         ;; Selecting card
         (= (get-in @game-state [side :prompt-state :prompt-type]) "select")
@@ -233,7 +234,7 @@
 (defn handle-drop [e server]
   (-> e .-target js/$ (.removeClass "dragover"))
   (let [card (-> e .-dataTransfer (.getData "card") ((.-parse js/JSON)) (js->clj :keywordize-keys true))]
-    (js/console.log (str "server: " server))
+    (js/console.log (str "dropped on server: " server))
     (when (not= "Seeker" (:type card))
       (send-command "move" {:card card :server server}))))
 
@@ -1137,12 +1138,21 @@
       (for [slot (take slots [:inner :middle :outer])]
         ^{:key (str player-side "-" server-name "-" (name slot))}
         [:div.grid-slot {:class (str (when (and (not= viewing-side player-side)
-                                                (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
+                                                (or (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage")
+                                                    ;; TODO - we can shift stuff on our opponent's board!
+                                                    (and (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
+                                                         (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))))
                                        "staging ")
                                      server-name)
-                         :on-click (when (and (not= viewing-side player-side)
+                         :on-click (cond (and (not= viewing-side player-side)
                                               (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
-                                     #(send-command "stage-select" {:server server-name :slot slot}))}
+                                         #(send-command "stage-select" {:server server-name :slot slot})
+                                         (and (not= viewing-side player-side)
+                                              (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
+                                              ;;(or (js/console.log (str "ks: " (keyword server)
+                                              (or (js/console.log (str (get-in @game-state [viewing-side :prompt-state]))) true)
+                                              (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))
+                                         #(send-command "stage-select" {:server server-name :slot slot}))}
          ;; todo - make these seen while discovery occurs
          ;; that might be a backend task though
          (if-let [{:keys [rezzed seen] :as staged-card}
@@ -1673,8 +1683,8 @@
        (= prompt-type "trace")
        [trace-div prompt-state]
 
-       ;; stage prompts just provide a done button
-       (= prompt-type "stage")
+       ;; stage/shift prompts just provide a done button
+       (or (= prompt-type "stage") (= prompt-type "shift"))
        [:div [:button#stage-done {:on-click #(send-command "stage-done" {})}
               (tr [:game.done "Done"])]]
 
@@ -1798,9 +1808,11 @@
    ;;         (playable? (get-in @me [:basic-action-card :abilities 5]))
    ;;         (is-tagged? game-state))
    ;;    #(send-command "trash-resource")])
+   [cond-button (tr [:game.shift "Shift Card"])
+    (playable? (get-in @me [:basic-action-card :abilities 5]))
+    #(send-command "shift")]
    [cond-button (tr [:game.draw "Draw"])
-    (and (not (or @runner-phase-12 @corp-phase-12))
-         (playable? (get-in @me [:basic-action-card :abilities 1]))
+    (and (playable? (get-in @me [:basic-action-card :abilities 1]))
          (pos? (:deck-count @me)))
     #(send-command "draw")]
    [cond-button (tr [:game.gain-credit "Gain Credit"])

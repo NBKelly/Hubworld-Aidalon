@@ -513,6 +513,7 @@
    ;; * basic action
    ;; * identity
    ;; * in a public zone: score area, current, play area, remove from game
+
    (or (basic-action? card)
        (identity? card)
        (in-scored? card)
@@ -524,11 +525,11 @@
                 (and (= side :runner) (runner? card)))
             (not (in-set-aside? card)))
        (and (not (facedown? card))
-            (and (in-discard? card)
-                 (faceup? card))
-            (and (installed? card)
-                 (or (condition-counter? card)
-                     (faceup? card)))))))
+            (or (and (in-discard? card)
+                     (faceup? card))
+                (and (installed? card)
+                     (or (condition-counter? card)
+                         (faceup? card))))))))
 
 ;; CR 1.8
 ;; 10.1.3. Some abilities add a card to a player’s score area “as an agenda”. When this

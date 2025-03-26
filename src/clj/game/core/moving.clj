@@ -461,11 +461,14 @@
 (defn swap-installed
   "Swaps two installed corp cards"
   [state side a b]
+  (println "swapping?")
   (let [pred? (every-pred installed?)]
     (when (and (pred? a)
                (pred? b)
                (same-side? a b))
-      (let [a-new (assoc a :zone (:zone b))
+      (let [a (get-card state a)
+            b (get-card state b)
+            a-new (assoc a :zone (:zone b))
             b-new (assoc b :zone (:zone a))]
         (swap! state assoc-in (cons side (:zone a)) [b-new])
         (swap! state assoc-in (cons side (:zone b)) [a-new])
@@ -486,8 +489,10 @@
   [state side a server slot]
   (let [pred? (every-pred installed?)]
     (when (pred? a)
-      (let [a-new (assoc a :zone [:paths server slot])]
+      (let [a (get-card state a)
+            a-new (assoc a :zone [:paths server slot])]
         (swap! state assoc-in [side :paths server slot] [a-new])
+        (swap! state assoc-in (concat [side] (:zone a)) [])
         (unregister-events state side a-new)
         (unregister-static-abilities state side a-new)
         (if (rezzed? a-new)

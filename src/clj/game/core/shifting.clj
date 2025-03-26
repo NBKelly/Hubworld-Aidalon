@@ -13,7 +13,7 @@
 
 (defn shift
   [state side card target-server target-slot args]
-  (if-let [card-to-swap (get-in @state [side :paths target-server target-slot])]
+  (if-let [card-to-swap (get-in @state [side :paths target-server target-slot 0])]
     (swap-installed state side card card-to-swap)
     (shift-installed state side card target-server target-slot)))
 
@@ -30,8 +30,8 @@
                       old-card (get-in @state [side :paths server slot 0])]
                   ;; TODO - account for shifting oppo cards!
                   (if old-card
-                    (str "swap " (card-str state source-card) " with " (card-str state old-card))
-                    (str "shift " (card-str state source-card) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
+                    (str "swap " (card-str state card-to-shift) " with " (card-str state old-card))
+                    (str "shift " (card-str state card-to-shift) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
       :effect (req (let [server (:server context)
                          slot (:slot context)]
                      (shift state side card-to-shift server slot nil)))}

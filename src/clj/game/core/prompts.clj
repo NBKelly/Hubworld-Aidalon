@@ -162,9 +162,26 @@
       (remove-from-prompt-queue state side prompt)
       (resolve-ability state side (:eid prompt) (:cancel-ability prompt) card nil))))
 
+(defn cancel-shift
+  [state side card update! resolve-ability]
+  (let [prompt (first (filter #(= :shift (:prompt-type %)) (get-in @state [side :prompt])))]
+    (when prompt
+      (remove-from-prompt-queue state side prompt)
+      (resolve-ability state side (:eid prompt) (:cancel-ability prompt) card nil))))
+
 (defn resolve-stage
   [state side card {:keys [server slot cancel] :as context} update! resolve-ability]
   (let [prompt (first (filter #(= :stage (:prompt-type %)) (get-in @state [side :prompt])))]
+    (when prompt
+      ;; todo - case for cancel/done
+      (when (or (not (:req prompt))
+                ((:req prompt) state side (make-eid state) card [context]))
+        (remove-from-prompt-queue state side prompt)
+        (resolve-ability state side (:eid prompt) (:ability prompt) card [context])))))
+
+(defn resolve-shift
+  [state side card {:keys [server slot cancel] :as context} update! resolve-ability]
+  (let [prompt (first (filter #(= :shift (:prompt-type %)) (get-in @state [side :prompt])))]
     (when prompt
       ;; todo - case for cancel/done
       (when (or (not (:req prompt))
