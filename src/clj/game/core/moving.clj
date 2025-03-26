@@ -106,7 +106,7 @@
                    (or (#{:hand :deck :discard :rfg} target-zone)
                        to-facedown)
                    (not (facedown? c)))
-            (deactivate state side c to-facedown)
+            (assoc (deactivate state side c to-facedown) :exhausted nil)
             c)
         c (if (and from-installed
                    (not (facedown? c)))
@@ -461,40 +461,41 @@
 (defn swap-installed
   "Swaps two installed corp cards"
   [state side a b]
-  (let [pred? (every-pred corp? installed?)]
+  (let [pred? (every-pred installed?)]
     (when (and (pred? a)
                (pred? b)
-               (swap-legal? state side a b))
-      (let [a-index (card-index state a)
-            b-index (card-index state b)
-            a-new (assoc a :zone (:zone b))
+               (same-side? a b))
+      (let [a-new (assoc a :zone (:zone b))
             b-new (assoc b :zone (:zone a))]
-        (swap! state update-in (cons :corp (:zone a)) assoc a-index b-new)
-        (swap! state update-in (cons :corp (:zone b)) assoc b-index a-new)
-        (update-installed-card-indices state :corp (:zone a))
-        (update-installed-card-indices state :corp (:zone b))
+        (swap! state assoc-in (cons side (:zone a)) [b-new])
+        (swap! state assoc-in (cons side (:zone b)) [a-new])
         (doseq [new-card [a-new b-new]]
           (unregister-events state side new-card)
           (unregister-static-abilities state side new-card)
           (if (rezzed? new-card)
             (do (register-default-events state side new-card)
                 (register-static-abilities state side new-card))
-            (when-let [dre (:derezzed-events (card-def new-card))]
-              (register-events state side new-card (map #(assoc % :condition :derezzed) dre))))
-          (doseq [h (:hosted new-card)]
-            (let [newh (-> h
-                           (assoc-in [:zone] '(:onhost))
-                           (assoc-in [:host :zone] (:zone new-card)))]
-              (update! state side newh)
-              (unregister-events state side h)
-              (register-default-events state side newh)
-              (unregister-static-abilities state side h)
-              (register-static-abilities state side newh)
-              (when (program? newh)
-                (init-mu-cost state newh)))))
+            (when-let [dre (:unforged-events (card-def new-card))]
+              (register-events state side new-card (map #(assoc % :condition :derezzed) dre)))))
         (trigger-event state side :swap {:swap-type :installed
                                          :card1 a-new
                                          :card2 b-new})))))
+
+(defn shift-installed
+  "Shifts an installed card into a zone"
+  [state side a server slot]
+  (let [pred? (every-pred installed?)]
+    (when (pred? a)
+      (let [a-new (assoc a :zone [:paths server slot])]
+        (swap! state assoc-in [side :paths server slot] [a-new])
+        (unregister-events state side a-new)
+        (unregister-static-abilities state side a-new)
+        (if (rezzed? a-new)
+          (do (register-default-events state side a-new)
+              (register-static-abilities state side a-new))
+          (when-let [dre (:unforged-events (card-def a-new))]
+            (register-events state side a-new (map #(assoc % :condition :derezzed)))))
+        (trigger-event state side :shift {:card a-new})))))
 
 (defn swap-ice
   "Swaps 2 pieces of ice."

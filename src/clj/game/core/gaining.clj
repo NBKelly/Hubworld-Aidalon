@@ -30,8 +30,8 @@
     (#{:memory} attr)
     (deduct state side [attr {:mod value}])
 
-    ;; default case for tags and bad-publicity is `:base`
-    (#{:tag :bad-publicity} attr)
+    ;; default case for tags and bad-publicity AND HEAT is `:base`
+    (#{:tag :bad-publicity :heat} attr)
     (deduct state side [attr {:base value}])
 
     :else
@@ -58,7 +58,7 @@
       (gain state side cost-type {:mod amount})
 
       ;; Default case for tags and bad publicity is `:base`
-      (#{:tag :bad-publicity} cost-type)
+      (#{:tag :bad-publicity :heat} cost-type)
       (gain state side cost-type {:base amount})
 
       ;; Else assume amount is a number and try to increment cost-type by it.

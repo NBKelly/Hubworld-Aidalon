@@ -171,26 +171,11 @@
          costs (play-instant-costs state side card (dissoc args :cached-costs))]
      ;; ensure the instant can be played
      (if (can-play-instant? state side eid card (assoc args :cached-costs costs))
-       ;; Wait on pay to finish before triggering instant-effect
-       (if (and (can-decline-instant? state side eid card args) (not (:base-cost args)))
-         (continue-ability
-           state side
-           {:optional
-            {:prompt (str "Pay the additional costs to play " (:title card) "?")
-             :yes-ability {:async true
-                           :req (req (can-pay? state side eid (get-card state card) nil costs))
-                           :effect (req (continue-play-instant state side (assoc eid :source card :source-type :play) card costs args))}
-             :no-ability {:cost (when (:base-cost args) [(:base-cost args)])
-                          :async true
-                          :effect (req (reveal state side eid card)) ;;TODO - use reveal-explicit later?
-                          :msg (msg "reveal " (:title card) ", and refuse to pay the additional cost to play " (:title card))}}}
-           card nil)
-         (continue-play-instant state side eid card costs args))
+       (continue-play-instant state side eid card costs args);)
        (continue-ability
          state side
          {:msg (msg "reveal that they are unable to play " (:title card))
           :cost (when (:base-cost args) [(:base-cost args)])
           :async true
-          ;;TODO - use reveal-explicit later?
           :effect (req (reveal state side eid card))}
          card nil)))))

@@ -4,6 +4,7 @@
    [differ.core :as differ]
    [game.core.board :refer [installable-servers]]
    [game.core.card :refer :all]
+   [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [card-ability-cost]]
    [game.core.engine :refer [can-trigger?]]
    [game.core.effects :refer [any-effects is-disabled-reg?]]
@@ -26,7 +27,11 @@
                         (agent? card)
                         (source? card))
                     ;; TODO delving, breaching, or discovering
-                    (can-pay? state side {:source bac :source-type ::stage} card nil (get-in bac [:abilities 3 :cost])))
+                    (can-pay? state side {:source bac :source-type :stage} card nil (get-in bac [:abilities 3 :cost])))
+               true
+               (and (moment? card)
+                    (when-let [on-play (:on-play (card-def card))]
+                      (can-play-instant? state side {:source bac :source-type :play} card)))
                true))
       (assoc card :playable true)
       card)))
@@ -306,17 +311,6 @@
       (update :toast toast-summary same-side?)
       (select-non-nil-keys player-keys)))
 
-(defn servers-summary
-  [state side]
-  (reduce-kv
-    (fn [servers current-server-kw current-server]
-      (assoc servers
-             current-server-kw
-             {:content (cards-summary (:content current-server) state side)
-              :ices (cards-summary (:ices current-server) state side)}))
-    {}
-    (:servers (:corp @state))))
-
 (defn prune-cards [cards]
   (mapv #(select-non-nil-keys % card-keys) cards))
 
@@ -352,45 +346,7 @@
         (assoc
           :deck-count (count (:deck player))
           :hand-count (count (:hand player))
-          :paths (paths-summary player state side same-side?)
-          ;; paths ->> ???
-          ))))
-
-;; (defn corp-summary
-;;   [corp state side]
-;;   (let [corp-player? (= side :corp)
-;;         install-list (:install-list corp)]
-;;     (-> (player-summary corp state side corp-player? corp-keys)
-;;         (update :deck deck-summary corp-player? corp)
-;;         (update :hand hand-summary state corp-player? :corp corp)
-;;         (update :discard discard-summary state corp-player? side corp)
-;;         (assoc
-;;           :deck-count (count (:deck corp))
-;;           :hand-count (count (:hand corp))
-;;           :servers (servers-summary state side))
-;;         (cond-> (and corp-player? install-list) (assoc :install-list install-list)))))
-
-;; (defn rig-summary
-;;   [state side]
-;;   (-> (:rig (:runner @state))
-;;       (update :hardware cards-summary state side)
-;;       (update :facedown cards-summary state side)
-;;       (update :program cards-summary state side)
-;;       (update :resource cards-summary state side)))
-
-;; (defn runner-summary
-;;   [runner state side]
-;;   (let [runner-player? (= side :runner)
-;;         runnable-list (:runnable-list runner)]
-;;     (-> (player-summary runner state side runner-player? runner-keys)
-;;         (update :deck deck-summary runner-player? runner)
-;;         (update :hand hand-summary state runner-player? :runner runner)
-;;         (update :discard prune-cards)
-;;         (assoc
-;;           :deck-count (count (:deck runner))
-;;           :hand-count (count (:hand runner))
-;;           :rig (rig-summary state side))
-;;         (cond-> (and runner-player? runnable-list) (assoc :runnable-list runnable-list)))))
+          :paths (paths-summary player state side same-side?)))))
 
 (def options-keys
   [:alt-arts

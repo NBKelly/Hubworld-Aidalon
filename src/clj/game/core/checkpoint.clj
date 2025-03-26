@@ -6,28 +6,12 @@
    [game.core.effects :refer [update-disabled-cards sum-effects]]
    [game.core.ice :refer [update-all-ice update-all-icebreakers]]
    [game.core.hand-size :refer [update-hand-size]]
+   [game.core.heat :refer [update-heat sum-heat-effects]]
    [game.core.initializing :refer [update-all-card-labels]]
    [game.core.link :refer [update-link]]
    [game.core.memory :refer [update-mu]]
    [game.core.subtypes :refer [update-all-subtypes]]
    [game.core.tags :refer [update-tag-status]]))
-
-(defn sum-heat-effects
-  [state side]
-  (+ (or (get-in @state [side :heat :base]) 0)
-     (sum-effects state side :heat)
-     (sum-effects state side :user-heat)))
-
-(defn update-heat
-  "Update the player's hand-size"
-  [state side]
-  (let [old-total (get-in @state [side :heat :total])
-        new-total (sum-heat-effects state side)
-        changed? (not= old-total new-total)]
-    (when changed?
-      (swap! state assoc-in [side :heat :total] new-total))
-    changed?))
-
 
 (defn fake-checkpoint
   [state]

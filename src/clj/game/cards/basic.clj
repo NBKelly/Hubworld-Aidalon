@@ -1,12 +1,12 @@
 (ns game.cards.basic
   (:require
-   [game.core.card :refer [agenda? asset? event? get-card hardware? ice?
-                           in-hand? operation? program? resource? upgrade?]]
+   [game.core.card :refer [get-card in-hand? moment?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.payment :refer [->c]]
+   [game.core.play-instants :refer [can-play-instant? play-instant]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.staging :refer [stage]]
    [game.core.to-string :refer [card-str]]
@@ -48,9 +48,17 @@
                 :msg (msg "stage a card from [their] council in the " (name (:slot context)) " row of [their] " (capitalize (name (:server context))))
                 :async true
                 :effect (req (stage state side eid (:card context) (:server context) (:slot context)))}
+               {:action true
+                :label "Play a moment"
+                :async true
+                :req (req (let [target-card (:card context)]
+                            (and (in-hand? target-card)
+                                 (moment? target-card)
+                                 (can-play-instant? state side eid target-card))))
+                :effect (req (play-instant state side eid (:card context)))}
+
                           ;; if there's already a card there, it gets trashed
                           ;; than can be handled by stage itself, though
-               ;; TODO - stage a card
                ;; TODO - shift a card
                ;; TODO - play a moment with an action cost
                ;; TODO - use a click ability

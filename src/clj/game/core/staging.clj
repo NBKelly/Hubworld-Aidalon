@@ -3,10 +3,12 @@
    [clojure.string :as str]
    [game.core.card :refer [get-card]]
    [game.core.eid :refer [effect-completed make-eid]]
-   [game.core.moving :refer [move]]
-   [game.core.say :refer [system-msg]]))
-
-;; TODO - handle if the server or slot is not already selected
+   [game.core.engine :refer [resolve-ability]]
+   [game.core.moving :refer [move trash]]
+   [game.core.prompts :refer [show-stage-prompt]]
+   [game.core.say :refer [system-msg]]
+   [game.core.to-string :refer [card-str]]
+   [game.macros :refer [msg req wait-for]]))
 
 (defn stage-continue
   "the slot is empty, we can install now"
@@ -23,3 +25,29 @@
      (if-not (seq (get-in @state [side :paths server slot]))
        (stage-continue state side eid card server slot args)
        (effect-completed state side eid)))))
+
+(defn stage-a-card
+  [state side eid source-card card-to-stage]
+  (show-stage-prompt
+    state side eid source-card
+    (str "Stage " (:title card-to-stage) " where?")
+    {:async true
+     :effect (req (let [server (:server context)
+                        slot (:slot context)
+                        old-card (get-in @state [side :paths server slot 0])]
+                    (resolve-ability
+                      state side eid
+                      (if old-card
+                        {:optional
+                         {:prompt (str "trash " (:title old-card) " in the " (name slot) " row of your " (str/capitalize (name server)) "?")
+                          :waiting-prompt true
+                          :yes-ability {:async true
+                                        :msg (msg "trash " (card-str state old-card) " and stage " (card-str state card-to-stage) " in it's place")
+                                        :effect (req (wait-for
+                                                       (trash state side old-card {:unpreventable true :suppress-checkpoint true})
+                                                       (stage state side eid card-to-stage server slot)))}}}
+                        {:msg (msg "stage " (card-str state card-to-stage) " in the " (name slot) " of [their] " (str/capitalize (name server)) " path")
+                         :async true
+                         :effect (req (stage state side eid card-to-stage server slot))})
+                      source-card nil)))}
+    {:waiting-prompt true}))

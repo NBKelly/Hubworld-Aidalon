@@ -113,6 +113,11 @@
     (when (not (get-in @state [side :prompt :prompt-type]))
       (let [context (assoc context :card card)]
         (case (:type card)
+          ("Moment")
+          (let [bac (get-in @state [side :basic-action-card])]
+            (play-ability state side {:card bac
+                                      :ability 4
+                                      :targets [(assoc context :card card)]}))
           ("Agent" "Obstacle" "Source")
           (let [card-to-stage card
                 bac (get-in @state [side :basic-action-card])

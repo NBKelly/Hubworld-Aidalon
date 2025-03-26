@@ -104,6 +104,31 @@
                         waiting-prompt))}))
      (add-to-prompt-queue state side newitem))))
 
+(defn show-shift-prompt
+  "Specific function for showing a staging prompt"
+  ([state side card zones message ab args] (show-stage-prompt state side (make-eid state) card zones message ab args))
+  ([state side eid card zones message ab {:keys [waiting-prompt targets req] :as args}]
+   (let [prompt (if (string? message) message (message state side eid card targets))
+         newitem {:eid eid
+                  :msg prompt
+                  :req req
+                  :ability ab
+                  :target-paths zones
+                  :card card
+                  :prompt-type :shift}]
+     (when waiting-prompt
+         (add-to-prompt-queue
+           state (if (= :corp side) :runner :corp)
+           {:eid (select-keys eid [:eid])
+            :card card
+            :prompt-type :waiting
+            :msg (str "Waiting for "
+                      (if (true? waiting-prompt)
+                        (str (side-str side) " to make a decision")
+                        waiting-prompt))}))
+     (add-to-prompt-queue state side newitem))))
+
+
 (defn show-trace-prompt
   "Specific function for displaying a trace prompt. Works like `show-prompt` with some extensions.
    Always uses `:credit` as the `choices` variable, and passes on some extra properties, such as base and bonus."
@@ -167,7 +192,7 @@
 
 (defn- compute-selectable
   [state side card ability req-fn card-fn]
-  (let [valid (filter #(not= (:zone %) [:deck]) (get-all-cards state))
+  (let [valid (filter #(not= (:zone %) [:deck]) (concat (get-all-cards state) [(get-in @state [:corp :identity]) (get-in @state [:runner :identity])]))
         valid (filter #(or (= nil card-fn) (card-fn %)) valid)
         valid (if (nil? req-fn) valid (filter #(req-fn state side (make-eid state) card [%]) valid))]
     (map :cid valid)))

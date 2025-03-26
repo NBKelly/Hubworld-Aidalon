@@ -152,8 +152,8 @@
   ([ability] (add-cost-label-to-ability ability (:cost ability)))
   ([ability cost]
    (assoc ability :cost-label
-          (build-cost-label (if (:trash-icon ability)
-                              (conj cost [(->c :trash-can)])
+          (build-cost-label (if (:fake-cost ability)
+                              (concat cost (:fake-cost ability))
                               cost)))))
 
 (comment

@@ -289,7 +289,7 @@
   [base-shards base-cards]
   (letfn [(total-shards [state side card] (max 0 (+ base-shards (sum-effects state side :collect-shards-bonus card))))
           (total-cards  [state side card] (max 0 (+ base-cards  (sum-effects state side :collect-cards-bonus card))))]
-    {:label (str "collect " (when (pos? base-shards) base-shards " [Credits]")
+    {:label (str "collect " (when (pos? base-shards) (str base-shards " [Credits]"))
                  (when (and (pos? base-shards) (pos? base-cards)) " and ")
                  (when (pos? base-cards) (quantify base-cards "card")))
      :async true

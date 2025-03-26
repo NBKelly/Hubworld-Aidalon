@@ -111,10 +111,10 @@
         c (+ (count actions) (count abilities))
         card-side (keyword (lower-case (:side card)))]
     (swap! card-menu dissoc :keep-menu-open)
-    (js/console.log
+
     (cond
 
-        ;; Toggle abilities panel
+      ;; Toggle abilities panel
       (or (< 1 c)
           (pos? (+ (count corp-abilities)
                    (count runner-abilities)
@@ -137,13 +137,13 @@
               (close-card-menu)
               (open-card-menu (:cid card) (:ghost card)))))
 
-        ;; Trigger first (and only) ability / action
-        (and (= c 1)
-             (= side card-side))
-        (if (= (count abilities) 1)
-          (when (playable? (first abilities))
-            (send-command "ability" {:card (card-for-click card) :ability 0}))
-          (send-command (first actions) {:card (card-for-click card)})))))
+      ;; Trigger first (and only) ability / action
+      (and (= c 1)
+           (= side card-side))
+      (if (= (count abilities) 1)
+        (when (playable? (first abilities))
+          (send-command "ability" {:card (card-for-click card) :ability 0}))
+        (send-command (first actions) {:card (card-for-click card)})))))
 
 (defn- prompt-button-from-card?
   [clicked-card {:keys [card msg prompt-type choices] :as prompt-state}]
@@ -915,7 +915,7 @@
 (defn exile-view [exile-side player-side exile]
   (let [s (r/atom {})]
     (fn [exile-side player-side exile]
-      [:div.discard-container (drop-area (str "Exile-" (name (utils/other-side player-side))) {})
+      [:div.exile-container (drop-area (str "Exile-" (name (utils/other-side player-side))) {})
        [:div.blue-shade.discard {:on-click #(-> (:popup @s) js/$ .fadeToggle)}
         (when-not (empty? @exile)
           [card-view (last @exile) nil true])
@@ -2216,11 +2216,11 @@
                 [:div.inner-leftpane
                  [:div.left-inner-leftpane
                   [:div
-                   [stats-view opponent]
+                   [stats-view opponent op-side]
                    [scored-view op-scored op-agenda-point op-agenda-point-req false]]
                   [:div
                    [scored-view me-scored me-agenda-point me-agenda-point-req true]
-                   [stats-view me]]]
+                   [stats-view me me-side]]]
 
                  [:div.right-inner-leftpane
                   (let [op-set-aside (r/cursor game-state [op-side :set-aside])

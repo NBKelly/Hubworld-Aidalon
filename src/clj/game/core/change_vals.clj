@@ -5,10 +5,8 @@
     [game.core.engine :refer [trigger-event]]
     [game.core.gaining :refer [base-mod-size deduct gain]]
     [game.core.hand-size :refer [hand-size update-hand-size]]
-    [game.core.link :refer [get-link update-link]]
-    [game.core.memory :refer [available-mu update-mu]]
+    [game.core.heat :refer [update-heat]]
     [game.core.say :refer [system-msg]]
-    [game.core.tags :refer [update-tag-status]]
     [game.macros :refer [req]]))
 
 (defn- change-msg
@@ -27,63 +25,13 @@
   (gain state side key {:mod delta})
   (change-msg state side key (base-mod-size state side key) delta))
 
-(defn- change-mu
-  "Send a system message indicating how mu was changed"
-  [state side delta]
-  (register-lingering-effect
-    state side nil
-    {:type :user-available-mu
-     :value [:regular delta]})
-  (update-mu state)
-  (system-msg state side
-              (str "sets unused [mu] to " (available-mu state)
-                   " (" (if (pos? delta) (str "+" delta) delta) ")")))
-
-(defn- change-tags
+(defn- change-heat
   "Change a player's tag count"
-  [state delta]
-  (gain state :runner :tag delta)
-  (update-tag-status state)
-  (system-msg state :runner
-              (str "sets Tags to " (get-in @state [:runner :tag :total])
-                   " (" (if (pos? delta) (str "+" delta) delta) ")")))
-
-(defn- change-bad-pub
-  "Change a player's base bad pub count"
-  [state delta]
-  (if (neg? delta)
-    (deduct state :corp [:bad-publicity (Math/abs delta)])
-    (gain state :corp :bad-publicity delta))
-  (system-msg state :corp
-              (str "sets Bad Publicity to " (get-in @state [:corp :bad-publicity :base])
-                   " (" (if (pos? delta) (str "+" delta) delta) ")")))
-
-(defn- change-agenda-points
-  "Change a player's total agenda points, using floating effects."
   [state side delta]
-  (register-lingering-effect
-    state side nil
-    ;; This is needed as `req` creates/shadows the existing `side` already in scope.
-    (let [user-side side]
-      {:type :user-agenda-points
-       ;; `target` is either `:corp` or `:runner`
-       :req (req (= user-side target))
-       :value delta}))
-  (update-all-agenda-points state side)
+  (gain state side :heat delta)
+  (update-heat state side)
   (system-msg state side
-              (str "sets [their] agenda points to " (get-in @state [side :agenda-point])
-                   " (" (if (pos? delta) (str "+" delta) delta) ")")))
-
-(defn- change-link
-  "Change the runner's link, using floating effects."
-  [state side delta]
-  (register-lingering-effect
-    state side nil
-    {:type :user-link
-     :value delta})
-  (update-link state)
-  (system-msg state side
-              (str "sets [their] [link] to " (get-link state)
+              (str "sets their heat to " (get-in @state [:runner :heat :total])
                    " (" (if (pos? delta) (str "+" delta) delta) ")")))
 
 (defn- change-hand-size
@@ -112,11 +60,7 @@
   "Increase/decrease a player's property (clicks, credits, MU, etc.) by delta."
   [state side {:keys [key delta]}]
   (case key
-    :memory (change-mu state side delta)
     :hand-size (change-hand-size state side delta)
-    :tag (change-tags state delta)
-    :bad-publicity (change-bad-pub state delta)
-    :agenda-point (change-agenda-points state side delta)
-    :link (change-link state side delta)
+    :heat (change-heat state side delta)
     ; else
     (change-generic state side key delta)))

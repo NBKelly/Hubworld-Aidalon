@@ -27,7 +27,7 @@
 
 (defn hubworld-start-turn-message [state]
   (let [[s1 s2] (players state)
-        text (str "[hr]Round " (get-in @state [:turn :index]) " begins, with "
+        text (str "Round " (get-in @state [:turn :index]) " begins, with "
                   (get-in @state [s1 :user :username] "(disconnected)")
                   " as the first player")
         t1 (str (get-in @state [s1 :user :username] "(disconnected)") " has "
@@ -134,6 +134,7 @@
   [state _ eid]
   (let [[s1 s2] (players state)]
     ;; each player gains 1c, then has their credits capped
+    (unsafe-say state "[hr]")
     (wait-for
       (clamp-credits state s1)
       (wait-for

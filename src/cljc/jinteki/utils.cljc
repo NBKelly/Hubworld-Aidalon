@@ -11,6 +11,9 @@
 (defn side-from-str [side-str]
   (keyword (str/lower-case side-str)))
 
+(defn card-side [card]
+  (side-from-str (:side card)))
+
 (defn faction-label
   "Returns faction of a card as a lowercase label"
   [card]
@@ -23,37 +26,38 @@
         (= side :runner) :corp
         :else nil))
 
-(defn count-bad-pub
-  "Counts number of bad pub corp has (real + additional)"
-  [state]
-  (+ (get-in @state [:corp :bad-publicity :base] 0)
-     (get-in @state [:corp :bad-publicity :additional] 0)))
+(defn player-name [state side]
+  (get-in @state [side :user :username] "(disconnected)"))
 
-(defn has-bad-pub?
-  "Returns truthy if corp has any bad publicity"
-  [state]
-  (pos? (count-bad-pub state)))
+(defn other-player-name [state side]
+  (player-name state (other-side side)))
 
-(defn count-tags
-  "Counts number of tags runner has (real + additional)"
-  [state]
-  (or (get-in @state [:runner :tag :total]) 0))
+(def slot-order [:inner :middle :outer])
+(def server-order [:archive :council :commons])
+(defn index-of [coll val]
+  (.indexOf coll val))
+
+(defn adjacent-zones
+  [card]
+  (let [[_ server slot] (:zone card)
+        slot-idx   (index-of slot-order slot)
+        server-idx (index-of server-order server)
+        neighbors  (for [d-slot   [-1 0 1]
+                         d-server [-1 0 1]
+                         :when (not (and (= d-slot 0) (= d-server 0)))]
+                     [(+ slot-idx d-slot) (+ server-idx d-server)])
+        in-bounds? (fn [[s i]] (and (<= 0 s 2) (<= 0 i 2)))]
+    (->> neighbors
+         (filter in-bounds?)
+         (mapv (fn [[s i]]
+                {:slot (nth slot-order s)
+                 :server (nth server-order i)})))))
 
 (defn count-heat
-  "Counts number of tags runner has (real + additional)"
+  "Counts number of bad pub corp has (real + additional)"
   [state side]
-  (or (get-in @state [side :heat :total]) 0))
-
-(defn count-real-tags
-  "Count number of non-additional tags"
-  [state]
-  (or (get-in @state [:runner :tag :base]) 0))
-
-(defn is-tagged?
-  "Returns truthy if runner is tagged"
-  [state]
-  (or (get-in @state [:runner :tag :is-tagged])
-      (pos? (count-tags state))))
+  (+ (get-in @state [side :heat :base] 0)
+     (get-in @state [side :heat :additional] 0)))
 
 (defn slugify
   "As defined here: https://you.tools/slugify/"

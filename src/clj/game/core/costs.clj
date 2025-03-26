@@ -2,7 +2,7 @@
   (:require
    [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
-   [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand? installed? program? resource? rezzed? runner? seeker?]]
+   [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand? installed? program? resource? rezzed? runner? seeker? in-discard?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
    [game.core.eid :refer [complete-with-result make-eid]]
@@ -23,7 +23,7 @@
    [game.core.update :refer [update!]]
    [game.core.virus :refer [number-of-virus-counters]]
    [game.macros :refer [continue-ability req wait-for]]
-   [game.utils :refer [enumerate-str quantify same-card?]]))
+   [game.utils :refer [enumerate-str quantify same-card? same-side?]]))
 
 ;; Click
 (defmethod value :click [cost] (:cost/amount cost))
@@ -1169,7 +1169,7 @@
 (defmethod handler :exhaust-self
   [cost state side eid card]
   (wait-for (exhaust state side card {:unpreventable true :suppress-checkpoint true :no-msg true})
-            (complete-with-result state side eid {:paid/msg (str "exhausts " (card-str state card))
+            (complete-with-result state side eid {:paid/msg (str "exhausts " (:title card))
                                                   :paid/type :exhaust-self
                                                   :paid/value 1
                                                   :paid/targets [card]})))
@@ -1209,3 +1209,33 @@
 
 ;; exhaust any
 ;;(defmethod value :exhaust [cost] (:cost/amount cost))
+
+;; RfgProgram
+(defmethod value :exile-from-archives [cost] (:cost/amount cost))
+(defmethod label :exile-from-archives [cost]
+  (str "exile " (quantify (value cost) "card") " from your Archives"))
+(defmethod payable? :exile-from-archives [cost state side eid card]
+  (<= 0 (- (count (get-in @state [side :discard])) (value cost))))
+(defmethod handler :exile-from-archives
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "card")
+                  " in your Archives to Exile")
+     :show-discard true
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (in-discard? target)
+                              (same-side? (:side card) side)))}
+     :async true
+     :effect (req (doseq [t targets]
+                    (move state side (assoc-in t [:persistent :from-cid] (:cid card)) :rfg))
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "exiles " (quantify (value cost) "card")
+                                    " from [their] archives ("
+                                    (enumerate-str (map :title targets)) ")")
+                     :paid/type :exile-from-archives
+                     :paid/value (value cost)
+                     :paid/targets targets}))}
+    card nil))

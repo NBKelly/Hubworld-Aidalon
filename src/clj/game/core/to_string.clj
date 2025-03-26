@@ -8,9 +8,12 @@
   ([state card] (card-str state card nil))
   ([state {:keys [zone host facedown] :as card} {:keys [visible]}]
    (str
-     (if (and (installed? card)
-              (not= (:type card) "Seeker")
-              (not (:rezzed card)))
+     (if (and (not visible)
+              (or (and (installed? card)
+                       (not= (:type card) "Seeker")
+                       (not (:rezzed card)))
+                  (and (not (contains? #{:discard :hand :deck} (:zone card)))
+                       (not (:seen card)))))
        "a facedown card"
        (get-title card))
      (when-let [z (and (installed? card) (name-zone (:zone card )))]

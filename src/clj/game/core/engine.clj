@@ -502,11 +502,10 @@
   [card]
   (case (to-keyword (:type card))
     :agenda #{:scored}
-    (:asset :ice :upgrade) #{:servers}
+    (:source :obstacle :agent) #{:paths}
     :counter #{:hosted}
-    (:event :operation) #{:current :play-area}
-    (:hardware :program :resource) #{:rig}
-    (:identity :fake-identity) #{:identity}))
+    (:moment) #{:current :play-area}
+    (:identity :fake-identity :seeker) #{:identity}))
 
 (defn build-location
   [card {location :location}]
