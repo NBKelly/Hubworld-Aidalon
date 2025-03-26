@@ -151,6 +151,7 @@
           "[recurring-credits]" "recurring-credit"
           "[click]" "click"
           "[clicks]" "click"
+          "[heat]" "heat"
           "1[memory unit]" "mu1"
           "1[mu]" "mu1"
           "2[memory unit]" "mu2"

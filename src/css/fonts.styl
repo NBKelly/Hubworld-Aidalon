@@ -42,11 +42,23 @@
     font-weight: normal
     font-style: normal
 
+@font-face
+    font-family: 'fire'
+    src: url('../fonts/fire.ttf')
+    font-weight: normal
+    front-style: normal
+
 .anr-icon
     font-family: "anr-icon" !important
     font-size: 15px
     margin-right: 1px
     speak: none
+
+.anr-icon.heat
+    font-family: "fire" !important
+
+.anr-icon.heat:before
+    content: "\e800"
 
 .anr-icon.haas-bioroid:before
     content: "\e602"
