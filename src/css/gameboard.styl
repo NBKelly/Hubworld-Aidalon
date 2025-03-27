@@ -194,6 +194,71 @@
     .credit-counter
         background-color: alpha(black-solid, o-60)
 
+    .presence
+        position: absolute
+        z-index: 13
+        padding: 0
+        text-align: center
+        background-color: alpha(blue-core, o-80)
+        border-radius 8px
+        line-height: 1.5rem
+        font-size: .75rem
+        font-weight: bold
+        height: 24px
+        width: 24px
+        bottom: -8px
+        left: 18px
+        transition: transform 0.3s ease;
+
+    .presence.opponent
+        bottom: unset
+        top: -8px
+
+    .barrier
+        position: absolute
+        z-index: 12
+        padding: 0
+        text-align: center
+        background-color: alpha(red-core, o-90)
+        line-height: 1.5rem
+        font-size: .75rem
+        font-weight: bold
+        height: 24px
+        width: 24px
+        top: -8px
+        left: 18px
+        transition: transform 0.3s ease;
+
+    .barrier.opponent
+        top: unset
+        bottom: -8px
+
+    .exhausted
+
+        .presence
+            transform: rotate(-90deg)
+            left: unset
+            bottom: unset
+            right: -8px
+            top: 30px
+        .barrier
+            transform: rotate(-90deg)
+            right: unset
+            bottom: unset
+            left: -8px
+            top: 30px
+
+        .presence.opponent
+            left: -8px
+            top: 30px
+            right: unset
+            bottom: unset
+        .barrier.opponent
+            right: -8px
+            top: 30px
+            left: unset
+            bottom: unset
+
     .strength
         position: absolute
         z-index: 10

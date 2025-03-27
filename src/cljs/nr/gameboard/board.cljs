@@ -654,7 +654,7 @@
 
 (defn card-view
   [{:keys [zone code type abilities counter exhausted
-           subtypes strength current-strength selected hosted
+           subtypes barrier current-barrier presence current-presence selected hosted
            side facedown card-target icon new ghost runner-abilities subroutines
            subtype-target corp-abilities]
     :as card} flipped disable-click]
@@ -669,91 +669,95 @@
                                                 ghost "ghost"
                                                 new "new")
                                           (when exhausted " exhausted"))
-                            :tab-index (when (and (not disable-click)
-                                                  (or (active? card)
-                                                      (playable? card)))
-                                         0)
-                            :draggable (when (and (not-spectator?) (not disable-click)) true)
-                            :on-touch-start #(handle-touchstart % card)
-                            :on-touch-end   #(handle-touchend %)
-                            :on-touch-move  #(handle-touchmove %)
-                            :on-drag-start #(handle-dragstart % card)
-                            :on-drag-end #(-> % .-target js/$ (.removeClass "dragged"))
-                            :on-mouse-enter #(when (or (not (or (not code) flipped facedown))
-                                                       (spectator-view-hidden?)
-                                                       (= (:side @game-state) (keyword (lower-case side))))
-                                               (put-game-card-in-channel card zoom-channel))
-                            :on-mouse-leave #(put! zoom-channel false)
-                            :on-click #(when (not disable-click)
-                                         (handle-card-click card (.-shiftKey %)))
-                            :on-key-down #(when (and (= "Enter" (.-key %))
+                              :tab-index (when (and (not disable-click)
+                                                    (or (active? card)
+                                                        (playable? card)))
+                                           0)
+                              :draggable (when (and (not-spectator?) (not disable-click)) true)
+                              :on-touch-start #(handle-touchstart % card)
+                              :on-touch-end   #(handle-touchend %)
+                              :on-touch-move  #(handle-touchmove %)
+                              :on-drag-start #(handle-dragstart % card)
+                              :on-drag-end #(-> % .-target js/$ (.removeClass "dragged"))
+                              :on-mouse-enter #(when (or (not (or (not code) flipped facedown))
+                                                         (spectator-view-hidden?)
+                                                         (= (:side @game-state) (keyword (lower-case side))))
+                                                 (put-game-card-in-channel card zoom-channel))
+                              :on-mouse-leave #(put! zoom-channel false)
+                              :on-click #(when (not disable-click)
+                                           (handle-card-click card (.-shiftKey %)))
+                              :on-key-down #(when (and (= "Enter" (.-key %))
+                                                       (not disable-click))
+                                              (handle-card-click card (.-shiftKey %)))
+                              :on-key-up #(when (and (= " " (.-key %))
                                                      (not disable-click))
-                                            (handle-card-click card (.-shiftKey %)))
-                            :on-key-up #(when (and (= " " (.-key %))
-                                                   (not disable-click))
-                                          (handle-card-click card (.-shiftKey %)))}
-      (if (or (not code) flipped facedown)
-        (let [facedown-but-known (or (not (or (not code) flipped facedown))
-                                     (spectator-view-hidden?)
-                                     (= (:side @game-state) (keyword (lower-case side))))
-              alt-str (when facedown-but-known (str "Facedown " title))]
-          [facedown-card side ["bg"] alt-str])
-        (when-let [url (image-url card)]
-          [:div
-           [:img.card.bg {:src url :alt title :onError #(-> % .-target js/$ .hide)}]]))
-      [:span.cardname title]
-      [:div.counters
-       (when counter
-         (doall
-          (map (fn [[type num-counters]]
-                 (when (pos? num-counters)
-                   (let [selector (str "div.darkbg." (lower-case (name type)) "-counter.counter")]
-                     [(keyword selector) {:key type} num-counters])))
-               (sort-by key counter))))
-       (when (pos? (get-counters card :advancement))
-         [:div.darkbg.advance-counter.counter {:key "adv"} (get-counters card :advancement)])]
-      (when (and (or current-strength strength)
-                 (or (ice? card)
-                     (has-subtype? card "Icebreaker"))
-                 (active? card))
-        [:div.darkbg.strength (or current-strength strength)])
-      (when-let [{:keys [char color]} icon] [:div.darkbg.icon {:class color} char])
-      (when card-target [:div.darkbg.card-target card-target])
-      (when subtype-target [:div.darkbg.subtype-target subtype-target])
-      (when (active? card)
-        (let [server-card (get @all-cards title)]
-          [:div.darkbg.additional-subtypes
-           (join " - " (remove (into #{} (:subtypes server-card)) subtypes))]))]
+                                            (handle-card-click card (.-shiftKey %)))}
+        (if (or (not code) flipped facedown)
+          (let [facedown-but-known (or (not (or (not code) flipped facedown))
+                                       (spectator-view-hidden?)
+                                       (= (:side @game-state) (keyword (lower-case side))))
+                alt-str (when facedown-but-known (str "Facedown " title))]
+            [facedown-card side ["bg"] alt-str])
+          (when-let [url (image-url card)]
+            [:div
+             [:img.card.bg {:src url :alt title :onError #(-> % .-target js/$ .hide)}]]))
+        [:span.cardname title]
+        [:div.counters
+         (when counter
+           (doall
+             (map (fn [[type num-counters]]
+                    (when (pos? num-counters)
+                      (let [selector (str "div.darkbg." (lower-case (name type)) "-counter.counter")]
+                        [(keyword selector) {:key type} num-counters])))
+                  (sort-by key counter))))
+         (when (pos? (get-counters card :advancement))
+           [:div.darkbg.advance-counter.counter {:key "adv"} (get-counters card :advancement)])]
+        (let [is-my-side? (= (:side @game-state) (keyword (lower-case side)))]
+          (when-let [bval (and (rezzed? card)
+                               (or current-barrier barrier))]
+            (when (pos? bval)
+              [:div.darkbg.barrier {:class (when-not is-my-side? "opponent")} bval])))
+        (let [is-my-side? (= (:side @game-state) (keyword (lower-case side)))]
+          (when-let [pval (and (rezzed? card)
+                               (or current-presence presence))]
+            [:div.darkbg.presence {:class (when-not is-my-side? "opponent")} pval]))
+        (when-let [{:keys [char color]} icon] [:div.darkbg.icon {:class color} char])
+        (when card-target [:div.darkbg.card-target card-target])
+        (when subtype-target [:div.darkbg.subtype-target subtype-target])
+        (when (active? card)
+          (let [server-card (get @all-cards title)]
+            [:div.darkbg.additional-subtypes
+             (join " - " (remove (into #{} (:subtypes server-card)) subtypes))]))]
 
-     (cond
-       (and (= zone ["hand"])
-            (#{"Agenda" "Asset" "ICE" "Upgrade"} type))
-       [server-menu card]
+       (cond
+         (and (= zone ["hand"])
+              (#{"Agenda" "Asset" "ICE" "Upgrade"} type))
+         [server-menu card]
 
-       (and (= :runner (:side @game-state))
-            (pos? (+ (count runner-abilities) (count subroutines))))
-       [runner-abs card runner-abilities subroutines title]
+         (and (= :runner (:side @game-state))
+              (pos? (+ (count runner-abilities) (count subroutines))))
+         [runner-abs card runner-abilities subroutines title]
 
-       (and (= :corp (:side @game-state))
-            (pos? (count corp-abilities)))
-       [corp-abs card corp-abilities]
+         (and (= :corp (:side @game-state))
+              (pos? (count corp-abilities)))
+         [corp-abs card corp-abilities]
 
-       (= (:side @game-state) (keyword (lower-case side)))
-       [card-abilities card abilities subroutines])
+         (= (:side @game-state) (keyword (lower-case side)))
+         [card-abilities card abilities subroutines])
 
-     (when (pos? (count hosted))
-       [:div.hosted
-        (if (and (not (ice? card))
-                 (get-in @app-state [:options :stacked-cards] false))
-        ; stacked mode
-          (let [distinct-hosted (vals (group-by get-title hosted))]
-            (show-distinct-cards distinct-hosted))
+       (when (pos? (count hosted))
+         [:div.hosted
+          (if (and (not (ice? card))
+                   (get-in @app-state [:options :stacked-cards] false))
+                                        ; stacked mode
+            (let [distinct-hosted (vals (group-by get-title hosted))]
+              (show-distinct-cards distinct-hosted))
 
-          (doall
-           (for [card hosted]
-             (let [flipped (draw-facedown? card)]
-               ^{:key (:cid card)}
-               [card-view card flipped]))))])])))
+            (doall
+              (for [card hosted]
+                (let [flipped (draw-facedown? card)]
+                  ^{:key (:cid card)}
+                  [card-view card flipped]))))])])))
 
 (defn show-distinct-cards
   [distinct-cards]

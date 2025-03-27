@@ -5,25 +5,27 @@
 
 (defrecord Card
   [abilities
-   advance-counter
-   advanceable
-   advancementcost
-   agendapoints
+   advance-counter                    ;; -----obsolete
+   advanceable                        ;; -----obsolete
+   advancementcost                    ;; -----obsolete
+   agendapoints                       ;; -----obsolete
    art
-   baselink
+   baselink                           ;; -----obsolete
    card-target
    cid
    code
    corp-abilities
    cost
    counter
-   current-advancement-requirement
-   current-points
-   current-strength
+   current-advancement-requirement    ;; -----obsolete
+   current-points                     ;; -----obsolete
+   current-strength                   ;; -----obsolete
+   current-barrier                    ;; ++++++++++++++++new
+   current-presence                   ;; ++++++++++++++++new
    cycle_code
    deck-limit
    disabled
-   extra-advance-counter
+   extra-advance-counter              ;; -----obsolete
    face
    facedown
    faces
@@ -36,7 +38,7 @@
    implementation
    index
    installed
-   memoryunits
+   memoryunits                        ;; -----obsolete
    minimumdecksize
    new
    normalizedtitle
@@ -53,8 +55,8 @@
    set_code
    side
    special
-   strength
-   subroutines
+   strength                           ;; -----obsolete
+   subroutines                        ;; -----obsolete
    subtype
    subtype-target
    subtypes
@@ -107,6 +109,9 @@
   [card]
   (= (get-zone card) #?(:clj [:deck]
                         :cljs ["deck"])))
+
+
+
 
 (defn in-archives-root?
   [card]
@@ -260,6 +265,42 @@
   (or (obstacle? card)
       (source? card)
       (agent? card)))
+
+(defn in-front-row?
+  [card]
+  (= (nth (get-zone card) 2)
+     #?(:clj [:outer]
+        :cljs ["outer"])))
+
+(defn in-middle-row?
+  [card]
+  (= (nth (get-zone card) 2)
+     #?(:clj [:middle]
+        :cljs ["middle"])))
+
+(defn in-back-row?
+  [card]
+  (= (nth (get-zone card) 2)
+     #?(:clj [:inner]
+        :cljs ["inner"])))
+
+(defn in-council-path?
+  [card]
+  (= (nth (get-zone card) 1)
+     #?(:clj [:council]
+        :cljs ["council"])))
+
+(defn in-commons-path?
+  [card]
+  (= (nth (get-zone card) 1)
+     #?(:clj [:commons]
+        :cljs ["commons"])))
+
+(defn in-archives-path?
+  [card]
+  (= (nth (get-zone card) 1)
+     #?(:clj [:archives]
+        :cljs ["archives"])))
 
 (defn fake-identity?
   [card]

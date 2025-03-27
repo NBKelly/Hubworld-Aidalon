@@ -140,6 +140,10 @@
    :advanceable
    :advancementcost
    :agendapoints
+   :current-barrier
+   :barrier
+   :presence
+   :current-presence
    :card-target
    :cid
    :code
