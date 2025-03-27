@@ -35,6 +35,9 @@
   [state side text]
   (let [corp-pronoun (select-pronoun (get-in @state [:corp :user]))
         runner-pronoun (select-pronoun (get-in @state [:runner :user]))
+        other-side-pronoun (cond (= side :runner) corp-pronoun
+                                 (= side :corp) runner-pronoun
+                                 :else "their")
         user-pronoun (cond
                        (= side :corp) corp-pronoun
                        (= side :runner) runner-pronoun
@@ -42,6 +45,7 @@
     (-> text
         (str/replace #"(\[pronoun\])|(\[their\])" user-pronoun)
         (str/replace #"\[corp-pronoun\]" corp-pronoun)
+        (str/replace #"\[oppo\]" other-side-pronoun)
         (str/replace #"\[runner-pronoun\]" runner-pronoun))))
 
 (defn say

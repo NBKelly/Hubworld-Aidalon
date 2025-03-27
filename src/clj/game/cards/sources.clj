@@ -1,12 +1,14 @@
 (ns game.cards.sources
   (:require
    [clojure.string :as str]
+   [game.core.barrier :refer [get-barrier update-card-barrier]]
    [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed?]]
    [game.core.def-helpers :refer [collect defcard]]
    [game.core.drawing :refer [draw]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits lose]]
    [game.core.moving :refer [move trash]]
-   [game.core.payment :refer [->c]]
+   [game.core.payment :refer [->c can-pay?]]
    [game.core.staging :refer [stage-a-card]]
    [game.utils :refer [same-card? enumerate-str]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -27,6 +29,27 @@
                   :async true
                   :effect (req (move state side target :hand)
                                (trash state side eid (first (get-in @state [side :deck]))))}]}))
+
+(defcard "Disagreeable Inspector"
+  (collect
+    {:shards 1}
+    {:events [{:event :confrontation
+               :skippable true
+               :optional {:req (req (and (= side (:engaged-side context))
+                                         (can-pay? state side eid card nil [(->c :exhaust-self)])
+                                         (pos? (get-barrier (get-card state (:card context))))))
+                          :prompt (msg "give " (:title (:card context)) " - 2 [barrier] until the end of the confrontation?")
+                          :waiting-prompt true
+                          :yes-ability {:cost [(->c :exhaust-self)]
+                                        :msg (msg "give " (:title (:card context)) " -2 [barrier] until the end of the confrontation")
+                                        :effect (req (let [target-card (:card context)]
+                                                       (register-lingering-effect
+                                                         state side card
+                                                         {:type :barrier-value
+                                                          :value -2
+                                                          :req (req (same-card? target-card target))
+                                                          :duration :end-of-confrontation})
+                                                       (update-card-barrier state side target-card)))}}}]}))
 
 (defcard "Shardwinner"
   (collect

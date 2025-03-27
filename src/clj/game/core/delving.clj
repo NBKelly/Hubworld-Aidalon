@@ -7,7 +7,7 @@
    [game.core.choose-one :refer [choose-one-helper]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [checkpoint queue-event register-default-events register-pending-event resolve-ability]]
-   [game.core.effects :refer [register-static-abilities]]
+   [game.core.effects :refer [register-static-abilities unregister-lingering-effects]]
    [game.core.flags :refer [card-flag?]]
    [game.core.moving :refer [move exile]]
    [game.core.payment :refer [->c merge-costs]]
@@ -15,6 +15,7 @@
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
+   [game.core.update :refer [update!]]
    [game.macros :refer [req wait-for]]
    [game.utils :refer [to-keyword]]
    [jinteki.utils :refer [other-side]]
@@ -47,6 +48,12 @@
 ;; DISCOVERY - facedown installed cards, and cards in centrals, can be discovered
 ;;             go through all the discover abilities top->bottom, then the player may dispatch the card
 
+(defn discover-cleanup
+  [state side eid discovered-card]
+  (when-let [c (get-card state discovered-card)]
+    (update! state side (dissoc c :seen)))
+  (checkpoint state side eid {:durations [:end-of-discovery]}))
+
 (defn discover-continue
   [state side eid discovered-card]
   (let [can-interact? (and (not (moment? discovered-card))
@@ -54,123 +61,143 @@
         should-secure? (agent? discovered-card)
         interact-cost? (merge-costs (concat (when-not (in-discard? discovered-card) [(->c :credit (get-presence discovered-card))])
                                             (:cipher (card-def discovered-card))))]
-    (wait-for (resolve-ability
-                state side
-                (choose-one-helper
-                  {:prompt (str "You are discovering " (:title discovered-card))}
-                  [{:option "Exile"
-                    :req (req (and (not should-secure?) can-interact?))
-                    :cost (when (seq interact-cost?) interact-cost?)
-                    :ability {:async true
-                              :effect (req (let [cost-msg (:latest-payment-str eid)]
-                                             (system-msg state side
-                                                         (str (if cost-msg
-                                                                (str cost-msg " to exile ")
-                                                                "exiles ")
-                                                              (:title discovered-card))))
-                                           (exile state side eid discovered-card))}}
-                   {:option "Secure"
-                    :req (req (and should-secure? can-interact?))
-                    :cost (when (seq interact-cost?) interact-cost?)
-                    :ability {:async true
-                              :effect (req (let [cost-msg (:latest-payment-str eid)]
-                                             (system-msg state side
-                                                         (str (if cost-msg
-                                                                (str cost-msg " to secure ")
-                                                                "secures ")
-                                                              (:title discovered-card))))
-                                           (secure-agent state side eid discovered-card))}}
-                    {:option "End discovery"}])
-                  nil nil))
-              ;; TODO - if we're accessing, call access-end or something equivalent
-              (effect-completed state side eid)))
+    (if (or (not (get-card state discovered-card))) ;; TODO - discover ended!
+      (discover-cleanup state side eid discovered-card)
+      (wait-for
+        (resolve-ability
+          state side
+          (choose-one-helper
+            {:prompt (str "You are discovering " (:title discovered-card))}
+            [{:option "Exile"
+              :req (req (and (not should-secure?) can-interact?))
+              :cost (when (seq interact-cost?) interact-cost?)
+              :ability {:async true
+                        :effect (req (let [cost-msg (:latest-payment-str eid)]
+                                       (system-msg state side
+                                                   (str (if cost-msg
+                                                          (str cost-msg " to exile ")
+                                                          "exiles ")
+                                                        (:title discovered-card))))
+                                     (exile state side eid discovered-card))}}
+             {:option "Secure"
+              :req (req (and should-secure? can-interact?))
+              :cost (when (seq interact-cost?) interact-cost?)
+              :ability {:async true
+                        :effect (req (let [cost-msg (:latest-payment-str eid)]
+                                       (system-msg state side
+                                                   (str (if cost-msg
+                                                          (str cost-msg " to secure ")
+                                                          "secures ")
+                                                        (:title discovered-card))))
+                                     (secure-agent state side eid discovered-card))}}
+             {:option "End discovery"}])
+          nil nil)
+        (discover-cleanup state side eid discovered-card)))))
 
 ;; discovery abilities are fired one at a time, from top to bottom
 (defn- resolve-discover-abilities
   [state side eid card abs]
-  ;; todo - see if we get access dissoc'd
-  (if (seq abs)
-    (let [ab (first abs)]
-      (wait-for (resolve-ability state (other-side side) ab card nil)
-                (resolve-discover-abilities state side eid card (rest abs))))
-    (discover-continue state side eid card)))
+  (if (or (not (get-card state card))) ;; TODO - discover ended!
+    (discover-cleanup state side eid card)
+    (if (seq abs)
+      (let [ab (first abs)]
+        (wait-for (resolve-ability state (other-side side) ab card nil)
+                  (resolve-discover-abilities state side eid card (rest abs))))
+      (discover-continue state side eid card))))
 
 (defn discover-card
   [state side eid card]
   (if-not (get-card state card)
-    (effect-completed state side eid)
-    (do (system-msg state side (str "discovers " (:title card)))
-        (resolve-discover-abilities state side eid card (:discover-abilities (card-def card))))))
+    (discover-cleanup state side eid card)
+    (let [card (update! state side (assoc card :seen true))]
+      (system-msg state side (str "discovers " (:title card)))
+      (resolve-discover-abilities state side eid card (:discover-abilities (card-def card))))))
 
 ;; CONFRONTATION - faceup installed cards can be confronted. If the card is not exhausted, it *must* be confronted
 ;;                   1) Go through all the confront abilities top->bottom
 ;;                   2) The engaged player may pay the break cost of the card. If they do not, end the delve.
 ;;                   3) The engaged player may dispatch the card.
 
+(defn confrontation-cleanup
+  [state side eid confronted-card]
+  (unregister-lingering-effects state side :end-of-confrontation)
+  (unregister-lingering-effects state (other-side side) :end-of-confrontation)
+  (checkpoint state side eid))
+
 (defn confrontation-continue
-  [state side eid discovered-card]
-  (let [can-interact? (and (not (moment? discovered-card))
-                           (not (in-discard? discovered-card)))
-        should-secure? (agent? discovered-card)
-        interact-cost? (merge-costs (concat (when-not (in-discard? discovered-card) [(->c :credit (get-presence discovered-card))])
-                                            (:cipher (card-def discovered-card))))]
-    (resolve-ability
-      state side
-      (choose-one-helper
-        {:prompt (str "You are confronting " (:title discovered-card))}
-        [{:option "Exile"
-          :req (req (and (not should-secure?) can-interact?))
-          :cost (when (seq interact-cost?) interact-cost?)
-          :ability {:async true
-                    :effect (req (let [cost-msg (:latest-payment-str eid)]
-                                   (system-msg state side
-                                               (str (if cost-msg
-                                                      (str cost-msg " to exile ")
-                                                      "exiles ")
-                                                    (:title discovered-card))))
-                                 (exile state side eid discovered-card))}}
-         {:option "Secure"
-          :req (req (and should-secure? can-interact?))
-          :cost (when (seq interact-cost?) interact-cost?)
-          :ability {:async true
-                    :effect (req (let [cost-msg (:latest-payment-str eid)]
-                                   (system-msg state side
-                                               (str (if cost-msg
-                                                      (str cost-msg " to secure ")
-                                                      "secures ")
-                                                    (:title discovered-card))))
-                                 (secure-agent state side eid discovered-card))}}
-         {:option "End confrontation"}])
-      nil nil)))
+  [state side eid confronted-card]
+  (let [can-interact? (and (not (moment? confronted-card))
+                           (not (in-discard? confronted-card)))
+        should-secure? (agent? confronted-card)
+        interact-cost? (merge-costs (concat (when-not (in-discard? confronted-card) [(->c :credit (get-presence confronted-card))])
+                                            (:cipher (card-def confronted-card))))]
+    (if-not (rezzed? (get-card state confronted-card))
+      (confrontation-cleanup state side eid confronted-card)
+      (wait-for (resolve-ability
+                  state side
+                  (choose-one-helper
+                    {:prompt (str "You are confronting " (:title confronted-card))}
+                    [{:option "Exile"
+                      :req (req (and (not should-secure?) can-interact?))
+                      :cost (when (seq interact-cost?) interact-cost?)
+                      :ability {:async true
+                                :effect (req (let [cost-msg (:latest-payment-str eid)]
+                                               (system-msg state side
+                                                           (str (if cost-msg
+                                                                  (str cost-msg " to exile ")
+                                                                  "exiles ")
+                                                                (:title confronted-card))))
+                                             (exile state side eid confronted-card))}}
+                     {:option "Secure"
+                      :req (req (and should-secure? can-interact?))
+                      :cost (when (seq interact-cost?) interact-cost?)
+                      :ability {:async true
+                                :effect (req (let [cost-msg (:latest-payment-str eid)]
+                                               (system-msg state side
+                                                           (str (if cost-msg
+                                                                  (str cost-msg " to secure ")
+                                                                  "secures ")
+                                                                (:title confronted-card))))
+                                             (secure-agent state side eid confronted-card))}}
+                     {:option "End confrontation"}])
+                  nil nil)
+                (confrontation-cleanup state side eid confronted-card)))))
 
 (defn confrontation-resolve-barrier
   [state side eid confronted-card]
-  (let [barrier-cost (max 0 (get-barrier confronted-card))]
-    (if (pos? barrier-cost)
-      (resolve-ability
-        state side
-        {:optional {:prompt (str "Pay " barrier-cost " [Credits] to break the barrier of " (:title confronted-card) "?")
-                    :yes-ability {:cost [(->c :credit barrier-cost)]
-                                  :async true
-                                  :effect (req (system-msg state side (str (:latest-payment-str eid) " to break the barrier on " (:title confronted-card)))
-                                               (confrontation-continue state side eid confronted-card))}
-                    :no-ability {:effect (req (system-msg state (other-side side) " ends the delve! (todo)"))}}}
-        nil nil)
-      (confrontation-continue state side eid confronted-card))))
+  (if-not (rezzed? (get-card state confronted-card))
+      (confrontation-cleanup state side eid confronted-card)
+      (let [barrier-cost (max 0 (get-barrier confronted-card))]
+        (if (pos? barrier-cost)
+          (resolve-ability
+            state side
+            {:optional {:prompt (str "Pay " barrier-cost " [Credits] to break the barrier of " (:title confronted-card) "?")
+                        :yes-ability {:cost [(->c :credit barrier-cost)]
+                                      :async true
+                                      :effect (req (system-msg state side (str (:latest-payment-str eid) " to break the barrier on " (:title confronted-card)))
+                                                   (confrontation-continue state side eid confronted-card))}
+                        :no-ability {:effect (req (system-msg state (other-side side) " ends the delve! (todo)"))}}}
+            nil nil)
+          (confrontation-continue state side eid confronted-card)))))
 
 ;; confrontation abilities are fired one at a time, from top to bottom
 (defn- resolve-confrontation-abilities
   [state side eid card abs]
   ;; todo - see if we get access dissoc'd
-  (if (seq abs)
-    (let [ab (first abs)]
-      (wait-for (resolve-ability state (other-side side) ab card nil)
-                (resolve-confrontation-abilities state side eid card (rest abs))))
-    (confrontation-resolve-barrier state side eid card)))
+  (if-not (rezzed? (get-card state card))
+      (confrontation-cleanup state side eid card)
+      (if (seq abs)
+        (let [ab (first abs)]
+          (wait-for (resolve-ability state (other-side side) ab card nil)
+                    (resolve-confrontation-abilities state side eid card (rest abs))))
+        (confrontation-resolve-barrier state side eid card))))
 
 (defn confront-card
   [state side eid card]
   (if-not (and (get-card state card) (rezzed? card))
-    (effect-completed state side eid)
-    (do (system-msg state side (str "confronts " (:title card)))
-        (resolve-confrontation-abilities state side eid card (:confront-abilities (card-def card))))))
+    (confrontation-cleanup state side eid card)
+    (do (queue-event state :confrontation {:card card
+                                           :engaged-side side})
+        (wait-for (checkpoint state side eid)
+                  (system-msg state side (str "confronts " (:title card)))
+                  (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))))))

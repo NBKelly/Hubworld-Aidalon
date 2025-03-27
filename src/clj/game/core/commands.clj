@@ -190,6 +190,7 @@
     state side
     {:prompt "Choose a card to discover"
      :choices {:card (complement seeker?)}
+     :waiting-prompt true
      :async true
      :effect (req (discover-card state side eid target))}
     (make-card {:title "/discover command"}) nil))
@@ -200,6 +201,7 @@
     state side
     {:prompt "Choose a card to confront"
      :choices {:card (every-pred installed? rezzed? (complement seeker?))}
+     :waiting-prompt true
      :async true
      :effect (req (confront-card state side eid target))}
     (make-card {:title "/confront command"}) nil))
