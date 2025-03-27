@@ -1,7 +1,7 @@
 (ns game.cards.sources
   (:require
    [clojure.string :as str]
-   [game.core.card :refer [in-hand? moment?]]
+   [game.core.card :refer [get-card in-council-path? in-hand? moment? installed?]]
    [game.core.def-helpers :refer [collect defcard]]
    [game.core.drawing :refer [draw]]
    [game.core.gaining :refer [gain-credits lose]]
@@ -10,7 +10,7 @@
    [game.core.staging :refer [stage-a-card]]
    [game.utils :refer [same-card? enumerate-str]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
-   [jinteki.utils :refer [count-heat other-player-name card-side]]))
+   [jinteki.utils :refer [adjacent? count-heat other-player-name card-side]]))
 
 (defcard "Capricious Informant"
   (collect
@@ -28,6 +28,18 @@
                   :effect (req (move state side target :hand)
                                (trash state side eid (first (get-in @state [side :deck]))))}]}))
 
+(defcard "Shardwinner"
+  (collect
+    {:shards 1}
+    {:presence-bonus (req (if (and (same-card? card target)
+                                   (installed? card)
+                                   (in-commons-path? (get-card state card)))
+                            4 0))
+     :static-abilities [{:type :collect-shards-bonus
+                         :req (req (and (same-card? card target)
+                                        (in-council-path? card)))
+                         :value 1}]}))
+
 (defcard "Tele-Mail Cluster"
   (collect
     {:cards 1}
@@ -40,3 +52,11 @@
                                          (= side (card-side target))))}
                 :async true
                 :effect (req (stage-a-card state side eid card target))}}))
+
+
+(defcard "The Dragon’s Hoard"
+  (collect
+    {:shards 1}
+    {:static-abilities [{:type :presence-value
+                         :value 1
+                         :req (req (adjacent? card target))}]}))

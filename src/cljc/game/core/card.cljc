@@ -20,6 +20,8 @@
    current-advancement-requirement    ;; -----obsolete
    current-points                     ;; -----obsolete
    current-strength                   ;; -----obsolete
+   barrier                            ;; ++++++++++++++++new
+   presence                           ;; ++++++++++++++++new
    current-barrier                    ;; ++++++++++++++++new
    current-presence                   ;; ++++++++++++++++new
    cycle_code
@@ -269,38 +271,38 @@
 (defn in-front-row?
   [card]
   (= (nth (get-zone card) 2)
-     #?(:clj [:outer]
-        :cljs ["outer"])))
+     #?(:clj :outer
+        :cljs "outer")))
 
 (defn in-middle-row?
   [card]
   (= (nth (get-zone card) 2)
-     #?(:clj [:middle]
-        :cljs ["middle"])))
+     #?(:clj :middle
+        :cljs "middle")))
 
 (defn in-back-row?
   [card]
   (= (nth (get-zone card) 2)
-     #?(:clj [:inner]
-        :cljs ["inner"])))
+     #?(:clj :inner
+        :cljs "inner")))
 
 (defn in-council-path?
   [card]
   (= (nth (get-zone card) 1)
-     #?(:clj [:council]
-        :cljs ["council"])))
+     #?(:clj :council
+        :cljs "council")))
 
 (defn in-commons-path?
   [card]
   (= (nth (get-zone card) 1)
-     #?(:clj [:commons]
-        :cljs ["commons"])))
+     #?(:clj :commons
+        :cljs "commons")))
 
 (defn in-archives-path?
   [card]
   (= (nth (get-zone card) 1)
-     #?(:clj [:archives]
-        :cljs ["archives"])))
+     #?(:clj :archives
+        :cljs "archives")))
 
 (defn fake-identity?
   [card]

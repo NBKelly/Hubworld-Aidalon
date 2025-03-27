@@ -39,7 +39,7 @@
   [card keep-counter]
   (let [cdef (card-def card)
         c (dissoc card
-                  :current-strength :current-advancement-requirement :current-points
+                  :current-strength :current-advancement-requirement :current-points :current-barrier :current-presence
                   :runner-abilities :corp-abilities :rezzed :new
                   :subtype-target :card-target :extra-advance-counter :special)
         c (assoc c :subroutines (subroutines-init c cdef) :abilities (ability-init cdef))

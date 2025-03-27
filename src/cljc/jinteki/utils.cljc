@@ -58,6 +58,12 @@
       {}
       neighbors)))
 
+(defn adjacent?
+  [c1 {:keys [zone] :as c2}]
+  (and (= (:side c1) (:side c2))
+       (let [zones (adjacent-zones c1)]
+         (get-in zones [(second zone) (last zone)]))))
+
 (defn count-heat
   "Counts number of bad pub corp has (real + additional)"
   [state side]
