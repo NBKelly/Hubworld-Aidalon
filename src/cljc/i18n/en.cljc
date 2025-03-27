@@ -710,6 +710,7 @@
           :link-strength "Link Strength"
           :credit-count (fn [[credit run-credit]] (str credit " Credit" (if (not= credit 1) "s" "") (when (pos? run-credit) (str " (" run-credit " for run)"))))
           :click-count (fn [[click]] (str click " Click" (if (not= click 1) "s" "")))
+          :heat-count (fn [[base additional]] (str base (when (pos? additional) (str " + " additional)) " Heat"))
           :bad-pub-count (fn [[base additional]] (str base (when (pos? additional) (str " + " additional)) " Bad Publicity"))
           :mu-count (fn [[unused available]] (str unused " of " available " MU unused"))
           :special-mu-count (fn [[unused available mu-type]] (str unused " of " available " " mu-type " MU unused"))

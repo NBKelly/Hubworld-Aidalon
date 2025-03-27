@@ -1202,15 +1202,45 @@
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " card")
                                               " (" (enumerate-str (map #(card-str state %) targets)) ")")
-                               :paid/type :trash-installed
+                               :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
 
-;; exhaust any
-;;(defmethod value :exhaust [cost] (:cost/amount cost))
+;; exhaust any number of FORGED cards - this may target the source card (itself)
+(defmethod value :exhaust-forged [cost] (:cost/amount cost))
+(defmethod label :exhaust-forged [cost] (str "exhaust " (quantify (value cost) " forged card")))
+(defmethod payable? :exhaust-forged
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) rezzed?)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-forged
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "forged card") " to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (rezzed? %)
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " forged card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust-forged
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
 
-;; RfgProgram
 (defmethod value :exile-from-archives [cost] (:cost/amount cost))
 (defmethod label :exile-from-archives [cost]
   (str "exile " (quantify (value cost) "card") " from your Archives"))

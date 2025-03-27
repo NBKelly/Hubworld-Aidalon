@@ -4,16 +4,17 @@
    [clojure.string :as string]
    [game.core.actions :refer [score]]
    [game.core.board :refer [all-installed server->zone]]
-   [game.core.card :refer [agenda? can-be-advanced? corp? get-card
+   [game.core.card :refer [agenda? can-be-advanced? corp? get-card seeker?
                            has-subtype? ice? in-hand? installed? rezzed? runner? side-fn stageable?]]
    [game.core.change-vals :refer [change]]
    [game.core.drawing :refer [draw]]
+   [game.core.delving :refer [confront-card discover-card]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [resolve-ability trigger-event]]
    [game.core.flags :refer [is-scored?]]
    [game.core.identities :refer [disable-identity disable-card enable-card]]
    [game.core.initializing :refer [card-init deactivate make-card]]
-   [game.core.moving :refer [move swap-ice swap-installed trash]]
+   [game.core.moving :refer [move swap-installed trash]]
    [game.core.prompt-state :refer [remove-from-prompt-queue]]
    [game.core.prompts :refer [show-prompt show-stage-prompt]]
    [game.core.props :refer [set-prop]]
@@ -183,6 +184,26 @@
        :effect (effect (trash eid target {:unpreventable true}))}
       nil nil)))
 
+(defn command-discover
+  [state side]
+  (resolve-ability
+    state side
+    {:prompt "Choose a card to discover"
+     :choices {:card (complement seeker?)}
+     :async true
+     :effect (req (discover-card state side eid target))}
+    (make-card {:title "/discover command"}) nil))
+
+(defn command-confront
+  [state side]
+  (resolve-ability
+    state side
+    {:prompt "Choose a card to confront"
+     :choices {:card (every-pred installed? rezzed? (complement seeker?))}
+     :async true
+     :effect (req (confront-card state side eid target))}
+    (make-card {:title "/confront command"}) nil))
+
 (defn command-stage
   [state side]
   (let [f (side-fn side)]
@@ -297,7 +318,9 @@
             "/stage"      command-stage
             "/summon"     #(command-summon %1 %2 args)
             "/swap-sides" #(command-swap-sides %1 %2)
-            "/trash"      command-trash
+            "/trash"         command-trash
+            "/discover"      command-discover
+            "/confront"      command-confront
             "/undo-click" #(command-undo-click %1 %2)
             "/undo-turn"  #(command-undo-turn %1 %2)
             "/unique"     #(command-unique %1 %2)

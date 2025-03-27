@@ -234,6 +234,12 @@
    {:name "/trash"
     :usage "/trash"
     :help "Trash an installed card"}
+   {:name "/confront"
+    :usage "/confront"
+    :help "Confront a rezzed card"}
+   {:name "/discover"
+    :usage "/discover"
+    :help "Discover a card"}
    {:name "/undo-click"
     :usage "/undo-click"
     :help "Resets the game back to start of the click.  One click only retained. Only allowed for active player"}

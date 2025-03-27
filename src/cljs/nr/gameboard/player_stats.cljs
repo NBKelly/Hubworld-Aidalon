@@ -138,7 +138,7 @@
              [:div.icon-grid
               (ctrl :click  [:div click  " " [:span.anr-icon.click]])
               (ctrl :credit [:div credit " " [:span.anr-icon.credit]])
-              (ctrl :heat   [:div heat   " " [:span.anr-icon.heat] base additional])]
+              (ctrl :heat   [:div base (when (pos? additional) (str " + " additional))   " " [:span.anr-icon.heat]])]
              [:<>
               (ctrl :click  [:div (tr [:game.click-count] click)])
               (ctrl :credit [:div (tr [:game.credit-count] credit)])

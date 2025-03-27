@@ -283,7 +283,7 @@
      :option (fn [state remainder] (str "Allow " (quantify (count (get-in @state [:prevent :trash :remaining])) "card") " to be trashed"))}))
 
 (defn resolve-trash-prevention
-  [state side eid targets {:keys [unpreventable game-trash cause cause-card] :as args}]
+  [state side eid targets {:keys [unpreventable game-trash cause cause-card target-destination] :as args}]
   (let [untrashable (keep #(cond
                              (and (not game-trash)
                                   (untrashable-while-rezzed? %))
@@ -301,7 +301,7 @@
                     (vec (set/difference (set targets) (set (map first untrashable))))
                     (vec targets))
         untrashable (mapv (fn [[c reason]] {:card c :destination :discard :reason reason}) untrashable)
-        trashable   (mapv (fn [c] {:card c :destination :discard}) trashable)]
+        trashable   (mapv (fn [c] {:card c :destination (or target-destination :discard)}) trashable)]
     (doseq [{:keys [card reason]} untrashable]
       (when reason
         (enforce-msg state card reason)))

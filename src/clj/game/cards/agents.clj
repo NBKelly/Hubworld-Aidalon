@@ -1,13 +1,32 @@
 (ns game.cards.agents
   (:require
-   [clojure.set :as set]
+   [clojure.string :as str]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
-   [game.macros :refer [effect msg req wait-for]]))
+   [game.utils :refer [same-card?]]
+   [game.macros :refer [effect msg req wait-for]]
+   [jinteki.utils :refer [other-player-name]]))
+
+(defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
+  (collect
+    {:shards 1}
+    {:on-forge {:prompt "Choose a player"
+                :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                                        (same-card? target (get-in @state [:runner :identity]))))
+                          :all true}
+                :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+                            (str
+                              (when-not (= target-side side)
+                                (str "force " (other-player-name state side) " to "))
+                              "draw 3 cards")))
+                :async true
+                :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+                               (draw state target-side eid 3)))}
+     :cipher [(->c :lose-click 1)]}))
 
 (defcard "Doctor Twilight: Dream Surgeon"
   (collect
