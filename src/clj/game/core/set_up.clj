@@ -104,11 +104,11 @@
         runner-options (get-in runner [:options])
         corp-identity (build-card (or (get-in corp [:deck :identity])
                                       {:type "Seeker"
-                                       :title "Abnus Orzo"})
+                                       :title "Abnus Orzo: Tireless Investigator"})
                                   "Corp")
         runner-identity (build-card (or (get-in runner [:deck :identity])
                                         {:type "Seeker"
-                                         :title "Goldie Xin"})
+                                         :title "Goldie Xin: Tinkering Technician"})
                                     "Runner")
         corp-quote (quotes/make-quote corp-identity runner-identity)
         runner-quote (quotes/make-quote runner-identity corp-identity)

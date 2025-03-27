@@ -134,14 +134,11 @@
 (defn command-summon
   [state side args]
   (let [card-name (string/join " " args)]
-    (try
-      (let [s-card (server-card card-name)
-            card (when (and s-card (same-side? (:side s-card) side))
-                   (build-card s-card))]
-        (when card
-          (swap! state update-in [side :hand] #(concat % [(assoc card :zone [:hand])]))))
-      (catch Exception ex
-        (toast state side (str card-name " isn't a real card"))))))
+    (try (let [s-card (server-card card-name)
+               card (when s-card (build-card s-card (string/capitalize (name side))))]
+           (when card (swap! state update-in [side :hand] #(concat % [(assoc card :zone [:hand])]))))
+         (catch Exception ex
+           (toast state side (str card-name " isn't a real card"))))))
 
 (defn command-reload-id
   [state side]
@@ -149,7 +146,7 @@
         card-side (:side (get-in @state [side :identity]))]
     (try
       (let [s-card (server-card card-name)
-            card (when s-card (build-card s-card))]
+            card (when s-card (build-card s-card (string/capitalize (name side))))]
         (if card
           (let [new-id (-> card :title server-card make-card (assoc :zone [:identity] :type "Seeker" :side card-side))]
             (disable-identity state side)

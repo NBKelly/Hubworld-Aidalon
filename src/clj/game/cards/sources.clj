@@ -1,7 +1,7 @@
 (ns game.cards.sources
   (:require
    [clojure.string :as str]
-   [game.core.card :refer [get-card in-council-path? in-hand? moment? installed?]]
+   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed?]]
    [game.core.def-helpers :refer [collect defcard]]
    [game.core.drawing :refer [draw]]
    [game.core.gaining :refer [gain-credits lose]]
