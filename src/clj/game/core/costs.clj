@@ -1174,6 +1174,21 @@
                                                   :paid/value 1
                                                   :paid/targets [card]})))
 
+;; exhaust your seeker
+(defmethod value :exhaust-seeker [cost] (:cost/amount cost))
+(defmethod label :exhaust-seeker [cost] "Exhaust your Seeker")
+(defmethod payable? :exhaust-seeker
+  [cost state side eid card]
+  (not (get-in @state [side :identity :exhausted])))
+(defmethod handler :exhaust-seeker
+  [cost state side eid card]
+  (wait-for (exhaust state side (get-in @state [side :identity])
+                     {:unpreventable true :suppress-checkpoint true :no-msg true})
+            (complete-with-result state side eid {:paid/msg (str "exhausts " (get-in @state [side :identity :title]))
+                                                  :paid/type :exhaust-seeker
+                                                  :paid/value 1
+                                                  :paid/targets [(get-in @state [side :identity])]})))
+
 ;; exhaust any number of cards - this may target the source card (itself)
 (defmethod value :exhaust [cost] (:cost/amount cost))
 (defmethod label :exhaust [cost] (str "exhaust " (quantify (value cost) " cards")))

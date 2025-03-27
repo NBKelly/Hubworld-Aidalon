@@ -4,6 +4,7 @@
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
+   [game.core.exhausting :refer [unexhaust]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
@@ -36,6 +37,16 @@
                   :msg "gain 3 [Credits]"
                   :async true
                   :effect (req (gain-credits state side eid 3))}]}))
+
+(defcard "Gargala Larga: Imperator of Growth"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :exhaust-seeker)]
+     :abilities [{:cost [(->c :exhaust-self)]
+                  :label "Unexhaust your seeker"
+                  :req (req (get-in @state [side :identity :exhausted]))
+                  :msg (msg "ready " (get-in @state [side :identity :title]))
+                  :effect (req (unexhaust state side eid (get-in @state [side :identity]) {:no-msg true}))}]}))
 
 (defcard "Rory & Bug: “You Catch It, We Fetch It!”"
   (collect
