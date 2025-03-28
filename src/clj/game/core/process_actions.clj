@@ -11,7 +11,7 @@
    [game.core.change-vals :refer [change]]
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.commands :refer [parse-command]]
-   [game.core.delving :refer [continue-delve continue-delve-post-encounter end-the-delve!]]
+   [game.core.delving :refer [continue-delve continue-delve-post-encounter delve-discover-clicked delve-confront-clicked delve-bypass-clicked end-the-delve!]]
    [game.core.eid :refer [make-eid]]
    [game.core.exhausting :refer [exhaust unexhaust]]
    [game.core.moving :refer [trash]]
@@ -54,11 +54,15 @@
    "corp-ability" #'play-corp-ability
    "credit" #'click-credit
    "unforge" #(derez %1 %2 (:card %3))
-   "delve" #'click-delve
-   "delve-continue" (fn [state side _] (continue-delve state side (make-eid state)))
-   "delve-continue-post-encounter" (fn [state side _]
-                                     (continue-delve-post-encounter state side (make-eid state)))
-   "delve-end" (fn [state side _] (end-the-delve! state side (make-eid state) nil))
+
+   "delve"                             #'click-delve
+   "delve-continue"                   (fn [state side _] (continue-delve state side (make-eid state)))
+   "delve-continue-post-encounter"    (fn [state side _] (continue-delve-post-encounter state side (make-eid state)))
+   "delve-end"                        (fn [state side _] (end-the-delve! state side (make-eid state) nil))
+   "delve-discover"                   (fn [state side _] (delve-discover-clicked state side (make-eid state)))
+   "delve-bypass"                     (fn [state side _] (delve-bypass-clicked state side (make-eid state)))
+   "delve-confront"                   (fn [state side _] (delve-confront-clicked state side (make-eid state)))
+
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})

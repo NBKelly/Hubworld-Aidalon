@@ -1019,11 +1019,12 @@
                         "approach-slot" "approach"
                         "encounter" "encounter"
                         "post-encounter" "encounter"
-                        "approach-district" "approach"
+                        "approach-district" "approach-district"
                         "success" "success"
                         "breach" "breach"
                         "")
-                      " delve-" position
+                      (when-not (contains? #{"approach-district" "success" "breach"} phase)
+                        (str " delve-" position))
                       " delve-" server
                       (if me? " as-delver" " as-defender"))}]])
 
@@ -1601,7 +1602,7 @@
    "approach-slot" (tr [:game.approach-slot "Approach"])
    "encounter" (tr [:game.encounter "Encounter"])
    "post-encounter" (tr [:game.encounter-completion "Post-Encounter"])
-   "approach-district" (tr [:game.approach-district] "Approach District")
+   "approach-district" (tr [:game.approach-district "Approach District"])
    "success" (tr [:game.success "Success"])
    "breach" (tr [:game.success "Breach"])})
 
@@ -1614,25 +1615,28 @@
     "post-encounter" (if (= position :inner)
                        (tr [:game.approach-district] "Approach District")
                        (tr [:game.approach-slot "Approach"]))
-    "approach-district" (tr [:game.success "Success"])
+    "approach-district" (tr [:game.breach "Breach"])
     (tr [:game.unknown "(Unknown)"])))
 
 (defn delve-div-defender
   [delve side]
   (let [phase (:phase @delve)
         next-phase (:next-phase @delve)
-        approached-card (:approached-card @delve)]
+        approach (:approached-card @delve)]
     [:div.panel.blue-shade
-     (when @delve
+     (when (and @delve (not= phase "encounter"))
        [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get delve->phase-title phase)])
 
-     (when (and approached-card (= phase "approach-slot"))
-       [cond-button
-        (str (tr [:game.forge "Forge"]) " " (get-title approached-card))
-        (and approached-card (not (rezzed? approached-card)))
-        #(send-command "forge" {:card approached-card})])
+     (when (and @delve (= phase "encounter"))
+       [:h4 (tr [:game.encounter-start "Your opponent is encountering"]) ":" [:br] (if approach (:title approach) "(unknown)")])
 
-     (when (not= phase "post-encounter")
+     (when (and approach (= phase "approach-slot"))
+       [cond-button
+        (str (tr [:game.forge "Forge"]) " " (get-title approach))
+        (and approach (not (rezzed? approach)))
+        #(send-command "forge" {:card approach})])
+
+     (when-not (contains? #{"post-encounter" "encounter"} phase)
        [cond-button
         (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
         (not (get-in @delve [:no-action side]))
@@ -1641,13 +1645,17 @@
 (defn delve-div-attacker
   [delve side]
   (let [phase (:phase @delve)
-        next-phase (:next-phase @delve)]
+        next-phase (:next-phase @delve)
+        approach (:approached-card @delve)]
     [:div.panel.blue-shade
-     (when @delve
+     (when (and @delve (not= phase "encounter"))
        [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get delve->phase-title phase)])
 
+     (when (and @delve (= phase "encounter"))
+       [:h4 (tr [:game.encounter-start "You are encountering"]) ":" [:br] (if (rezzed? approach) (:title approach) "a facedown card")])
+
      ;; there's one where we can jack out - that's only post-encounter (after passing a slot)
-     (when (not= phase "post-encounter")
+     (when-not (contains? #{"post-encounter" "encounter"} phase)
        [cond-button
         (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
         (not (get-in @delve [:no-action side]))
@@ -1659,10 +1667,32 @@
         true
         #(send-command "delve-continue-post-encounter")])
 
-     [cond-button
-      (tr [:game.end-delve "End the Delve"])
-      (= phase "post-encounter") ;; TODO - not "cannot-end-delve"
-      #(send-command "delve-end")]]))
+     (when-not (contains? #{"encounter"} phase)
+       [cond-button
+        (tr [:game.end-delve "End the Delve"])
+        (= phase "post-encounter") ;; TODO - not "cannot-end-delve"
+        #(send-command "delve-end")])
+
+     ;; when during an encounter, there are buttons for the options
+     (when (and (= phase "encounter") (rezzed? approach))
+       [cond-button
+        (tr [:game.confront "Confront"])
+        (rezzed? approach)
+        #(send-command "delve-confront")])
+
+     (when (and (= phase "encounter") (not (rezzed? approach)))
+       [cond-button
+        (tr [:game.discover "Discover"])
+        (not (rezzed? approach))
+        #(send-command "delve-discover")])
+
+     (when (= phase "encounter")
+       [cond-button
+        (tr [:game.bypass "Bypass"])
+        true
+        #(send-command "delve-bypass")])
+     ]))
+
 
        ;; and the other one is just "continue" on both sides
 

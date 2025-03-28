@@ -1,6 +1,7 @@
 (ns game.cards.agents
   (:require
    [clojure.string :as str]
+   [game.core.card :refer [in-hand?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
@@ -8,7 +9,8 @@
    [game.core.gaining :refer [gain-credits]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
-   [game.utils :refer [same-card?]]
+   [game.core.staging :refer [stage-a-card]]
+   [game.utils :refer [same-card? to-keyword]]
    [game.macros :refer [effect msg req wait-for]]
    [jinteki.utils :refer [other-player-name]]))
 
@@ -47,6 +49,21 @@
                   :req (req (get-in @state [side :identity :exhausted]))
                   :msg (msg "ready " (get-in @state [side :identity :title]))
                   :effect (req (unexhaust state side eid (get-in @state [side :identity]) {:no-msg true}))}]}))
+
+(defcard "Kryzar the Rat: Navigator of the Cortex Maze"
+  (collect
+    {:credits 1}
+    {:events [{:event :approach-district
+               :skippable true
+               :interactive (req true)
+               :req (req (and (can-pay? state side eid card nil [(->c :exhaust-self)])
+                              (seq (get-in @state [(:delver context) :hand]))
+                              (= side (:delver context))))
+               :prompt "Stage a card?"
+               :waiting-prompt true
+               :choices {:req (req (in-hand? target))}
+               :async true
+               :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}]}))
 
 (defcard "Rory & Bug: “You Catch It, We Fetch It!”"
   (collect

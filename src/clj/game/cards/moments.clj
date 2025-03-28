@@ -1,10 +1,10 @@
 (ns game.cards.moments
   (:require
    [clojure.string :as str]
+   [game.core.breaching :refer [discover-card]]
    [game.core.card :refer [get-card
                            rezzed?]]
    [game.core.def-helpers :refer [defcard]]
-   [game.core.delving :refer [discover-card]]
    [game.core.drawing :refer [draw]]
    [game.core.gaining :refer [gain-credits lose]]
    [game.core.moving :refer [mill]]

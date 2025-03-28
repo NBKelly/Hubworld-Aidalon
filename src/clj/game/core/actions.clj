@@ -70,7 +70,7 @@
             (trigger-event-simult state side :action-played nil {:ability-idx ability-idx :card stripped-card :player side})
             (wait-for
               (resolve-ability state side ability card targets)
-              (swap! state update :active-player other-side)
+              (when-not (:delve @state) (swap! state update :active-player other-side))
               (trigger-event-simult state side eid :action-resolved nil {:ability-idx ability-idx :card stripped-card :player side}))))
         (resolve-ability state side eid ability card targets)))))
 

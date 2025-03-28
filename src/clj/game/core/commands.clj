@@ -4,11 +4,12 @@
    [clojure.string :as string]
    [game.core.actions :refer [score]]
    [game.core.board :refer [all-installed server->zone]]
+   [game.core.breaching :refer [discover-card]]
    [game.core.card :refer [agenda? can-be-advanced? corp? get-card seeker?
                            has-subtype? ice? in-hand? installed? rezzed? runner? side-fn stageable?]]
    [game.core.change-vals :refer [change]]
    [game.core.drawing :refer [draw]]
-   [game.core.delving :refer [confront-card discover-card]]
+   [game.core.delving :refer [confront-card]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [resolve-ability trigger-event]]
    [game.core.flags :refer [is-scored?]]

@@ -11,6 +11,7 @@
    [game.core.exhausting :refer [exhaust]]
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
+   [game.core.heat :refer [gain-heat]]
    [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
@@ -1301,3 +1302,16 @@
                      :paid/value (value cost)
                      :paid/targets targets}))}
     card nil))
+
+;; Gain heat
+(defmethod value :gain-heat [cost] (:cost/amount cost))
+(defmethod label :gain-heat [cost] (str "gain " (value cost) " [heat]"))
+(defmethod payable? :gain-heat
+  [_ _ _ _ _] ;; probably fine
+  true)
+(defmethod handler :gain-heat
+  [cost state side eid card]
+  (wait-for (gain-heat state side (value cost) {:suppress-checkpoint true})
+            (complete-with-result state side eid {:paid/msg (str "gains " (value cost) " [heat]")
+                                                  :paid/type :gain-heat
+                                                  :paid/value (value cost)})))

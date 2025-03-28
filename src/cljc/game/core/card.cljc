@@ -270,37 +270,37 @@
 
 (defn in-front-row?
   [card]
-  (= (nth (get-zone card) 2)
+  (= (nth (get-zone card) 2 nil)
      #?(:clj :outer
         :cljs "outer")))
 
 (defn in-middle-row?
   [card]
-  (= (nth (get-zone card) 2)
+  (= (nth (get-zone card) 2 nil)
      #?(:clj :middle
         :cljs "middle")))
 
 (defn in-back-row?
   [card]
-  (= (nth (get-zone card) 2)
+  (= (nth (get-zone card) 2 nil)
      #?(:clj :inner
         :cljs "inner")))
 
 (defn in-council-path?
   [card]
-  (= (nth (get-zone card) 1)
+  (= (nth (get-zone card) 1 nil)
      #?(:clj :council
         :cljs "council")))
 
 (defn in-commons-path?
   [card]
-  (= (nth (get-zone card) 1)
+  (= (nth (get-zone card) 1 nil)
      #?(:clj :commons
         :cljs "commons")))
 
 (defn in-archives-path?
   [card]
-  (= (nth (get-zone card) 1)
+  (= (nth (get-zone card) 1 nil)
      #?(:clj :archives
         :cljs "archives")))
 

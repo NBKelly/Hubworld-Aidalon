@@ -5,7 +5,7 @@
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.gaining :refer [gain]]
-   [game.core.payment :refer [->c]]
+   [game.core.payment :refer [->c can-pay?]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.def-helpers :refer [collect]]
    [game.macros :refer [effect msg req wait-for]]
@@ -35,3 +35,18 @@
                   :req (req (< (get-in @state [side :heat :total])
                                (get-in @state [(other-side side) :heat :total])))
                   :effect (req (gain-credits state side eid 3))}]}))
+
+(defcard "Jayko & Ace: Boisterous Troublemakers"
+  (collect
+    {:cards 1}
+    {:events [{:event :approach-district
+               :interactive (req true)
+               :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self) (->c :gain-heat 1)])
+                                         (= side (:delver context))))
+                          :prompt "Gain 2 [Credits] and draw 1 card"
+                          :waiting-prompt true
+                          :yes-ability {:async true
+                                        :cost [(->c :exhaust-self) (->c :gain-heat 1)]
+                                        :msg "gain 2 [Credits] and draw 1 card"
+                                        :effect (req (wait-for (gain-credits state side 2 {:suppress-checkpoint true})
+                                                               (draw state side eid 1)))}}}]}))
