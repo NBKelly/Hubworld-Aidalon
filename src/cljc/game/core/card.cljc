@@ -404,6 +404,10 @@
   [card]
   (:rezzed card))
 
+(defn exhausted?
+  [card]
+  (:exhausted card))
+
 (defn faceup?
   [card]
   (or (:seen card)

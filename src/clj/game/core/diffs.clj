@@ -6,6 +6,7 @@
    [game.core.card :refer :all]
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [card-ability-cost]]
+   [game.core.delving :refer [card-for-current-slot]]
    [game.core.engine :refer [can-trigger?]]
    [game.core.effects :refer [any-effects is-disabled-reg?]]
    [game.core.installing :refer [corp-can-pay-and-install?
@@ -22,6 +23,7 @@
     (if (and ((if (= :corp side) corp? runner?) card)
              (in-hand? card)
              (= side (:active-player @state))
+             (not (:delve @state))
              (cond
                (and (or (obstacle? card)
                         (agent? card)
@@ -380,7 +382,8 @@
       (select-non-nil-keys user-keys)))
 
 (def delve-keys
-  [:delve-id
+  [:approached-card
+   :delve-id
    :server
    :delver
    :defender
@@ -407,6 +410,7 @@
     (-> delve
         ;; todo - if we ever need this, then we have to side correct it
         (assoc :cannot-end-delve (any-effects state (:delver delve) :cannot-end-delve true?))
+        (assoc :approached-card (card-for-current-slot state))
         (select-non-nil-keys delve-keys))))
 
 (defn run-summary

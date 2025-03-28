@@ -11,12 +11,11 @@
    [game.core.change-vals :refer [change]]
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.commands :refer [parse-command]]
+   [game.core.delving :refer [continue-delve continue-delve-post-encounter end-the-delve!]]
    [game.core.eid :refer [make-eid]]
    [game.core.exhausting :refer [exhaust unexhaust]]
    [game.core.moving :refer [trash]]
    [game.core.rezzing :refer [derez rez]]
-   [game.core.runs :refer [check-for-empty-server continue handle-end-run
-                           jack-out start-next-phase toggle-auto-no-action]]
    [game.core.say :refer [indicate-action say system-msg system-say]]
    [game.core.set-up :refer [keep-hand mulligan]]
    [game.core.shuffling :refer [shuffle-deck]]
@@ -26,12 +25,7 @@
 
 (defn checkpoint+clean-up
   [state]
-  (fake-checkpoint state)
-  ;; End the run if running an empty remote
-  (when (or (check-for-empty-server state)
-            (:ended (:end-run @state)))
-    (handle-end-run state :corp nil)
-    (fake-checkpoint state)))
+  (fake-checkpoint state))
 
 (defn set-property
   "set properties of the game state that need to be adjustable by the frontend
@@ -57,20 +51,21 @@
    "choice" #'resolve-prompt
    "close-deck" #'close-deck
    "concede" #'concede
-   "continue" #'continue
    "corp-ability" #'play-corp-ability
    "credit" #'click-credit
    "unforge" #(derez %1 %2 (:card %3))
    "delve" #'click-delve
+   "delve-continue" (fn [state side _] (continue-delve state side (make-eid state)))
+   "delve-continue-post-encounter" (fn [state side _]
+                                     (continue-delve-post-encounter state side (make-eid state)))
+   "delve-end" (fn [state side _] (end-the-delve! state side (make-eid state) nil))
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
-   "start-next-phase" #'start-next-phase
    "end-turn" #'hubworld-refresh-phase
    "generate-install-list" #'generate-install-list
    "generate-runnable-zones" #'generate-runnable-zones
    "indicate-action" #'indicate-action
-   "jack-out" #'jack-out
    "keep" #'keep-hand
    "move" #'move-card
    "mulligan" #'mulligan
@@ -93,7 +88,7 @@
    "subroutine" #'play-subroutine
    "system-msg" #(system-msg %1 %2 (:msg %3))
    "toast" #'ack-toast
-   "toggle-auto-no-action" #'toggle-auto-no-action
+   ;; "toggle-auto-no-action" #'toggle-auto-no-action - todo - this is fine
    "trash" #(trash %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
    "trash-resource" #'trash-resource
    "unexhaust" #(unexhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})

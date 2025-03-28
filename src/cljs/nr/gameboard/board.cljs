@@ -1434,181 +1434,294 @@
                    (<= pos (count run-ice)))
           (nth run-ice (dec pos))))))
 
+;; (def phase->title
+;;   {"initiation" (tr [:game.initiation "Initiation"])
+;;    "approach-ice" (tr [:game.approach-ice "Approach ice"])
+;;    "encounter-ice" (tr [:game.encounter-ice "Encounter ice"])
+;;    "movement" (tr [:game.movement "Movement"])
+;;    "success" (tr [:game.success "Success"])})
+
+;; (defn phase->next-phase-title
+;;   ([run] (phase->next-phase-title (:phase @run) (:position @run)))
+;;   ([phase position]
+;;    (case phase
+;;      "initiation" (tr [:game.approach-ice "Approach ice"])
+;;      "approach-ice" (if (rezzed? (get-current-ice))
+;;                       (tr [:game.encounter-ice "Encounter ice"])
+;;                       (tr [:game.movement "Movement"]))
+;;      "encounter-ice" (tr [:game.movement "Movement"])
+;;      "movement" (if (zero? position)
+;;                   (tr [:game.success "Success"])
+;;                   (tr [:game.approach-ice "Approach ice"]))
+;;      "success" (tr [:game.run-ends "Run ends"])
+;;      ;; Error
+;;      (tr [:game.no-current-run "No current run"]))))
+
+;; (defn corp-run-div
+;;   [run encounters]
+;;   (let [ice (get-current-ice)]
+;;     [:div.panel.blue-shade
+;;      (when (and @encounters
+;;                 ice)
+;;        [:<>
+;;         [:div {:style {:text-align "center"}
+;;                :on-mouse-over #(card-highlight-mouse-over % ice button-channel)
+;;                :on-mouse-out #(card-highlight-mouse-out % ice button-channel)}
+;;          (tr [:game.encounter-ice "Encounter ice"]) ": " (render-message (get-title ice))]
+;;         [:hr]
+;;         (when (or (:button @app-state) (get-in @app-state [:options :display-encounter-info]))
+;;           [encounter-info-div ice])])
+;;      (when @run
+;;        [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get phase->title (:phase @run) (tr [:game.unknown-phase "Unknown phase"]))])
+
+;;      (cond
+;;        (and (= "approach-ice" (:phase @run))
+;;             ice)
+;;        [cond-button
+;;         (str (tr [:game.rez "Rez"]) " " (get-title ice))
+;;         (not (rezzed? ice))
+;;         #(send-command "rez" {:card ice
+;;                               :press-continue (get-in @app-state [:options :pass-on-rez])})]
+
+;;        (or (= "encounter-ice" (:phase @run))
+;;            @encounters)
+;;        [cond-button
+;;         (tr [:game.fire-unbroken "Fire unbroken subroutines"])
+;;         (and (seq (:subroutines ice))
+;;              (some #(and (not (:broken %))
+;;                          (not (:fired %))
+;;                          (:resolve % true))
+;;                    (:subroutines ice)))
+;;         #(send-command "unbroken-subroutines" {:card ice})])
+
+;;      (if @encounters
+;;        ;;Encounter continue button
+;;        (let [pass-ice? (and (= "encounter-ice" (:phase @run))
+;;                             (= 1 (:encounter-count @encounters)))]
+;;          [cond-button
+;;           (if pass-ice?
+;;             (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
+;;             (tr [:game.continue "Continue"]))
+;;           (not= "corp" (:no-action @encounters))
+;;           #(send-command "continue")])
+;;        ;;Non-encounter continue button
+;;        [cond-button
+;;         (if (or (:next-phase @run)
+;;                 (zero? (:position @run)))
+;;           (tr [:game.no-further "No further actions"])
+;;           (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run)))
+;;         (and (not= "initiation" (:phase @run))
+;;              (not= "success" (:phase @run))
+;;              (not= "corp" (:no-action @run)))
+;;         #(send-command "continue")])
+
+;;      (when (and @run
+;;                 (<= (:encounter-count @encounters) 1)
+;;                 (not= "success" (:phase @run)))
+;;        [checkbox-button
+;;         (tr [:game.stop-auto-pass "Stop auto-passing priority"])
+;;         (tr [:game.auto-pass "Auto-pass priority"])
+;;         (:corp-auto-no-action @run)
+;;         #(send-command "toggle-auto-no-action")])]))
+
+;; (defn runner-run-div
+;;   [run encounters]
+;;   (let [phase (:phase @run)
+;;         next-phase (:next-phase @run)
+;;         ice (get-current-ice)
+;;         pass-ice? (and (= "encounter-ice" phase)
+;;                        (= 1 (:encounter-count @encounters)))]
+;;     [:div.panel.blue-shade
+;;      (when (and @encounters
+;;                 ice)
+;;        [:<>
+;;         [:div {:style {:text-align "center"}
+;;                :on-mouse-over #(card-highlight-mouse-over % ice button-channel)
+;;                :on-mouse-out #(card-highlight-mouse-out % ice button-channel)}
+;;          (tr [:game.encounter-ice "Encounter ice"]) ": " (render-message (get-title ice))]
+;;         [:hr]
+;;         (when (or (:button @app-state)  (get-in @app-state [:options :display-encounter-info]))
+;;           [encounter-info-div ice])])
+;;      (when @run
+;;        [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get phase->title phase)])
+
+;;      (cond
+;;        (:next-phase @run)
+;;        [cond-button
+;;         (phase->title next-phase)
+;;         (and next-phase
+;;              (not (:no-action @run)))
+;;         #(send-command "start-next-phase")]
+
+;;        (and (not next-phase)
+;;             (not (zero? (:position @run)))
+;;             (not @encounters))
+;;        [cond-button
+;;         (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
+;;         (not= "runner" (:no-action @run))
+;;         #(send-command "continue")]
+
+;;        (and (zero? (:position @run))
+;;             (not @encounters)
+;;             (= "movement" phase))
+;;        [cond-button (tr [:game.breach-server "Breach server"])
+;;         (not= "runner" (:no-action @run))
+;;         #(send-command "continue")])
+
+;;      (when @encounters
+;;        [cond-button
+;;         (tr [:game.let-subs-fire "Let unbroken subroutines fire"])
+;;         (and (seq (:subroutines ice))
+;;              (some #(and (not (:broken %))
+;;                          (not (:fired %))
+;;                          (:resolve % true))
+;;                    (:subroutines ice)))
+;;         #(send-command "system-msg"
+;;                        {:msg (str "indicates to fire all unbroken subroutines on " (get-title ice))})])
+
+;;      (when @encounters
+;;        [cond-button
+;;         (if pass-ice?
+;;           (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
+;;           (tr [:game.continue "Continue"]))
+;;         (not= "runner" (:no-action @encounters))
+;;         #(send-command "continue")])
+
+;;      (when (and @run
+;;                 (not= "success" phase))
+;;        [cond-button
+;;         (tr [:game.jack-out "Jack Out"])
+;;         (and (= "movement" phase)
+;;              (not (:cannot-jack-out @run))
+;;              (not= "runner" (:no-action @run)))
+;;         #(send-command "jack-out")])]))
+
 (def delve->phase-title
   {"initiation" (tr [:game.initiation "Initiation"])
    "approach-slot" (tr [:game.approach-slot "Approach"])
-   "encounter" (str [:game.encounter "Encounter"])
-   "post-encounter" (str [:game.encounter-completion "Post-Encounter"])
-   "approach-district" (str [:game.approach-district] "Approach District")
-   "success" (tr [:game.success "Success"])})
+   "encounter" (tr [:game.encounter "Encounter"])
+   "post-encounter" (tr [:game.encounter-completion "Post-Encounter"])
+   "approach-district" (tr [:game.approach-district] "Approach District")
+   "success" (tr [:game.success "Success"])
+   "breach" (tr [:game.success "Breach"])})
 
-(def phase->title
-  {"initiation" (tr [:game.initiation "Initiation"])
-   "approach-ice" (tr [:game.approach-ice "Approach ice"])
-   "encounter-ice" (tr [:game.encounter-ice "Encounter ice"])
-   "movement" (tr [:game.movement "Movement"])
-   "success" (tr [:game.success "Success"])})
+(defn delve->next-phase-title
+  [phase position]
+  (case phase
+    "initiation" (tr [:game.approach-slot "Approach"])
+    "approach-slot" (tr [:game.encounter "Encounter"])
+    "encounter" (tr [:game.encounter-completion "Post-Encounter"])
+    "post-encounter" (if (= position :inner)
+                       (tr [:game.approach-district] "Approach District")
+                       (tr [:game.approach-slot "Approach"]))
+    "approach-district" (tr [:game.success "Success"])
+    (tr [:game.unknown "(Unknown)"])))
 
-(defn phase->next-phase-title
-  ([run] (phase->next-phase-title (:phase @run) (:position @run)))
-  ([phase position]
-   (case phase
-     "initiation" (tr [:game.approach-ice "Approach ice"])
-     "approach-ice" (if (rezzed? (get-current-ice))
-                      (tr [:game.encounter-ice "Encounter ice"])
-                      (tr [:game.movement "Movement"]))
-     "encounter-ice" (tr [:game.movement "Movement"])
-     "movement" (if (zero? position)
-                  (tr [:game.success "Success"])
-                  (tr [:game.approach-ice "Approach ice"]))
-     "success" (tr [:game.run-ends "Run ends"])
-     ;; Error
-     (tr [:game.no-current-run "No current run"]))))
-
-(defn corp-run-div
-  [run encounters]
-  (let [ice (get-current-ice)]
+(defn delve-div-defender
+  [delve side]
+  (let [phase (:phase @delve)
+        next-phase (:next-phase @delve)
+        approached-card (:approached-card @delve)]
     [:div.panel.blue-shade
-     (when (and @encounters
-                ice)
-       [:<>
-        [:div {:style {:text-align "center"}
-               :on-mouse-over #(card-highlight-mouse-over % ice button-channel)
-               :on-mouse-out #(card-highlight-mouse-out % ice button-channel)}
-         (tr [:game.encounter-ice "Encounter ice"]) ": " (render-message (get-title ice))]
-        [:hr]
-        (when (or (:button @app-state) (get-in @app-state [:options :display-encounter-info]))
-          [encounter-info-div ice])])
-     (when @run
-       [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get phase->title (:phase @run) (tr [:game.unknown-phase "Unknown phase"]))])
+     (when @delve
+       [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get delve->phase-title phase)])
 
-     (cond
-       (and (= "approach-ice" (:phase @run))
-            ice)
+     (when (and approached-card (= phase "approach-slot"))
        [cond-button
-        (str (tr [:game.rez "Rez"]) " " (get-title ice))
-        (not (rezzed? ice))
-        #(send-command "rez" {:card ice
-                              :press-continue (get-in @app-state [:options :pass-on-rez])})]
+        (str (tr [:game.forge "Forge"]) " " (get-title approached-card))
+        (and approached-card (not (rezzed? approached-card)))
+        #(send-command "forge" {:card approached-card})])
 
-       (or (= "encounter-ice" (:phase @run))
-           @encounters)
+     (when (not= phase "post-encounter")
        [cond-button
-        (tr [:game.fire-unbroken "Fire unbroken subroutines"])
-        (and (seq (:subroutines ice))
-             (some #(and (not (:broken %))
-                         (not (:fired %))
-                         (:resolve % true))
-                   (:subroutines ice)))
-        #(send-command "unbroken-subroutines" {:card ice})])
+        (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
+        (not (get-in @delve [:no-action side]))
+        #(send-command "delve-continue")])]))
 
-     (if @encounters
-       ;;Encounter continue button
-       (let [pass-ice? (and (= "encounter-ice" (:phase @run))
-                            (= 1 (:encounter-count @encounters)))]
-         [cond-button
-          (if pass-ice?
-            (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
-            (tr [:game.continue "Continue"]))
-          (not= "corp" (:no-action @encounters))
-          #(send-command "continue")])
-       ;;Non-encounter continue button
-       [cond-button
-        (if (or (:next-phase @run)
-                (zero? (:position @run)))
-          (tr [:game.no-further "No further actions"])
-          (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run)))
-        (and (not= "initiation" (:phase @run))
-             (not= "success" (:phase @run))
-             (not= "corp" (:no-action @run)))
-        #(send-command "continue")])
-
-     (when (and @run
-                (<= (:encounter-count @encounters) 1)
-                (not= "success" (:phase @run)))
-       [checkbox-button
-        (tr [:game.stop-auto-pass "Stop auto-passing priority"])
-        (tr [:game.auto-pass "Auto-pass priority"])
-        (:corp-auto-no-action @run)
-        #(send-command "toggle-auto-no-action")])]))
-
-(defn runner-run-div
-  [run encounters]
-  (let [phase (:phase @run)
-        next-phase (:next-phase @run)
-        ice (get-current-ice)
-        pass-ice? (and (= "encounter-ice" phase)
-                       (= 1 (:encounter-count @encounters)))]
+(defn delve-div-attacker
+  [delve side]
+  (let [phase (:phase @delve)
+        next-phase (:next-phase @delve)]
     [:div.panel.blue-shade
-     (when (and @encounters
-                ice)
-       [:<>
-        [:div {:style {:text-align "center"}
-               :on-mouse-over #(card-highlight-mouse-over % ice button-channel)
-               :on-mouse-out #(card-highlight-mouse-out % ice button-channel)}
-         (tr [:game.encounter-ice "Encounter ice"]) ": " (render-message (get-title ice))]
-        [:hr]
-        (when (or (:button @app-state)  (get-in @app-state [:options :display-encounter-info]))
-          [encounter-info-div ice])])
-     (when @run
-       [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get phase->title phase)])
+     (when @delve
+       [:h4 (tr [:game.current-phase "Current phase"]) ":" [:br] (get delve->phase-title phase)])
 
-     (cond
-       (:next-phase @run)
+     ;; there's one where we can jack out - that's only post-encounter (after passing a slot)
+     (when (not= phase "post-encounter")
        [cond-button
-        (phase->title next-phase)
-        (and next-phase
-             (not (:no-action @run)))
-        #(send-command "start-next-phase")]
+        (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
+        (not (get-in @delve [:no-action side]))
+        #(send-command "delve-continue")])
 
-       (and (not next-phase)
-            (not (zero? (:position @run)))
-            (not @encounters))
+     (when (= phase "post-encounter")
        [cond-button
-        (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
-        (not= "runner" (:no-action @run))
-        #(send-command "continue")]
+        (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
+        true
+        #(send-command "delve-continue-post-encounter")])
 
-       (and (zero? (:position @run))
-            (not @encounters)
-            (= "movement" phase))
-       [cond-button (tr [:game.breach-server "Breach server"])
-        (not= "runner" (:no-action @run))
-        #(send-command "continue")])
+     [cond-button
+      (tr [:game.end-delve "End the Delve"])
+      (= phase "post-encounter") ;; TODO - not "cannot-end-delve"
+      #(send-command "delve-end")]]))
 
-     (when @encounters
-       [cond-button
-        (tr [:game.let-subs-fire "Let unbroken subroutines fire"])
-        (and (seq (:subroutines ice))
-             (some #(and (not (:broken %))
-                         (not (:fired %))
-                         (:resolve % true))
-                   (:subroutines ice)))
-        #(send-command "system-msg"
-                       {:msg (str "indicates to fire all unbroken subroutines on " (get-title ice))})])
+       ;; and the other one is just "continue" on both sides
 
-     (when @encounters
-       [cond-button
-        (if pass-ice?
-          (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
-          (tr [:game.continue "Continue"]))
-        (not= "runner" (:no-action @encounters))
-        #(send-command "continue")])
+     ;; (cond
+     ;;   (:next-phase @run)
+     ;;   [cond-button
+     ;;    (phase->title next-phase)
+     ;;    (and next-phase
+     ;;         (not (:no-action @run)))
+     ;;    #(send-command "start-next-phase")]
 
-     (when (and @run
-                (not= "success" phase))
-       [cond-button
-        (tr [:game.jack-out "Jack Out"])
-        (and (= "movement" phase)
-             (not (:cannot-jack-out @run))
-             (not= "runner" (:no-action @run)))
-        #(send-command "jack-out")])]))
+     ;;   (and (not next-phase)
+     ;;        (not (zero? (:position @run)))
+     ;;        (not @encounters))
+     ;;   [cond-button
+     ;;    (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
+     ;;    (not= "runner" (:no-action @run))
+     ;;    #(send-command "continue")]
 
-(defn run-div
-  [side run encounters]
-  (if (= side :corp)
-    [corp-run-div run encounters]
-    [runner-run-div run encounters]))
+     ;;   (and (zero? (:position @run))
+     ;;        (not @encounters)
+     ;;        (= "movement" phase))
+     ;;   [cond-button (tr [:game.breach-server "Breach server"])
+     ;;    (not= "runner" (:no-action @run))
+     ;;    #(send-command "continue")])
+
+     ;; (when @encounters
+     ;;   [cond-button
+     ;;    (tr [:game.let-subs-fire "Let unbroken subroutines fire"])
+     ;;    (and (seq (:subroutines ice))
+     ;;         (some #(and (not (:broken %))
+     ;;                     (not (:fired %))
+     ;;                     (:resolve % true))
+     ;;               (:subroutines ice)))
+     ;;    #(send-command "system-msg"
+     ;;                   {:msg (str "indicates to fire all unbroken subroutines on " (get-title ice))})])
+
+     ;; (when @encounters
+     ;;   [cond-button
+     ;;    (if pass-ice?
+     ;;      (str (tr [:game.continue-to "Continue to"]) " " (phase->next-phase-title run))
+     ;;      (tr [:game.continue "Continue"]))
+     ;;    (not= "runner" (:no-action @encounters))
+     ;;    #(send-command "continue")])
+
+     ;; (when (and @run
+     ;;            (not= "success" phase))
+     ;;   [cond-button
+     ;;    (tr [:game.jack-out "Jack Out"])
+     ;;    (and (= "movement" phase)
+     ;;         (not (:cannot-jack-out @run))
+     ;;         (not= "runner" (:no-action @run)))
+     ;;    #(send-command "jack-out")])]))
+
+(defn delve-div
+  [side delve]
+  (if (= (name side) (:delver @delve))
+    [delve-div-attacker delve side]
+    [delve-div-defender delve side]))
 
 (defn trace-div
   [{:keys [base strength player link bonus choices corp-credits runner-credits unbeatable beat-trace] :as prompt-state}]
@@ -1835,17 +1948,17 @@
            (-> "#card-title" js/$ .focus)))
 
        :reagent-render
-       (fn [{:keys [side run encounters prompt-state me opponent delve] :as button-pane-args}]
+       (fn [{:keys [side run encounters prompt-state me opponent] :as button-pane-args}]
          [:div.button-pane {:on-mouse-over #(card-preview-mouse-over % zoom-channel)
                             :on-mouse-out  #(card-preview-mouse-out % zoom-channel)}
-          (cond
-            (and @prompt-state (not= "delve" (get-in @prompt-state [:prompt-type])))
-            [prompt-div me @prompt-state]
-            (or @run
-                @encounters)
-            [run-div side run encounters]
-            :else
-            [basic-actions button-pane-args])])})))
+          (let [delve (r/cursor game-state [:delve])]
+            (cond
+              (and @prompt-state (not= "delve" (get-in @prompt-state [:prompt-type])))
+              [prompt-div me @prompt-state]
+              ;; if it's a delve, show the delve shit
+              @delve [delve-div side delve]
+            ;; otherwise just show basic shit
+              :else [basic-actions button-pane-args]))])})))
 
 (defn- time-until
   "Helper method for timer. Computes how much time is left until `end`"
@@ -2165,8 +2278,6 @@
                  op-agenda-point (r/cursor game-state [op-side :agenda-point])
                  me-agenda-point-req (r/cursor game-state [me-side :agenda-point-req])
                  op-agenda-point-req (r/cursor game-state [op-side :agenda-point-req])
-                 ;; delve state
-                 delve (r/cursor game-state [:delve])
                  ;; servers
                  corp-servers (r/cursor game-state [:corp :servers])
                  runner-rig (r/cursor game-state [:runner :rig])
@@ -2251,8 +2362,7 @@
                     [button-pane {:side me-side :active-player active-player :run run :encounters encounters
                                   :end-turn end-turn :runner-phase-12 runner-phase-12
                                   :corp-phase-12 corp-phase-12 :corp corp :runner runner
-                                  :me me :opponent opponent :prompt-state prompt-state
-                                  :delve delve}])]]
+                                  :me me :opponent opponent :prompt-state prompt-state}])]]
 
                 [:div.me
                  [hand-view me-side me-hand me-hand-size me-hand-count prompt-state true]]]]

@@ -1,7 +1,7 @@
 (ns game.core.delving
   (:require
    [game.core.card :refer [agent? moment?
-                           rezzed? in-discard?
+                           exhausted? rezzed? in-discard?
                            get-card]]
    [game.core.card-defs :refer [card-def]]
    [game.core.choose-one :refer [choose-one-helper]]
@@ -17,7 +17,7 @@
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
    [game.core.update :refer [update!]]
-   [game.macros :refer [req wait-for]]
+   [game.macros :refer [continue-ability req wait-for]]
    [game.utils :refer [to-keyword dissoc-in same-card?]]
    [jinteki.utils :refer [other-side other-player-name]]
    [clojure.string :as str]))
@@ -44,6 +44,14 @@
       (register-pending-event state :agent-secured c on-secured))
     (queue-event state :on-secured {:card c})
     (checkpoint state nil eid {:duration :agent-secured})))
+
+(defn end-the-delve
+  [state side success?]
+  (when (and (:delve @state) (not (get-in @state [:delve :ended])))
+    (swap! state assoc-in [:delve :ended] true)
+    (if success?
+      (play-sfx state side "run-successful")
+      (play-sfx state side "run-unsuccessful"))))
 
 ;; DISCOVERY - facedown installed cards, and cards in centrals, can be discovered
 ;;             go through all the discover abilities top->bottom, then the player may dispatch the card
@@ -170,13 +178,15 @@
       (let [barrier-cost (max 0 (get-barrier confronted-card))]
         (if (pos? barrier-cost)
           (resolve-ability
-            state side
+            state side eid
             {:optional {:prompt (str "Pay " barrier-cost " [Credits] to break the barrier of " (:title confronted-card) "?")
+                        :waiting-prompt "Your opponent to pay barrier costs"
                         :yes-ability {:cost [(->c :credit barrier-cost)]
                                       :async true
                                       :effect (req (system-msg state side (str (:latest-payment-str eid) " to break the barrier on " (:title confronted-card)))
                                                    (confrontation-continue state side eid confronted-card))}
-                        :no-ability {:effect (req (system-msg state (other-side side) " ends the delve! (todo)"))}}}
+                        :no-ability {:effect (req (system-msg state (other-side side) " ends the delve! (todo)")
+                                                  (end-the-delve state side nil))}}}
             nil nil)
           (confrontation-continue state side eid confronted-card)))))
 
@@ -198,7 +208,7 @@
     (confrontation-cleanup state side eid card)
     (do (queue-event state :confrontation {:card card
                                            :engaged-side side})
-        (wait-for (checkpoint state side eid)
+        (wait-for (checkpoint state side)
                   (system-msg state side (str "confronts " (:title card)))
                   (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))))))
 
@@ -242,13 +252,22 @@
 
 (defn delve-ended?
   [state side eid]
-  ;; TODO - if the delve has ended, run a cleanup on it
-  nil)
+  (if (get-in @state [:delve :ended])
+    (do ;; first, clean up those two lingering eids
+      (when-let [e (-> @state :delve :delve-id)] (effect-completed state side e))
+      (when-let [e (-> @state :delve :eid)] (effect-completed state side e))
+      ;; next, construct the delve ended event
+      (let [ev (select-keys (:delve @state) [:server :position :delver :defender :successful])]
+        (swap! state dissoc :delve)
+        (queue-event state :delve-ended ev)
+        (checkpoint state side eid))
+      true)
+    nil))
 
-(defn- card-for-current-slot
+(defn card-for-current-slot
   [state]
-  (let [{:keys [defender server slot]} (:delve @state)]
-    (get-in @state [defender :paths server slot])))
+  (let [{:keys [defender server position]} (:delve @state)]
+    (get-in @state [defender :paths server position 0])))
 
 ;; STEPS OF A DELVE
 ;;   1) Nominate a server.
@@ -280,12 +299,79 @@
 ;; APPROACH SLOT
 (defn delve-approach
   [state side eid]
-  (if (delve-ended? state side eid)
-    (effect-completed state side eid)
+  (when-not (delve-ended? state side eid)
     (do (set-phase state :approach-slot)
         (queue-event state :approach-slot (assoc (select-keys (:delve @state) delve-event-keys)
                                                  :approached-card (card-for-current-slot state)))
         (checkpoint state side eid))))
+
+(defn delve-complete-encounter
+  [state side eid]
+  (when-not (delve-ended? state side eid)
+    (set-phase state :post-encounter)
+    (effect-completed state side eid)))
+
+(defn end-the-delve!
+  [state side eid success?]
+  (if (:delve @state)
+    (do (system-msg state side "ends the delve")
+        (end-the-delve state side success?)
+        (delve-complete-encounter state side eid))
+    (effect-completed state side eid)))
+
+(defn delve-bypass
+  [state side eid {:keys [was-empty?]}]
+  (queue-event state :bypass (assoc (select-keys (:delve @state) delve-event-keys)
+                                    :approached-card (card-for-current-slot state)
+                                    :was-empty? was-empty?))
+  (wait-for
+    (checkpoint state side)
+    (delve-complete-encounter state side eid)))
+
+(defn delve-encounter
+  [state side eid]
+  (set-phase state :encounter)
+  ;; big TODO on this - can I move these buttons to the frontend later?
+  (let [approached-card (card-for-current-slot state)]
+    (cond
+      ;; if there is no card, the slot is immediately bypassed
+      (not approached-card) (delve-bypass state side eid {:was-empty? true})
+      ;; if the card is both forged, rezzed, and unexhausted
+      (and (rezzed? approached-card) (rezzed? approached-card) (not (exhausted? approached-card)))
+      (do (system-msg state side (str "confronts " (:title approached-card)))
+          (wait-for (confront-card state side approached-card)
+                    (when-not (delve-ended? state side eid)
+                      (delve-complete-encounter state side eid))))
+      :else (continue-ability
+              state side
+              (choose-one-helper
+                {:prompt (str "You are approaching " (if (rezzed? approached-card)
+                                                       (:title approached-card)
+                                                       "a facedown card"))}
+                [{:option "Confront"
+                  :req (req (rezzed? approached-card))
+                  :ability {:async true
+                            :effect (req (system-msg state side
+                                                     (str "confronts " (:title approached-card)))
+                                         (wait-for (confront-card state side approached-card)
+                                                   (when-not (delve-ended? state side eid)
+                                                     (delve-complete-encounter state side eid))))}}
+                 {:option "Discover"
+                  :req (req (not (rezzed? approached-card)))
+                  :ability {:async true
+                            :effect (req (system-msg state side
+                                                     (str "discovers " (:title approached-card)))
+                                         (wait-for (discover-card state side approached-card)
+                                                   (when-not (delve-ended? state side eid)
+                                                     (delve-complete-encounter state side eid))))}}
+                 {:option "Bypass"
+                  :ability {:async true
+                            :effect (req (system-msg state side
+                                                     (str "bypasses " (if (rezzed? approached-card)
+                                                                        (:title approached-card)
+                                                                        "a facedown card")))
+                                         (delve-bypass state side eid nil))}}])
+              nil nil))))
 
 ;; INITIATION - INITIATE A DELVE
 (defn make-delve
@@ -346,3 +432,30 @@
      (do (println (str "wrong delve server - received " server ", expected one of :archives :commons :council"))
          (system-msg state side (str "wrong delve server - received " server ", expected one of :archives :commons :council"))
          (effect-completed state side eid)))))
+
+(defn continue-delve
+  [state side eid]
+  (if (get-in @state [:delve :no-action side])
+    (effect-completed state side eid)
+    (if (get-in @state [:delve :no-action (other-side side)])
+      (case (-> @state :delve :phase)
+        :approach-slot (delve-encounter state (-> @state :delve :delver) eid)
+        ;;:post-encounter
+        nil)
+      (do (swap! state assoc-in [:delve :no-action side] true)
+          (system-msg state side "has no further action")))))
+
+(defn continue-delve-post-encounter
+  [state side eid]
+  (if-not (= (get-in @state [:delve :phase]) :post-encounter)
+    (effect-completed state side eid)
+    (do (system-msg state side "will continue the delve")
+        (case (get-in @state [:delve :position])
+          :outer  (do (swap! state assoc-in [:delve :position] :middle)
+                      (delve-approach state side eid))
+          :middle (do (swap! state assoc-in [:delve :position] :inner)
+                      (delve-approach state side eid))
+          :inner  (do (system-msg state side "todo: beach")
+                      (effect-completed state side eid))
+          (do (println "continue from unknown delve position")
+              (effect-completed state side eid))))))

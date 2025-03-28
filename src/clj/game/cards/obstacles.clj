@@ -84,7 +84,7 @@
 
 (defcard "Transit Station"
   {:barrier-bonus  (req (if (in-middle-row? card) 2 0))
-   :presence-bonus (req (if (and (rezzed? card) (in-front-row? card)) 4 0))})
+   :presence-bonus (req (if (and (installed? card) (in-front-row?  card)) 4 0))})
 
 (defcard "Waterway Ferry"
   {:on-forge {:async true
