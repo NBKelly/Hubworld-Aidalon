@@ -311,7 +311,7 @@
                  (if-not payment-str
                    (effect-completed state side eid)
                    (do (when (not-empty payment-str)
-                         (system-msg state :runner (str (build-spend-msg payment-str "delve on " "delve on ")
+                         (system-msg state side (str (build-spend-msg payment-str "delve on " "delve on ")
                                                         (other-player-name state side) "'s " (str/capitalize (name server)) " district"
                                                         (when ignore-costs ", ignoring all costs"))))
                        (let [defending-player (other-side side)

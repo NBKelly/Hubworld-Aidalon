@@ -179,35 +179,11 @@
              (playable? card))
         (send-command "play" {:card (card-for-click card) :shift-key-held shift-key-held})
 
-        ;; ;; Runner clicking on a runner card
-        ;; (and (= side :runner)
-        ;;      (= "Runner" (:side card))
-        ;;      ;;(not (any-prompt-open? side))
-        ;;      (= "hand" (first zone))
-        ;;      (playable? card))
-        ;; (send-command "play" {:card (card-for-click card) :shift-key-held shift-key-held})
-
-        ;; ;; Corp clicking on a corp card
-        ;; (and (= side :corp)
-        ;;      (= "Corp" (:side card))
-        ;;      ;;(not (any-prompt-open? side))
-        ;;      (= "hand" (first zone))
-        ;;      (playable? card))
-        ;; (if (= "Operation" type)
-        ;;   (send-command "play" {:card (card-for-click card)})
-        ;;   (if (= (:cid card) (:source @card-menu))
-        ;;     (do (send-command "generate-install-list" nil)
-        ;;         (close-card-menu))
-        ;;     (do (send-command "generate-install-list" {:card (card-for-click card)
-        ;;                                                :shift-key-held shift-key-held})
-        ;;         (open-card-menu (:cid card)))))
-
-        :else
-        (case (first zone)
-          ("onhost" "play-area" "scored" "paths")
-          (handle-abilities side card)
-          ; else
-          nil)))))
+        :else (case (first zone)
+                ("onhost" "play-area" "scored" "paths")
+                (handle-abilities side card)
+                                        ; else
+                nil)))))
 
 (defn spectate-side []
   (let [corp-specs (get-in @app-state [:current-game :corp-spectators])
@@ -1035,6 +1011,22 @@
                                   :else
                                   "")}]])
 
+(defn delve-arrow [{:keys [phase position server] :as delve} me?] ;; todo - rename
+  (js/console.log (str "delve arrow: " delve))
+  [:div {:class (if me? "delve-arrow-me" "delve-arrow-op")}
+   [:div {:class (str (case (:phase delve)
+                        "initiation" "initiation"
+                        "approach-slot" "approach"
+                        "encounter" "encounter"
+                        "post-encounter" "encounter"
+                        "approach-district" "approach"
+                        "success" "success"
+                        "breach" "breach"
+                        "")
+                      " delve-" position
+                      " delve-" server
+                      (if me? " as-delver" " as-defender"))}]])
+
 (defn server-view [{:keys [server central-view run]} opts]
   (let [content (:content server)
         ices (:ices server)
@@ -1139,37 +1131,47 @@
   (let [side-class (if (= player-side viewing-side) "opponent-grid-slot" "me-grid-slot")]
     [:div.server
      [:div.ices
-      (doall
-        (for [slot (take slots [:inner :middle :outer])]
-          ^{:key (str player-side "-" server-name "-" (name slot))}
-          [:div.grid-slot {:class (str
-                                    (when (and (if-not (get-in @game-state [viewing-side :prompt-state :other-side?])
-                                                 (not= viewing-side player-side)
-                                                 (= viewing-side player-side))
-                                               (or (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage")
-                                                   ;; TODO - we can shift stuff on our opponent's board!
-                                                   (and (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
-                                                        (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))))
-                                      "staging ")
-                                    side-class " "
-                                    server-name)
-                           :on-click (cond (and (not= viewing-side player-side)
-                                                (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
-                                           #(send-command "stage-select" {:server server-name :slot slot})
-                                           (and (if-not (get-in @game-state [viewing-side :prompt-state :other-side?])
-                                                  (not= viewing-side player-side)
-                                                  (= viewing-side player-side))
-                                                (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
-                                                (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))
-                                           #(send-command "stage-select" {:server server-name :slot slot}))}
-           ;; todo - make these seen while discovery occurs
-           ;; that might be a backend task though
-           (if-let [{:keys [rezzed seen] :as staged-card}
-                    (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
-             [:div.staged-card {:key (:cid staged-card)}
-              [card-view staged-card (not (or rezzed seen))]]
-             (str "placeholder: " (name slot)))]))]
-     server]))
+      (let [delve (r/cursor game-state [:delve])]
+        (when-let [run-card (:source-card @delve)]
+          [:div.run-card [card-img run-card]])
+        ;; here
+        (doall
+          (for [slot (take slots [:inner :middle :outer])]
+            ^{:key (str player-side "-" server-name "-" (name slot))}
+            [:div.grid-slot {:class (str
+                                      (when (and (if-not (get-in @game-state [viewing-side :prompt-state :other-side?])
+                                                   (not= viewing-side player-side)
+                                                   (= viewing-side player-side))
+                                                 (or (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage")
+                                                     ;; TODO - we can shift stuff on our opponent's board!
+                                                     (and (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
+                                                          (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))))
+                                        "staging ")
+                                      side-class " "
+                                      server-name)
+                             :on-click (cond (and (not= viewing-side player-side)
+                                                  (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
+                                             #(send-command "stage-select" {:server server-name :slot slot})
+                                             (and (if-not (get-in @game-state [viewing-side :prompt-state :other-side?])
+                                                    (not= viewing-side player-side)
+                                                    (= viewing-side player-side))
+                                                  (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
+                                                  (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))
+                                             #(send-command "stage-select" {:server server-name :slot slot}))}
+             ;; todo - make these seen while discovery occurs
+             ;; that might be a backend task though
+             (if-let [{:keys [rezzed seen] :as staged-card}
+                      (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
+               [:div.staged-card {:key (:cid staged-card)}
+                [card-view staged-card (not (or rezzed seen))]]
+               (str "placeholder: " (name slot)))
+             (js/console.log (str "delve: " @delve))
+             (when (and (= (:server @delve) server-name)
+                        (= (:position @delve) (name slot))
+                        (= (:delver @delve) (name player-side)))
+               [delve-arrow @delve (= (:delver @delve) (name viewing-side))])
+             ])))]
+      server]))
 
 (defn replacement-board-view [viewing-side player-side identity deck deck-count hand hand-count discard rfg]
   (let [side-class (if (= player-side viewing-side) "opponent" "me")
@@ -1763,15 +1765,13 @@
 (defn basic-actions [{:keys [delve side active-player end-turn runner-phase-12 corp-phase-12 me opponent delve]}]
   [:div.panel.blue-shade
    (if (= (keyword @active-player) side)
-     ;; !!here
      (if (and (zero? (:click @me))
-
               (pos? (:click @opponent)))
        [:button {:on-click #(do (close-card-menu)
                                 (send-command "pass"))}
         (tr [:game.pass "Pass Turn"])]
-       (when (and (not (or @runner-phase-12 @corp-phase-12))
-                  (zero? (:click @me))
+       (when (and (zero? (:click @me))
+                  (zero? (:click @opponent))
                   (not @end-turn))
          [:button {:on-click #(do (close-card-menu)
                                   (send-command "end-turn"))}
@@ -1806,13 +1806,11 @@
          (pos? (:deck-count @me)))
     #(send-command "draw")]
    [cond-button (tr [:game.gain-credit "Gain Credit"])
-    (and (not (or @runner-phase-12 @corp-phase-12))
-         (playable? (get-in @me [:basic-action-card :abilities 0])))
+    (playable? (get-in @me [:basic-action-card :abilities 0]))
     #(send-command "credit")]
-      [cond-button (tr [:game.shift "Shift Card"])
+   [cond-button (tr [:game.shift "Shift Card"])
     (playable? (get-in @me [:basic-action-card :abilities 5]))
     #(send-command "shift")]])
-
 
 (defn button-pane [{:keys [side prompt-state]}]
   (let [autocomp (r/track (fn [] (get-in @prompt-state [:choices :autocomplete])))
@@ -2168,7 +2166,7 @@
                  me-agenda-point-req (r/cursor game-state [me-side :agenda-point-req])
                  op-agenda-point-req (r/cursor game-state [op-side :agenda-point-req])
                  ;; delve state
-                 delve (r/cursor game-state [:delve :delve-id])
+                 delve (r/cursor game-state [:delve])
                  ;; servers
                  corp-servers (r/cursor game-state [:corp :servers])
                  runner-rig (r/cursor game-state [:runner :rig])
@@ -2208,8 +2206,6 @@
                 (if (= op-side :corp)
                   [replacement-board-view :runner me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard op-rfg]
                   [replacement-board-view :corp me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard op-rfg])
-                  ;;[board-view-corp me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard corp-servers run]
-                  ;;[board-view-runner me-side op-ident op-deck op-deck-count op-hand op-hand-count op-discard runner-rig run corp-servers op-rfg])
                 (if (= me-side :corp)
                   [replacement-board-view :corp op-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard me-rfg]
                   [replacement-board-view :runner op-side me-ident me-deck me-deck-count me-hand me-hand-count me-discard me-rfg])]

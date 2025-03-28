@@ -872,6 +872,69 @@
                         justify-content(flex-end)
                         align-items(center)
 
+
+                        .delve-arrow-op
+                            position: absolute
+                            z-index: 15
+                            bottom: 0px
+                            animation: fadein 0.5s
+
+                            .breach
+                                bottom: 10px
+                            .delve-inner
+                                bottom: 116px
+                            .delve-middle
+                                bottom: 212px
+                            .delve-outer
+                                bottom: 303px
+
+                            > div
+                                position: relative
+                                left: 50%
+
+                                width: 16px
+                                height: 96px
+                                background-color: alpha(yellow-core, o-70)
+                                transform(translateX(-50%))
+                                border-radius: 4px 4px 0 0
+                                -webkit-filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+                                filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+
+                                &:before
+                                    content: ""
+                                    display: block
+                                    position: absolute
+                                    right: 8px
+                                    width: 0
+                                    height: 0
+                                    border-left: 16px solid transparent
+                                    border-right: 16px solid transparent
+                                    bottom: -21px
+                                    left: 50%
+                                    transform(translateX(-50%))
+                                    border-top: 22px solid alpha(yellow-core, o-70)
+                                    border-bottom: unset
+                                    -webkit-filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+                                    filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+
+                            > div.movement
+                                background-color: alpha(yellow-light, o-70)
+
+                                &:before
+                                    border-top: 22px solid alpha(yellow-light, o-70)
+
+                            > div.approach
+                                background-color: alpha(yellow-core, o-70)
+
+                                &:before
+                                    border-top: 22px solid alpha(yellow-core, o-70)
+
+                            > div.encounter
+                                background-color: alpha(gold-base, o-70)
+
+                                &:before
+                                    border-top: 22px solid alpha(gold-base, o-70)
+
                         .grid-slot
                             margin 3px 3px;
                             background-color: rgba(50, 60, 80, 0.6);
@@ -908,6 +971,67 @@
 
                     .ices
                         flex-direction(column)
+
+                        .delve-arrow-me
+                            position: absolute
+                            z-index: 15
+                            top: 15px
+                            animation: fadein 0.5s
+
+                            .breach
+                                top: -5px
+                            .delve-inner
+                               top: 102px
+                            .delve-middle
+                               top: 198px
+                            .delve-outer
+                                top: 294px
+                            > div
+                                position: relative
+                                left: 50%
+                                top: 0
+
+                                width: 16px
+                                height: 96px
+                                background-color: alpha(yellow-core, o-70)
+                                transform(translateX(-50%))
+                                border-radius: 0 0 4px 4px
+                                -webkit-filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+                                filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+
+                                &:before
+                                    content: ""
+                                    display: block
+                                    position: absolute
+                                    right: 8px
+                                    width: 0
+                                    height: 0
+                                    border-left: 16px solid transparent
+                                    border-right: 16px solid transparent
+                                    bottom: 100%
+                                    left: 50%
+                                    transform(translateX(-50%))
+                                    border-bottom: 22px solid alpha(yellow-core, o-70)
+                                    -webkit-filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+                                    filter: drop-shadow(0px 0px 10px alpha(black-solid, o-60));
+
+                            > div.movement
+                                background-color: alpha(yellow-light, o-70)
+
+                                &:before
+                                    border-bottom: 22px solid alpha(yellow-light, o-70)
+
+                            > div.approach
+                                background-color: alpha(yellow-core, o-70)
+
+                                &:before
+                                    border-bottom: 22px solid alpha(yellow-core, o-70)
+
+                            > div.encounter
+                                background-color: alpha(gold-base, o-70)
+
+                                &:before
+                                    border-bottom: 22px solid alpha(gold-base, o-70)
 
             > div:first-child
                 margin-top: 0
@@ -998,11 +1122,6 @@
 
                             &:before
                                 border-bottom: 22px solid alpha(gold-base, o-70)
-
-                    .grid-slot
-                        background-color: coral;
-                        height: 84px;
-                        width: 84px
 
                     .ice
                         margin: -7px 0
