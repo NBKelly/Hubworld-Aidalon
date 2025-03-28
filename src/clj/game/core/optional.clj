@@ -32,6 +32,7 @@
      (let [autoresolve-fn (:autoresolve ability)
            autoresolve-answer (when autoresolve-fn
                                 (autoresolve-fn state side eid card targets))
+           hide-card? (:hide-card? ability)
            choices [(when (can-pay? state side eid card (:title card) (:cost (:yes-ability ability)))
                       "Yes")
                     "No"]]
@@ -41,7 +42,7 @@
          (do (when autoresolve-fn
                (toast state side (str "This prompt can be skipped by clicking "
                                       (:title card) " and toggling autoresolve")))
-             (show-prompt state side eid card message choices
+             (show-prompt state side eid (when-not hide-card? card) message choices
                           prompt-fn (assoc ability :targets targets))))))))
 
 (defn- check-optional

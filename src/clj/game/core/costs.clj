@@ -1256,6 +1256,23 @@
                                :paid/targets targets})))}
     card nil))
 
+(defmethod value :trash-reaction [cost] (:cost/amount cost))
+(defmethod label :trash-reaction [cost] "[trash]")
+(defmethod payable? :trash-reaction
+  [cost state side eid card]
+  (and (in-hand? (get-card state card))
+       (= 1 (value cost))))
+(defmethod handler :trash-reaction
+  [cost state side eid card]
+  (wait-for (trash state side card {:cause :ability-cost
+                                    :seen true
+                                    :unpreventable true
+                                    :suppress-checkpoint true})
+            (complete-with-result state side eid {:paid/msg (str "trashes " (:printed-title card))
+                                                  :paid/type :trash-reaction
+                                                  :paid/value 1
+                                                  :paid/targets [card]})))
+
 (defmethod value :exile-from-archives [cost] (:cost/amount cost))
 (defmethod label :exile-from-archives [cost]
   (str "exile " (quantify (value cost) "card") " from your Archives"))

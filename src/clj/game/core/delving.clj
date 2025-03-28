@@ -69,7 +69,7 @@
         should-secure? (agent? discovered-card)
         interact-cost? (merge-costs (concat (when-not (in-discard? discovered-card) [(->c :credit (get-presence discovered-card))])
                                             (:cipher (card-def discovered-card))))]
-    (if (or (not (get-card state discovered-card))) ;; TODO - discover ended!
+    (if (or (not (get-card state discovered-card)))
       (discover-cleanup state side eid discovered-card)
       (wait-for
         (resolve-ability
@@ -104,8 +104,9 @@
 
 ;; discovery abilities are fired one at a time, from top to bottom
 (defn- resolve-discover-abilities
+    ;; todo - see if we get access dissoc'd
   [state side eid card abs]
-  (if (or (not (get-card state card))) ;; TODO - discover ended!
+  (if (or (not (get-card state card)))
     (discover-cleanup state side eid card)
     (if (seq abs)
       (let [ab (first abs)]
@@ -185,7 +186,7 @@
                                       :async true
                                       :effect (req (system-msg state side (str (:latest-payment-str eid) " to break the barrier on " (:title confronted-card)))
                                                    (confrontation-continue state side eid confronted-card))}
-                        :no-ability {:effect (req (system-msg state (other-side side) " ends the delve! (todo)")
+                        :no-ability {:effect (req (system-msg state (other-side side) " ends the delve")
                                                   (end-the-delve state side nil))}}}
             nil nil)
           (confrontation-continue state side eid confronted-card)))))
@@ -307,16 +308,20 @@
 
 (defn delve-complete-encounter
   [state side eid]
-  (when-not (delve-ended? state side eid)
-    (set-phase state :post-encounter)
-    (effect-completed state side eid)))
+  (queue-event state :encounter-ended (assoc (select-keys (:delve @state) delve-event-keys)
+                                             :approached-card (card-for-current-slot state)))
+  (wait-for
+    (checkpoint state side)
+    (when-not (delve-ended? state side eid)
+      (set-phase state :post-encounter)
+      (effect-completed state side eid))))
 
 (defn end-the-delve!
   [state side eid success?]
   (if (:delve @state)
     (do (system-msg state side "ends the delve")
         (end-the-delve state side success?)
-        (delve-complete-encounter state side eid))
+        (delve-ended? state side eid))
     (effect-completed state side eid)))
 
 (defn delve-bypass
@@ -324,9 +329,7 @@
   (queue-event state :bypass (assoc (select-keys (:delve @state) delve-event-keys)
                                     :approached-card (card-for-current-slot state)
                                     :was-empty? was-empty?))
-  (wait-for
-    (checkpoint state side)
-    (delve-complete-encounter state side eid)))
+  (delve-complete-encounter state side eid))
 
 (defn delve-encounter
   [state side eid]
@@ -440,7 +443,7 @@
     (if (get-in @state [:delve :no-action (other-side side)])
       (case (-> @state :delve :phase)
         :approach-slot (delve-encounter state (-> @state :delve :delver) eid)
-        ;;:post-encounter
+        ;; TODO -> :approach-server
         nil)
       (do (swap! state assoc-in [:delve :no-action side] true)
           (system-msg state side "has no further action")))))
