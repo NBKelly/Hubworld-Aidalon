@@ -31,6 +31,8 @@
    reason
    rid
    room
+   per-delve
+   delve
    run
    runner
    runner-phase-12

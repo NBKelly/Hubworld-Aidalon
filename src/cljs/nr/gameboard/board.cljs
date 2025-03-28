@@ -1136,35 +1136,40 @@
 ;; HERE
 
 (defn hubworld-server-view [viewing-side player-side server-name slots server]
-  [:div.server
-   [:div.ices
-    (doall
-      (for [slot (take slots [:inner :middle :outer])]
-        ^{:key (str player-side "-" server-name "-" (name slot))}
-        [:div.grid-slot {:class (str (when (and (not= viewing-side player-side)
-                                                (or (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage")
-                                                    ;; TODO - we can shift stuff on our opponent's board!
-                                                    (and (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
-                                                         (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))))
-                                       "staging ")
-                                     server-name)
-                         :on-click (cond (and (not= viewing-side player-side)
-                                              (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
-                                         #(send-command "stage-select" {:server server-name :slot slot})
-                                         (and (not= viewing-side player-side)
-                                              (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
-                                              ;;(or (js/console.log (str "ks: " (keyword server)
-                                              (or (js/console.log (str (get-in @game-state [viewing-side :prompt-state]))) true)
-                                              (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))
-                                         #(send-command "stage-select" {:server server-name :slot slot}))}
-         ;; todo - make these seen while discovery occurs
-         ;; that might be a backend task though
-         (if-let [{:keys [rezzed seen] :as staged-card}
-                  (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
-           [:div.staged-card {:key (:cid staged-card)}
-            [card-view staged-card (not (or rezzed seen))]]
-           (str "placeholder: " (name slot)))]))]
-   server])
+  (let [side-class (if (= player-side viewing-side) "opponent-grid-slot" "me-grid-slot")]
+    [:div.server
+     [:div.ices
+      (doall
+        (for [slot (take slots [:inner :middle :outer])]
+          ^{:key (str player-side "-" server-name "-" (name slot))}
+          [:div.grid-slot {:class (str
+                                    (when (and (if-not (get-in @game-state [viewing-side :prompt-state :other-side?])
+                                                 (not= viewing-side player-side)
+                                                 (= viewing-side player-side))
+                                               (or (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage")
+                                                   ;; TODO - we can shift stuff on our opponent's board!
+                                                   (and (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
+                                                        (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))))
+                                      "staging ")
+                                    side-class " "
+                                    server-name)
+                           :on-click (cond (and (not= viewing-side player-side)
+                                                (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "stage"))
+                                           #(send-command "stage-select" {:server server-name :slot slot})
+                                           (and (if-not (get-in @game-state [viewing-side :prompt-state :other-side?])
+                                                  (not= viewing-side player-side)
+                                                  (= viewing-side player-side))
+                                                (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
+                                                (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))
+                                           #(send-command "stage-select" {:server server-name :slot slot}))}
+           ;; todo - make these seen while discovery occurs
+           ;; that might be a backend task though
+           (if-let [{:keys [rezzed seen] :as staged-card}
+                    (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
+             [:div.staged-card {:key (:cid staged-card)}
+              [card-view staged-card (not (or rezzed seen))]]
+             (str "placeholder: " (name slot)))]))]
+     server]))
 
 (defn replacement-board-view [viewing-side player-side identity deck deck-count hand hand-count discard rfg]
   (let [side-class (if (= player-side viewing-side) "opponent" "me")
@@ -1426,6 +1431,14 @@
                    (pos? pos)
                    (<= pos (count run-ice)))
           (nth run-ice (dec pos))))))
+
+(def delve->phase-title
+  {"initiation" (tr [:game.initiation "Initiation"])
+   "approach-slot" (tr [:game.approach-slot "Approach"])
+   "encounter" (str [:game.encounter "Encounter"])
+   "post-encounter" (str [:game.encounter-completion "Post-Encounter"])
+   "approach-district" (str [:game.approach-district] "Approach District")
+   "success" (tr [:game.success "Success"])})
 
 (def phase->title
   {"initiation" (tr [:game.initiation "Initiation"])
@@ -1747,12 +1760,12 @@
                           #(card-highlight-mouse-out % value button-channel)}
                  (render-message (or (not-empty (get-title value)) value))])))]))
 
-(defn basic-actions [{:keys [side active-player end-turn runner-phase-12 corp-phase-12 me opponent]}]
+(defn basic-actions [{:keys [delve side active-player end-turn runner-phase-12 corp-phase-12 me opponent delve]}]
   [:div.panel.blue-shade
    (if (= (keyword @active-player) side)
      ;; !!here
      (if (and (zero? (:click @me))
-              ;; TODO - not during a delve!
+
               (pos? (:click @opponent)))
        [:button {:on-click #(do (close-card-menu)
                                 (send-command "pass"))}
@@ -1768,53 +1781,26 @@
                               (swap! app-state assoc :start-shown true)
                               (send-command "start-turn"))}
         (tr [:game.start-turn "Start Turn"])]))
-   ;; (when (and (= (keyword @active-player) side)
-   ;;            (or @runner-phase-12 @corp-phase-12))
-   ;;   [:button {:on-click #(send-command "end-phase-12")}
-   ;;    (if (= side :corp)
-   ;;      (tr [:game.mandatory-draw "Mandatory Draw"])
-   ;;      (tr [:game.take-clicks "Take Clicks"]))])
-   ;; (when (= side :runner)
-   ;;   [:div
-   ;;    [cond-button (tr [:game.remove-tag "Remove Tag"])
-   ;;     (and (not (or @runner-phase-12 @corp-phase-12))
-   ;;          (playable? (get-in @me [:basic-action-card :abilities 5]))
-   ;;          (pos? (get-in @me [:tag :base])))
-   ;;     #(send-command "remove-tag")]
-   ;;    [:div.run-button.menu-container
-   ;;     [cond-button (tr [:game.run "Run"])
-   ;;      (and (not (or @runner-phase-12 @corp-phase-12))
-   ;;           (pos? (:click @me)))
-   ;;      #(do (send-command "generate-runnable-zones")
-   ;;           (if (= :run-button (:source @card-menu))
-   ;;             (close-card-menu)
-   ;;             (open-card-menu :run-button)))]
-   ;;     [:div.panel.blue-shade.servers-menu (when (= :run-button (:source @card-menu))
-   ;;                                           {:class "active-menu"
-   ;;                                            :style {:display "inline"}})
-   ;;      [:ul
-   ;;       (let [servers (get-in @game-state [:runner :runnable-list])]
-   ;;         (doall
-   ;;           (map-indexed (fn [_ label]
-   ;;                          ^{:key label}
-   ;;                          [card-menu-item (tr-game-prompt label)
-   ;;                           #(do (close-card-menu)
-   ;;                                (send-command "run" {:server label}))])
-   ;;                        servers)))]]]])
-   ;; (when (= side :corp)
-   ;;   [cond-button (tr [:game.purge "Purge"])
-   ;;    (and (not (or @runner-phase-12 @corp-phase-12))
-   ;;         (playable? (get-in @me [:basic-action-card :abilities 6])))
-   ;;    #(send-command "purge")])
-   ;; (when (= side :corp)
-   ;;   [cond-button (tr [:game.trash-resource "Trash Resource"])
-   ;;    (and (not (or @runner-phase-12 @corp-phase-12))
-   ;;         (playable? (get-in @me [:basic-action-card :abilities 5]))
-   ;;         (is-tagged? game-state))
-   ;;    #(send-command "trash-resource")])
-   [cond-button (tr [:game.shift "Shift Card"])
-    (playable? (get-in @me [:basic-action-card :abilities 5]))
-    #(send-command "shift")]
+   [:div.run-button.menu-container
+    [cond-button (tr [:game.delve "Delve"])
+     (and (pos? (:click @me))
+          (= (keyword @active-player) side)
+          (playable? (get-in @me [:basic-action-card :abilities  6])))
+     #(do (if (= :run-button (:source @card-menu))
+            (close-card-menu)
+            (open-card-menu :run-button)))]
+    [:div.panel.blue-shade.servers-menu (when (= :run-button (:source @card-menu))
+                                          {:class "active-menu"
+                                           :style {:display "inline"}})
+     [:ul
+      (let [servers ["Archives" "Council" "Commons"]]
+        (doall
+          (map-indexed (fn [_ label]
+                         ^{:key label}
+                         [card-menu-item (tr-game-prompt label)
+                          #(do (close-card-menu)
+                               (send-command "delve" {:server label}))])
+                       servers)))]]]
    [cond-button (tr [:game.draw "Draw"])
     (and (playable? (get-in @me [:basic-action-card :abilities 1]))
          (pos? (:deck-count @me)))
@@ -1822,7 +1808,11 @@
    [cond-button (tr [:game.gain-credit "Gain Credit"])
     (and (not (or @runner-phase-12 @corp-phase-12))
          (playable? (get-in @me [:basic-action-card :abilities 0])))
-    #(send-command "credit")]])
+    #(send-command "credit")]
+      [cond-button (tr [:game.shift "Shift Card"])
+    (playable? (get-in @me [:basic-action-card :abilities 5]))
+    #(send-command "shift")]])
+
 
 (defn button-pane [{:keys [side prompt-state]}]
   (let [autocomp (r/track (fn [] (get-in @prompt-state [:choices :autocomplete])))
@@ -1847,11 +1837,11 @@
            (-> "#card-title" js/$ .focus)))
 
        :reagent-render
-       (fn [{:keys [side run encounters prompt-state me opponent] :as button-pane-args}]
+       (fn [{:keys [side run encounters prompt-state me opponent delve] :as button-pane-args}]
          [:div.button-pane {:on-mouse-over #(card-preview-mouse-over % zoom-channel)
                             :on-mouse-out  #(card-preview-mouse-out % zoom-channel)}
           (cond
-            (and @prompt-state (not= "run" (get-in @prompt-state [:prompt-type])))
+            (and @prompt-state (not= "delve" (get-in @prompt-state [:prompt-type])))
             [prompt-div me @prompt-state]
             (or @run
                 @encounters)
@@ -1862,8 +1852,7 @@
 (defn- time-until
   "Helper method for timer. Computes how much time is left until `end`"
   [end]
-  (let [
-        now (inst/now)
+  (let [now (inst/now)
         diff (duration/between now end)
         total-seconds (duration/get diff chrono/seconds)
         minutes (abs (quot total-seconds 60))
@@ -2178,6 +2167,8 @@
                  op-agenda-point (r/cursor game-state [op-side :agenda-point])
                  me-agenda-point-req (r/cursor game-state [me-side :agenda-point-req])
                  op-agenda-point-req (r/cursor game-state [op-side :agenda-point-req])
+                 ;; delve state
+                 delve (r/cursor game-state [:delve :delve-id])
                  ;; servers
                  corp-servers (r/cursor game-state [:corp :servers])
                  runner-rig (r/cursor game-state [:runner :rig])
@@ -2264,7 +2255,8 @@
                     [button-pane {:side me-side :active-player active-player :run run :encounters encounters
                                   :end-turn end-turn :runner-phase-12 runner-phase-12
                                   :corp-phase-12 corp-phase-12 :corp corp :runner runner
-                                  :me me :opponent opponent :prompt-state prompt-state}])]]
+                                  :me me :opponent opponent :prompt-state prompt-state
+                                  :delve delve}])]]
 
                 [:div.me
                  [hand-view me-side me-hand me-hand-size me-hand-count prompt-state true]]]]

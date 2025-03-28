@@ -84,6 +84,13 @@
     (doseq [s [:runner :corp]]
       (toast state s "Game reset to start of click"))))
 
+(defn clear-delve-state
+  [state side]
+  (when-let [delve (:delve @state)]
+    (do (effect-completed state side (:delve-id delve))
+        (effect-completed state side (:eid delve))
+        (swap! state dissoc :delve))))
+
 (defn command-undo-turn
   "Resets the entire game state to how it was at end-of-turn if both players agree"
   [state side]
@@ -258,6 +265,7 @@
                                                                               ": " (get-card state target))))
                                              :choices {:card (fn [t] (same-side? (:side t) %2))}}
                                             (make-card {:title "/card-info command"}) nil)
+            "/clear-delve-state"  clear-delve-state
             "/clear-win"  clear-win
             "/click"      #(swap! %1 assoc-in [%2 :click] (constrain-value value 0 1000))
             "/close-prompt" command-close-prompt

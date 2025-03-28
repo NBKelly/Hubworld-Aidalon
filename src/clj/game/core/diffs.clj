@@ -244,6 +244,7 @@
    :selectable
    ;; hubworld stuff
    :target-paths
+   :other-side?
    ;; traces
    :player
    :base
@@ -378,6 +379,17 @@
       (update-existing :options options-summary)
       (select-non-nil-keys user-keys)))
 
+(def delve-keys
+  [:delve-id
+   :server
+   :delver
+   :defender
+   :position
+   :phase
+   :no-action
+   :cannot-end-delve
+   :source-card])
+
 (def run-keys
   [:server
    :position
@@ -388,6 +400,14 @@
    :no-action
    :source-card
    :approached-ice-in-position?])
+
+(defn delve-summary
+  [state]
+  (when-let [delve (:delve @state)]
+    (-> delve
+        ;; todo - if we ever need this, then we have to side correct it
+        (assoc :cannot-end-delve (any-effects state (:delver delve) :cannot-end-delve true?))
+        (select-non-nil-keys delve-keys))))
 
 (defn run-summary
   [state]
@@ -425,6 +445,7 @@
    :corp
    :corp-phase-12
    :decklists
+   :delve
    :encounters
    :end-turn
    :gameid
@@ -454,7 +475,7 @@
       (update-in [:corp :user] user-summary)
       (update-in [:runner :user] user-summary)
       (assoc :stats (when (:winner @state) (:stats @state)))
-      (assoc :run (run-summary state))
+      (assoc :delve (delve-summary state))
       (assoc :encounters (encounters-summary state))
       (select-non-nil-keys state-keys)))
 

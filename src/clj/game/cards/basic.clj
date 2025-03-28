@@ -4,10 +4,12 @@
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [get-card in-hand? installed? moment?]]
    [game.core.def-helpers :refer [defcard]]
+   [game.core.delving :refer [make-delve]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
+   [game.core.events :refer [event-count]]
    [game.core.gaining :refer [gain-credits]]
-   [game.core.payment :refer [->c]]
+   [game.core.payment :refer [->c can-pay?]]
    [game.core.play-instants :refer [can-play-instant? play-instant]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.shifting :refer [shift]]
@@ -83,7 +85,15 @@
                 :req (req (> (count (hubworld-all-installed state side)) 1))
                 :effect (req (shift state side (:card context) (:server context) (:slot context) nil))}
 
-                          ;; if there's already a card there, it gets trashed
-                          ;; than can be handled by stage itself, though
-               ;; TODO - delve
-               ]})
+               ;; --> 6
+               {:action true
+                :label "Delve a district"
+                ;; note: you may not delve on click 1 of round 1
+                :req (req (and
+                            (can-pay? state side eid card nil [(->c :click 1)])
+
+                            (if (= (-> @state :turn :index) 1)
+                              (pos? (event-count state side :action-resolved #(= side (:player (first %)))))
+                              true)))
+                :msg (msg "delve " (:server context))
+                :effect (req (make-delve state side eid (str/lower-case (:server context)) card {:click-delve true}))}]})

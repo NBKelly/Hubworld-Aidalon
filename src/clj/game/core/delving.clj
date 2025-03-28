@@ -5,20 +5,21 @@
                            get-card]]
    [game.core.card-defs :refer [card-def]]
    [game.core.choose-one :refer [choose-one-helper]]
+   [game.core.cost-fns :refer [delve-cost delve-additional-cost-bonus]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
-   [game.core.engine :refer [checkpoint queue-event register-default-events register-pending-event resolve-ability]]
+   [game.core.engine :refer [checkpoint end-of-phase-checkpoint pay queue-event register-default-events register-pending-event resolve-ability]]
    [game.core.effects :refer [register-static-abilities unregister-lingering-effects]]
    [game.core.flags :refer [card-flag?]]
    [game.core.moving :refer [move exile]]
-   [game.core.payment :refer [->c merge-costs]]
+   [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
    [game.core.update :refer [update!]]
    [game.macros :refer [req wait-for]]
-   [game.utils :refer [to-keyword]]
-   [jinteki.utils :refer [other-side]]
+   [game.utils :refer [to-keyword dissoc-in same-card?]]
+   [jinteki.utils :refer [other-side other-player-name]]
    [clojure.string :as str]))
 
 
@@ -43,7 +44,6 @@
       (register-pending-event state :agent-secured c on-secured))
     (queue-event state :on-secured {:card c})
     (checkpoint state nil eid {:duration :agent-secured})))
-;;(access-end state side eid c {:stolen true}))))
 
 ;; DISCOVERY - facedown installed cards, and cards in centrals, can be discovered
 ;;             go through all the discover abilities top->bottom, then the player may dispatch the card
@@ -201,3 +201,148 @@
         (wait-for (checkpoint state side eid)
                   (system-msg state side (str "confronts " (:title card)))
                   (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))))))
+
+
+;; UTILS FOR DELVES
+
+(defn total-delve-cost
+  ([state side card] (total-delve-cost state side card nil))
+  ([state side card {:keys [click-delve ignore-costs] :as args}]
+   (let [cost (let [cost (delve-cost state side card nil args)]
+                (when (and (pos? cost)
+                           (not ignore-costs))
+                  (->c :credit cost)))
+         additional-costs (delve-additional-cost-bonus state side card args)
+         click-delve-cost (when click-delve (->c :click 1))]
+     (when-not ignore-costs
+       (merge-costs
+         [click-delve-cost
+          cost
+          additional-costs])))))
+
+(def delve-event-keys [:server :position :delver :defender])
+(defn- delve-event [state] (select-keys (:delve @state) delve-event-keys))
+
+(defn set-phase
+  [state phase]
+  (swap! state assoc-in [:delve :phase] phase)
+  (swap! state dissoc-in [:delve :no-action])
+  phase)
+
+(defn- select-delve-server
+  [server]
+  (case server
+    :archives  :archives
+    "archives" :archives
+    :commons   :commons
+    "commons"  :commons
+    :council   :council
+    "council"  :council
+    nil))
+
+(defn delve-ended?
+  [state side eid]
+  ;; TODO - if the delve has ended, run a cleanup on it
+  nil)
+
+(defn- card-for-current-slot
+  [state]
+  (let [{:keys [defender server slot]} (:delve @state)]
+    (get-in @state [defender :paths server slot])))
+
+;; STEPS OF A DELVE
+;;   1) Nominate a server.
+;;   2) A delve begins on that server, immediately approaching the outermost grid slot (3)
+;;   3) After approach triggers fire, there is an insant window.
+;;   4) Once both players pass, then check the state of the slot:
+;;      a) If the card is forged and unexhausted, it must be confronted
+;;      b) If it is forged, but exhausted, it may either be confronted or bypassed
+;;      c) If the slot is empty, it is bypassed
+;;      d) If the card is unforged, it may either be discovered or bypassed
+;;  5)  Resolve discovery/confrontation/bypass
+;;  6)  The encounter is complete - the engaged player chooses if they would like to continue or not
+;;  7)  Continue -> go to approach (2) for slots, or (8) for the district itself
+;;
+;;  8)  The district is approached. Triggers resolve.
+;;  9)  Players may use instants
+;; 10)  The heat generation step occurs
+;; 11)  Discovery occurs.
+;; 12)  The breach is completed (even if heat was not generated, or cards were not discovered).
+
+;; PHASES:
+;;   1) initiation
+;;   2) approach-slot
+;;   3) encounter
+;;   4) post-encounter
+;;   5) approach-district
+;;   6) success
+
+;; APPROACH SLOT
+(defn delve-approach
+  [state side eid]
+  (if (delve-ended? state side eid)
+    (effect-completed state side eid)
+    (do (set-phase state :approach-slot)
+        (queue-event state :approach-slot (assoc (select-keys (:delve @state) delve-event-keys)
+                                                 :approached-card (card-for-current-slot state)))
+        (checkpoint state side eid))))
+
+;; INITIATION - INITIATE A DELVE
+(defn make-delve
+  ([state side eid server] (make-delve state side eid server nil))
+  ([state side eid server card] (make-delve state side eid server card nil))
+  ([state side eid server card {:keys [click-delve ignore-costs] :as args}]
+   (if-let [server (select-delve-server server)]
+     (let [cost-args (assoc args :server server)
+           costs (total-delve-cost state side card cost-args)
+           card (or (get-card state card) card)
+           eid (assoc eid :source-type :make-delve)]
+       (if-not (and
+                 ;; todo - can delve, can delve server, etc
+                 (can-pay? state side eid card "a run" costs))
+         ;; we couldn't pay to delve, so we simply return
+         (effect-completed state side eid)
+         (do (when click-delve
+               (swap! state assoc-in [side :register :made-click-delve] true)
+               (play-sfx state side "click-run"))
+             (wait-for
+               (pay state side (make-eid state eid) nil costs)
+               (let [payment-str (:msg async-result)]
+                 (if-not payment-str
+                   (effect-completed state side eid)
+                   (do (when (not-empty payment-str)
+                         (system-msg state :runner (str (build-spend-msg payment-str "delve on " "delve on ")
+                                                        (other-player-name state side) "'s " (str/capitalize (name server)) " district"
+                                                        (when ignore-costs ", ignoring all costs"))))
+                       (let [defending-player (other-side side)
+                             old-active-player (:active-player @state)
+                             delve-id (make-eid state)]
+                         ;; note that the defending player is the active player during a delve
+                         (swap! state assoc :active-player defending-player)
+                         (swap! state assoc
+                                :per-delve nil
+                                :delve {:delve-id delve-id
+                                        :server server
+                                        :position :outer
+                                        :delver side
+                                        :defender defending-player
+                                        :old-active-player old-active-player
+                                        :phase :initiation
+                                        :eid eid
+                                        :events nil
+                                        :source-card (select-keys card [:code :cid :zone :title :side :type :art :implementation])})
+                         (when card
+                           (update! state side (assoc-in card [:special :delve-id] delve-id)))
+                         (swap! state update-in [side :register :made-delve] conj server)
+                         (swap! state update-in [:stats side :delves :started] (fnil inc 0))
+                         (queue-event state :delve {:server server
+                                                    :delve-side side
+                                                    :position :outer
+                                                    :cost-args cost-args})
+                         (wait-for
+                           (end-of-phase-checkpoint state nil (make-eid state eid) :end-of-initiation)
+                           (delve-approach state side (make-eid state eid)))))))))))
+     ;;  we couldn't reconcile the delve server
+     (do (println (str "wrong delve server - received " server ", expected one of :archives :commons :council"))
+         (system-msg state side (str "wrong delve server - received " server ", expected one of :archives :commons :council"))
+         (effect-completed state side eid)))))

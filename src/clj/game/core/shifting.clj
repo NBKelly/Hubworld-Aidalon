@@ -9,7 +9,7 @@
    [game.core.say :refer [system-msg]]
    [game.core.to-string :refer [card-str]]
    [game.macros :refer [msg req wait-for]]
-   [jinteki.utils :refer [adjacent-zones]]))
+   [jinteki.utils :refer [other-side adjacent-zones]]))
 
 (defn shift
   [state side card target-server target-slot args]
@@ -20,7 +20,7 @@
 (defn shift-a-card
   ([state side eid source-card card-to-shift]
    (shift-a-card state side eid source-card card-to-shift nil))
-  ([state side eid source-card card-to-shift {:keys [cost] :as args}]
+  ([state side eid source-card card-to-shift {:keys [cost other-side?] :as args}]
    (show-shift-prompt
      state side eid source-card (adjacent-zones card-to-shift)
      (str "Shift " (:title card-to-shift) " where?")
@@ -28,11 +28,11 @@
       :msg (msg (let [server (:server context)
                       slot (:slot context)
                       old-card (get-in @state [side :paths server slot 0])]
-                  ;; TODO - account for shifting oppo cards!
                   (if old-card
                     (str "swap " (card-str state card-to-shift) " with " (card-str state old-card))
                     (str "shift " (card-str state card-to-shift) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
       :effect (req (let [server (:server context)
                          slot (:slot context)]
-                     (shift state side card-to-shift server slot nil)))}
-     {:waiting-prompt true})))
+                     (shift state (if other-side? (other-side side) side) card-to-shift server slot nil)))}
+     {:waiting-prompt true
+      :other-side? other-side?})))

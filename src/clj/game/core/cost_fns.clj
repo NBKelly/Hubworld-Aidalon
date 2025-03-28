@@ -91,6 +91,22 @@
   [state side card]
   (any-effects state side :ignore-install-cost true? card))
 
+(defn delve-cost
+  "Get a list of all costs required to run a server."
+  ([state side card] (delve-cost state side card nil nil))
+  ([state side card args] (delve-cost state side card args nil))
+  ([state side card {:keys [cost-bonus]} & targets]
+   (->> [(or cost-bonus 0)
+         (sum-effects state side :delve-cost card targets)]
+        (reduce (fnil + 0 0))
+        (max 0))))
+
+(defn delve-additional-cost-bonus
+  ([state side card] (delve-additional-cost-bonus state side card nil))
+  ([state side card & targets]
+   (merge-costs
+     (get-effects state side :delve-additional-cost card targets))))
+
 (defn run-cost
   "Get a list of all costs required to run a server."
   ([state side card] (run-cost state side card nil nil))

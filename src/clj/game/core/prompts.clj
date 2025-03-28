@@ -7,6 +7,7 @@
    [game.core.toasts :refer [toast]]
    [game.macros :refer [when-let*]]
    [game.utils :refer [pluralize side-str]]
+   [jinteki.utils :refer [other-side]]
    [medley.core :refer [find-first]]))
 
 (defn choice-parser
@@ -105,15 +106,16 @@
      (add-to-prompt-queue state side newitem))))
 
 (defn show-shift-prompt
-  "Specific function for showing a staging prompt"
-  ([state side card zones message ab args] (show-stage-prompt state side (make-eid state) card zones message ab args))
-  ([state side eid card zones message ab {:keys [waiting-prompt targets req] :as args}]
+  "Specific function for showing a shift prompt"
+  ([state side card zones message ab args] (show-shift-prompt state side (make-eid state) card zones message ab args))
+  ([state side eid card zones message ab {:keys [waiting-prompt targets req other-side?] :as args}]
    (let [prompt (if (string? message) message (message state side eid card targets))
          newitem {:eid eid
                   :msg prompt
                   :req req
                   :ability ab
                   :target-paths zones
+                  :other-side? other-side?
                   :card card
                   :prompt-type :shift}]
      (when waiting-prompt
@@ -296,6 +298,20 @@
   [state side]
   (when-let [wait (find-first #(= :waiting (:prompt-type %)) (-> @state side :prompt))]
     (remove-from-prompt-queue state side wait)))
+
+(defn show-delve-prompts
+  "Adds a dummy prompt to both side's prompt queues.
+   The prompt cannot be closed except by a later call to clear-delve-prompts."
+  [state side msg card]
+  (show-prompt state side card (str "You are " msg) nil nil {:prompt-type :delve})
+  (show-prompt state (other-side side) card (str "Your opponent is " msg) nil nil {:prompt-type :delve}))
+
+(defn clear-delve-prompts
+  [state]
+  (when-let* [runner-prompt (find-first #(= :delve (:prompt-type %)) (-> @state :runner :prompt))]
+    (remove-from-prompt-queue state :runner runner-prompt))
+  (when-let* [corp-prompt (find-first #(= :delve (:prompt-type %)) (-> @state :corp :prompt))]
+    (remove-from-prompt-queue state :corp corp-prompt)))
 
 (defn show-run-prompts
   "Adds a dummy prompt to both side's prompt queues.

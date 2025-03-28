@@ -67,11 +67,11 @@
       (if (:action ability)
         (let [stripped-card (select-keys card [:cid :type :title])]
           (wait-for
-            (trigger-event-simult state side :action-played nil {:ability-idx ability-idx :card stripped-card})
+            (trigger-event-simult state side :action-played nil {:ability-idx ability-idx :card stripped-card :player side})
             (wait-for
               (resolve-ability state side ability card targets)
               (swap! state update :active-player other-side)
-              (trigger-event-simult state side eid :action-resolved nil {:ability-idx ability-idx :card stripped-card}))))
+              (trigger-event-simult state side eid :action-resolved nil {:ability-idx ability-idx :card stripped-card :player side}))))
         (resolve-ability state side eid ability card targets)))))
 
 (defn play-ability
@@ -713,6 +713,13 @@
   [state side context]
   (play-ability state side {:card (get-in @state [:runner :basic-action-card])
                             :ability 4
+                            :targets [context]}))
+
+(defn click-delve
+  "Click to start a delve."
+  [state side context]
+  (play-ability state side {:card (get-in @state [side :basic-action-card])
+                            :ability 6
                             :targets [context]}))
 
 (defn remove-tag

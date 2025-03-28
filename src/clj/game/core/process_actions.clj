@@ -1,7 +1,7 @@
 (ns game.core.process-actions
   (:require
    [clojure.string :as str]
-   [game.core.actions :refer [click-advance click-credit click-draw click-run
+   [game.core.actions :refer [click-advance click-credit click-draw click-run click-delve
                               close-deck do-purge generate-install-list cmd-shift
                               generate-runnable-zones move-card expend-ability
                               pass play play-ability play-corp-ability
@@ -20,7 +20,7 @@
    [game.core.say :refer [indicate-action say system-msg system-say]]
    [game.core.set-up :refer [keep-hand mulligan]]
    [game.core.shuffling :refer [shuffle-deck]]
-   [game.core.toasts :refer [ack-toast]]
+   [game.core.toasts :refer [ack-toast toast]]
    [game.core.turns :refer [start-hubworld-turn hubworld-refresh-phase]]
    [game.core.winning :refer [concede]]))
 
@@ -61,6 +61,7 @@
    "corp-ability" #'play-corp-ability
    "credit" #'click-credit
    "unforge" #(derez %1 %2 (:card %3))
+   "delve" #'click-delve
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
@@ -101,7 +102,9 @@
 
 (defn process-action
   [command state side args]
-  (when-let [c (get commands command)]
-    (c state side args)
-    (checkpoint+clean-up state)
-    true))
+  (if-let [c (get commands command)]
+    (do (c state side args)
+        (checkpoint+clean-up state)
+        true)
+    (do (toast state side (str "The command: " command " is not currently implemented!"))
+        true)))
