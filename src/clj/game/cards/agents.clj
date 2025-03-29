@@ -83,7 +83,8 @@
                :skippable true
                :interactive (req true)
                :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self)])
-                                         (= (:breach-server context) :archives)))
+                                         (= (:breach-server context) :archives)
+                                         (= (:delver context) side)))
                           :prompt (msg "Archive the top 2 cards of " (other-player-name state side) "'s Commons?")
                           :yes-ability {:cost [(->c :exhaust-self)]
                                         :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")

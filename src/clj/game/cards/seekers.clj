@@ -2,9 +2,11 @@
   (:require
    [clojure.set :as set]
    [game.core.board :refer [hubworld-all-installed]]
+   [game.core.card :refer [in-front-row?]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.gaining :refer [gain]]
+   [game.core.moving :refer [archive]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.def-helpers :refer [collect]]
@@ -12,11 +14,27 @@
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
 
+(defcard "Abnus Orzo: Tireless Investigator"
+  (collect
+    {:shards 1}
+    {:events [{:event :end-breach-server
+               :skippable true
+               :interactive (req true)
+               :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self) (->c :trash-from-deck 1)])
+                                         (= (:breach-server context) :archives)
+                                         (seq (get-in @state [(other-side side) :hand]))
+                                         (= (:delver context) side)))
+                          :prompt (msg "Archive 1 card at random from " (other-player-name state side) "'s Council?")
+                          :yes-ability {:cost [(->c :exhaust-self) (->c :trash-from-deck 1)]
+                                        :msg (msg "Archive 1 card at random from " (other-player-name state side) "'s Council")
+                                        :async true
+                                        :effect (req (archive state side eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}}]}))
+
 (defcard "Chairman Bo Pax: Heir to Pax Industries"
   (collect
     {:cards 1}
     (letfn [(fr-count [state side]
-              (count (filter #(= (last (:zone %)) :outer) (hubworld-all-installed state side))))]
+              (count (filter in-front-row? (hubworld-all-installed state side))))]
       {:abilities [{:cost [(->c :exhaust-self) (->c :click 1)]
                     :label "Your opponent gains 1 [Heat]"
                     :msg (msg "give " (other-player-name state side) " 1 [Heat]")

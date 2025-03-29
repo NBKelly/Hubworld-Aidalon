@@ -7,7 +7,7 @@
    [game.core.choose-one :refer [choose-one-helper]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [checkpoint register-default-events register-pending-event resolve-ability trigger-event trigger-event-simult trigger-event-sync unregister-floating-events queue-event]]
-   [game.core.effects :refer [register-static-abilities sum-effects unregister-lingering-effects]]
+   [game.core.effects :refer [register-static-abilities sum-effects register-lingering-effect unregister-lingering-effects gather-effects]]
    [game.core.flags :refer [card-flag?]]
    [game.core.moving :refer [exile move]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
@@ -22,6 +22,8 @@
    [clojure.set :as clj-set]
    [medley.core :refer [find-first]]
    [clojure.string :as str]))
+
+
 
 (defn secure-agent
   "Moves a card to the players :scored area, triggering events from the completion of the steal."
@@ -114,6 +116,20 @@
 
 ;; HELPERS FOR BREACHING
 
+(defn access-bonus
+  "Increase the number of cards to be accessed in server during this run by n.
+  For temporary/per-run effects like Legwork, Maker's Eye."
+  ([state side server bonus] (access-bonus state side server bonus :end-of-breach))
+  ([state _side server bonus duration]
+   (let [floating-effect
+         (register-lingering-effect
+           state _side nil
+           {:type :access-bonus
+            :duration duration
+            :req (req (= target {:delver _side :server server}))
+            :value bonus})]
+     floating-effect)))
+
 (defn clean-access-args
   "idk what this does"
   [{:keys [access-first] :as args}]
@@ -123,16 +139,14 @@
 
 (defn access-bonus-count [state side kw]
   "number of bonus cards to access for a server"
-  (sum-effects state side :access-bonus kw))
+  (sum-effects state side :access-bonus {:delver side :server kw}))
 
 (defn num-cards-central
   [state side access-key access-amount]
   (let [random-access-limit (access-bonus-count state side access-key)
         heat-bonus (count-heat state (other-side side))
         total-mod (access-bonus-count state side :total)]
-    {:random-access-limit (+ (or access-amount random-access-limit 0) heat-bonus)
-     :total-mod total-mod
-     :chosen 0}))
+    (+ (or access-amount random-access-limit 0) heat-bonus total-mod)))
 
 ;; compute the number of cards we're accessing
 (defn num-cards-to-access-commons [state side access-amount]  (num-cards-central state side :commons access-amount))
@@ -201,11 +215,11 @@
   "Starts the breach routines for the delve's server."
   ([state side eid server] (breach-server state side eid server nil))
   ([state side eid server args]
-   (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) " and discovers  " (quantify (count-heat state (other-side side)) "card")))
-   (wait-for (trigger-event-simult state side :breach-server nil server)
+   (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) ", utilizing  " (count-heat state (other-side side)) "[heat]"))
+   (wait-for (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
              (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
              (let [args (clean-access-args args)
-                   access-amount (:random-access-limit (num-cards-to-access state side server nil))]
+                   access-amount (num-cards-to-access state side server nil)]
                (when (:delve @state)
                  (swap! state assoc-in [:delve :did-access] true))
                (wait-for (resolve-access-server state side server access-amount)

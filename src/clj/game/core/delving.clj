@@ -240,7 +240,7 @@
 (defn end-the-delve!
   [state side eid success?]
   (if (:delve @state)
-    (do (system-msg state side "ends the delve")
+    (do (system-msg state side (if success? "completes the delve" "ends the delve"))
         (end-the-delve state side success?)
         (delve-ended? state side eid))
     (effect-completed state side eid)))

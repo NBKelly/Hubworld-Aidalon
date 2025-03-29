@@ -671,25 +671,6 @@
                                :paid/targets targets})))}
     card nil))
 
-;; TrashFromDeck
-(defmethod value :trash-from-deck [cost] (:cost/amount cost))
-(defmethod label :trash-from-deck [cost]
-  (str "trash " (quantify (value cost) "card") " from the top of your deck"))
-(defmethod payable? :trash-from-deck
-  [cost state side eid card]
-  (<= 0 (- (count (get-in @state [side :deck])) (value cost))))
-(defmethod handler :trash-from-deck
-  [cost state side eid card]
-  (wait-for (mill state side side (value cost) {:suppress-checkpoint true})
-            (complete-with-result
-              state side eid
-              {:paid/msg (str "trashes " (quantify (count async-result) "card")
-                             " from the top of "
-                             (if (= :corp side) "R&D" "the stack"))
-               :paid/type :trash-from-deck
-               :paid/value (count async-result)
-               :paid/targets async-result})))
-
 ;; TrashFromHand
 (defmethod value :trash-from-hand [cost] (:cost/amount cost))
 (defmethod label :trash-from-hand [cost]
@@ -1352,3 +1333,21 @@
             (complete-with-result state side eid {:paid/msg (str "gains " (value cost) " [heat]")
                                                   :paid/type :gain-heat
                                                   :paid/value (value cost)})))
+
+;; TrashFromDeck
+(defmethod value :trash-from-deck [cost] (:cost/amount cost))
+(defmethod label :trash-from-deck [cost]
+  (str "archive " (quantify (value cost) "card") " from the top of your Commons"))
+(defmethod payable? :trash-from-deck
+  [cost state side eid card]
+  (<= 0 (- (count (get-in @state [side :deck])) (value cost))))
+(defmethod handler :trash-from-deck
+  [cost state side eid card]
+  (wait-for (mill state side side (value cost) {:suppress-checkpoint true})
+            (complete-with-result
+              state side eid
+              {:paid/msg (str "archives " (quantify (count async-result) "card")
+                             " from the top of [their] Commons")
+               :paid/type :trash-from-deck
+               :paid/value (count async-result)
+               :paid/targets async-result})))

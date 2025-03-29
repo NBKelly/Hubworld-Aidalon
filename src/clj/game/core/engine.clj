@@ -526,7 +526,7 @@
     [:else :active]))
 
 (defn build-event-ability
-  [ability card]
+  [side ability card]
   {:event (:event ability)
    :location (build-location card ability)
    :duration (or (:duration ability) :default-duration)
@@ -534,14 +534,15 @@
    :unregister-once-resolved (or (:unregister-once-resolved ability) false)
    :once-per-instance (or (:once-per-instance ability) false)
    :ability (dissoc ability :event :duration :condition)
+   :owner side
    :card card
    :uuid (uuid/v1)})
 
 (defn register-events
   "Registers each event handler defined in the given card definition."
-  [state _ card events]
+  [state side card events]
   (when (seq events)
-    (let [abilities (into [] (for [ability events] (build-event-ability ability card)))]
+    (let [abilities (into [] (for [ability events] (build-event-ability side ability card)))]
       (swap! state update :events #(apply conj % abilities))
       abilities)))
 
@@ -697,7 +698,9 @@
   ([state side event targets card-abilities] (gather-events state side (make-eid state) event targets card-abilities))
   ([state side eid event targets card-abilities]
    (->> (:events @state)
+        ;; here
         (filter #(= event (:event %)))
+        (filter #(= side (:owner %)))
         (concat card-abilities)
         (filter identity)
         (filter (fn [ability]

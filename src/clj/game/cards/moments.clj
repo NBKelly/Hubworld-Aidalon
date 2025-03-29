@@ -1,15 +1,16 @@
 (ns game.cards.moments
   (:require
    [clojure.string :as str]
-   [game.core.breaching :refer [discover-card]]
+   [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
+                           in-hand?
                            rezzed?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.drawing :refer [draw]]
    [game.core.gaining :refer [gain-credits lose]]
    [game.core.moving :refer [mill]]
    [game.core.payment :refer [->c]]
-   [game.utils :refer [same-card?]]
+   [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
 
@@ -21,17 +22,51 @@
              :effect (req (wait-for (gain-credits state side 4)
                                     (draw state side eid 1)))}})
 
+(defcard "Fun Run"
+  {:events [{:event :end-breach-server
+             :location :hand
+             :interactive (req true)
+             :optional {:hide-card? true
+                        :req (req (and (= (:breach-server context) :commons)
+                                       (in-hand? card)
+                                       (= (to-keyword (:side card)) side)
+                                       (= (:delver context) side)))
+                        :waiting-prompt "Current phase: Success" ;; TODO - set up bluff window
+                        :prompt "gain 3 [credits]?"
+                        :yes-ability {:cost [(->c :exile-reaction)]
+                                      :msg "gain 3 [credits]"
+                                      :async true
+                                      :effect (req (gain-credits state side eid 3))}}}]})
+
+(defcard "Infiltrate"
+  {:events [{:event :breach-server
+             :location :hand
+             :interactve (req true)
+             :optional {:hide-card? true
+                        :req (req (and
+                                    (or (println context) true)
+                                    (= (:breach-server context) :council)
+                                       (in-hand? card)
+                                       (= (to-keyword (:side card)) side)
+                                       (= (:delver context) side)))
+                        :waiting-prompt "Current phase: Success"
+                        :prompt "Discover 2 additional cards?"
+                        :yes-ability {:cost [(->c :exile-reaction)]
+                                      :msg "discover 2 additional cards"
+                                      :effect (req (access-bonus state side :council 2))}}}]})
+
 (defcard "Likely a Trap"
   {:events [{:event :encounter-ended
              :location :hand
-             :optional {:location :hand
-                        :req (req (and (= (:defender context) side)
+             :optional {:req (req (and (= (:defender context) side)
+                                       (in-hand? card)
+                                       (= (to-keyword (:side card)) side)
                                        (let [c (get-card state (:approached-card context))]
                                          (and c (not (rezzed? c))))))
                         :waiting-prompt "Current phase: Post-Encounter" ;; TODO - set up bluff windows on some of these events or something - see what askteki does!
                         :prompt (msg "Ask your opponent to discover " (:title (:approached-card context)) "?")
                         :hide-card? true
-                        :yes-ability {:cost [(->c :trash-reaction)]
+                        :yes-ability {:cost [(->c :exile-reaction)]
                                       :msg "lay some bait"
                                       :async true
                                       :effect (req (let [op (other-side side)
