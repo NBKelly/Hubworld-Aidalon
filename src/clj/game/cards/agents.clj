@@ -7,12 +7,13 @@
    [game.core.def-helpers :refer [defcard]]
    [game.core.exhausting :refer [unexhaust]]
    [game.core.gaining :refer [gain-credits]]
+   [game.core.moving :refer [mill]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
    [game.utils :refer [same-card? to-keyword]]
    [game.macros :refer [effect msg req wait-for]]
-   [jinteki.utils :refer [other-player-name]]))
+   [jinteki.utils :refer [other-player-name other-side]]))
 
 (defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
   (collect
@@ -52,7 +53,7 @@
 
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"
   (collect
-    {:credits 1}
+    {:shards 1}
     {:events [{:event :approach-district
                :skippable true
                :interactive (req true)
@@ -67,9 +68,24 @@
 
 (defcard "Rory & Bug: “You Catch It, We Fetch It!”"
   (collect
-    {:credits 1}
+    {:shards 1}
     {:abilities [{:fake-cost [(->c :exhaust-self) (->c :credit 2)]
                   :req (req (can-pay? state side eid card nil [(->c :exhaust-self) (->c :credit 2)]))
                   :label "Shift this card"
                   :async true
                   :effect (req (shift-a-card state side eid card card {:cost [(->c :exhaust-self) (->c :credit 2)]}))}]}))
+
+(defcard "Sergeant Cole: Precinct 204, 3rd Level"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :exhaust-archives 1)]
+     :events [{:event :end-breach-server
+               :skippable true
+               :interactive (req true)
+               :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self)])
+                                         (= (:breach-server context) :archives)))
+                          :prompt (msg "Archive the top 2 cards of " (other-player-name state side) "'s Commons?")
+                          :yes-ability {:cost [(->c :exhaust-self)]
+                                        :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
+                                        :async true
+                                        :effect (req (mill state side eid (other-side side) 2))}}}]}))

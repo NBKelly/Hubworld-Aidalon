@@ -2,7 +2,10 @@
   (:require
    [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
-   [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand? installed? program? resource? rezzed? runner? seeker? in-discard?]]
+   [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
+                           rezzed? in-discard? installed?
+                           seeker?
+                           in-archives-path?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
    [game.core.eid :refer [complete-with-result make-eid]]
@@ -12,7 +15,7 @@
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.heat :refer [gain-heat]]
-   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards]]
+   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
    [game.core.props :refer [add-counter add-prop]]
@@ -1257,20 +1260,54 @@
                                :paid/targets targets})))}
     card nil))
 
-(defmethod value :trash-reaction [cost] (:cost/amount cost))
-(defmethod label :trash-reaction [cost] "[trash]")
-(defmethod payable? :trash-reaction
+;; exhaust any number of cards protected archives - this may target the source card (itself)
+(defmethod value :exhaust-archives [cost] (:cost/amount cost))
+(defmethod label :exhaust-archives [cost] (str "exhaust " (quantify (value cost) " card") " protecting Archives"))
+(defmethod payable? :exhaust-archives
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) in-archives-path?)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-archives
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "forged card") " to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           in-archives-path?
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust-archives
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :exile-reaction [cost] (:cost/amount cost))
+(defmethod label :exile-reaction [cost] "Exile this card")
+(defmethod payable? :exile-reaction
   [cost state side eid card]
   (and (in-hand? (get-card state card))
        (= 1 (value cost))))
-(defmethod handler :trash-reaction
+(defmethod handler :exile-reaction
   [cost state side eid card]
-  (wait-for (trash state side card {:cause :ability-cost
+  (wait-for (exile state side card {:cause :ability-cost
                                     :seen true
                                     :unpreventable true
                                     :suppress-checkpoint true})
-            (complete-with-result state side eid {:paid/msg (str "trashes " (:printed-title card))
-                                                  :paid/type :trash-reaction
+            (complete-with-result state side eid {:paid/msg (str "exiles " (:printed-title card))
+                                                  :paid/type :exile-reaction
                                                   :paid/value 1
                                                   :paid/targets [card]})))
 

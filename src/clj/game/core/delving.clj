@@ -84,7 +84,7 @@
                                                                   "secures ")
                                                                 (:title confronted-card))))
                                              (secure-agent state side eid confronted-card))}}
-                     {:option "End confrontation"}])
+                     {:option "No Action"}])
                   nil nil)
                 (confrontation-cleanup state side eid confronted-card)))))
 
@@ -388,11 +388,10 @@
                                                                     (str cost-msg " to make ")
                                                                     "makes ")
                                                                  (other-player-name state side) " gain 1 [heat]. They now have " (inc current-heat) " [heat]"))
-                                                 (wait-for (gain-heat state (other-side side) 1)
-                                                           (wait-for (breach-server state side (-> @state :delve :server))
-                                                                     (end-the-delve! state side eid true)))))}}}
+                                                 (gain-heat state (other-side side) eid 1)))}}}
                   nil nil)
-                (effect-completed state side eid))
+                (wait-for (breach-server state side (-> @state :delve :server))
+                          (end-the-delve! state side eid true)))
       (wait-for (breach-server state side (-> @state :delve :server))
                 (end-the-delve! state side eid true)))))
 

@@ -15,12 +15,12 @@
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.set-aside :refer [add-to-set-aside get-set-aside]]
    [game.core.update :refer [update!]]
-   [game.utils :refer [dissoc-in]]
+   [game.utils :refer [dissoc-in quantify]]
    [game.macros :refer [req wait-for]]
-   [jinteki.utils :refer [add-cost-to-label]]
+   [jinteki.utils :refer [add-cost-to-label count-heat other-side other-player-name]]
+   ;; imports
    [clojure.set :as clj-set]
    [medley.core :refer [find-first]]
-   [jinteki.utils :refer [other-side other-player-name]]
    [clojure.string :as str]))
 
 (defn secure-agent
@@ -54,8 +54,8 @@
 
 (defn discover-continue
   [state side eid discovered-card]
-  (let [can-interact? (and (not (moment? discovered-card))
-                           (not (in-discard? discovered-card)))
+  (let [can-interact? (and (or (not (moment? discovered-card))
+                               (in-discard? discovered-card)))
         should-secure? (agent? discovered-card)
         interact-cost? (merge-costs (concat (when-not (in-discard? discovered-card) [(->c :credit (get-presence discovered-card))])
                                             (:cipher (card-def discovered-card))))]
@@ -88,7 +88,7 @@
                                                           "secures ")
                                                         (:title discovered-card))))
                                      (secure-agent state side eid discovered-card))}}
-             {:option "End discovery"}])
+             {:option "No Action"}])
           nil nil)
         (discover-cleanup state side eid discovered-card)))))
 
@@ -126,21 +126,18 @@
   (sum-effects state side :access-bonus kw))
 
 (defn num-cards-central
-  [state side base access-key access-amount]
-  (let [mod (access-bonus-count state side access-key)
-        random-access-limit (+ base mod)
+  [state side access-key access-amount]
+  (let [random-access-limit (access-bonus-count state side access-key)
+        heat-bonus (count-heat state (other-side side))
         total-mod (access-bonus-count state side :total)]
-    {:random-access-limit (or access-amount random-access-limit)
+    {:random-access-limit (+ (or access-amount random-access-limit 0) heat-bonus)
      :total-mod total-mod
      :chosen 0}))
 
 ;; compute the number of cards we're accessing
-(defn num-cards-to-access-commons [state side access-amount]
-  (num-cards-central state side 3 :commons access-amount))
-(defn num-cards-to-access-council [state side access-amount]
-  (num-cards-central state side 3 :council access-amount))
-(defn num-cards-to-access-archives [state side access-amount]
-  (num-cards-central state side 3 :archives access-amount))
+(defn num-cards-to-access-commons [state side access-amount]  (num-cards-central state side :commons access-amount))
+(defn num-cards-to-access-council [state side access-amount]  (num-cards-central state side :council access-amount))
+(defn num-cards-to-access-archives [state side access-amount] (num-cards-central state side :archives access-amount))
 
 (defn num-cards-to-access
   [state side server access-amount]
@@ -193,20 +190,22 @@
   [state side eid server qty]
   (swap! state assoc-in [:breach :set-aside-eid] eid)
   (case server
-    :council  (resolve-access-council  state side eid (:random-access-limit qty))
-    :archives (resolve-access-archives state side eid (:random-access-limit qty))
-    :commons  (resolve-access-commons state side eid  (:random-access-limit qty))
-    (do (system-msg state side "TODO!") (effect-completed state side eid))))
+    :council  (resolve-access-council  state side eid qty)
+    :archives (resolve-access-archives state side eid qty)
+    :commons  (resolve-access-commons  state side eid qty)
+    (do (system-msg state side (str "Attempt to breach unknown server: " server ))
+        (println (str "Attempt to breach unknown server: " server))
+        (effect-completed state side eid))))
 
 (defn breach-server
   "Starts the breach routines for the delve's server."
   ([state side eid server] (breach-server state side eid server nil))
   ([state side eid server args]
-   (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server))))
+   (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) " and discovers  " (quantify (count-heat state (other-side side)) "card")))
    (wait-for (trigger-event-simult state side :breach-server nil server)
-             (swap! state assoc :breach {:breach-server server :from-server server})
+             (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
              (let [args (clean-access-args args)
-                   access-amount (num-cards-to-access state side server nil)]
+                   access-amount (:random-access-limit (num-cards-to-access state side server nil))]
                (when (:delve @state)
                  (swap! state assoc-in [:delve :did-access] true))
                (wait-for (resolve-access-server state side server access-amount)
