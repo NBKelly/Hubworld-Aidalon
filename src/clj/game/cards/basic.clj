@@ -2,13 +2,14 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [get-card in-hand? installed? moment?]]
+   [game.core.card :refer [get-card in-hand? installed? moment? rezzed?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.delving :refer [make-delve]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.events :refer [event-count]]
    [game.core.gaining :refer [gain-credits]]
+   [game.core.moving :refer [archive-or-exile]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.play-instants :refer [can-play-instant? play-instant]]
    [game.core.say :refer [play-sfx system-msg]]
@@ -57,9 +58,20 @@
                {:action :true
                 :label "Stage a card"
                 :cost [(->c :click 1)]
-                :msg (msg "stage a card from [their] council in the " (name (:slot context)) " row of [their] " (capitalize (name (:server context))))
+                :msg (msg "stage a card from [their] council in the " (name (:slot context)) " row of [their] " (str/capitalize (name (:server context))))
                 :async true
-                :effect (req (stage state side eid (:card context) (:server context) (:slot context)))}
+                :effect (req (let [c (:card context) server (:server context) slot (:slot context)]
+                               (if-let [old-card (get-in @state [side :paths server slot 0])]
+                                 (do
+                                   (system-msg state side
+                                               (str (if (rezzed? old-card)
+                                                      (str "exiles " (:title old-card))
+                                                      (str "archives a facedown card"))
+                                                    " in the " (name slot) " row of [their] " (str/capitalize (name server))))
+                                   (wait-for
+                                     (archive-or-exile state side old-card {:unpreventable true})
+                                     (stage state side eid c server slot)))
+                                 (stage state side eid c server slot))))}
 
                ;; --> 4
                {:action true

@@ -86,7 +86,7 @@
 
 (defn side-win
   [state side]
-  (<= (agenda-points-required-to-win state side) (get-in @state [side :agenda-point])))
+  (<= 3 (count (get-in @state [side :scored]))))
 
 (defn check-win-by-agenda
   ([state] (check-win-by-agenda state nil))
@@ -100,6 +100,6 @@
              runner-win (not blocked-runner))
         (tie state "Tie")]
        [(and corp-win (not blocked-corp))
-        (win state :corp "Agenda")]
+        (win state :corp "Agent")]
        [(and runner-win (not blocked-runner))
-        (win state :runner "Agenda")]))))
+        (win state :runner "Agent")]))))

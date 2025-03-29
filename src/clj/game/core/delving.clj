@@ -1,6 +1,6 @@
 (ns game.core.delving
   (:require
-   [game.core.breaching :refer [breach-server discover-card secure-agent]]
+   [game.core.breaching :refer [breach-server discover-card]]
    [game.core.card :refer [agent? moment?
                            exhausted? rezzed? in-discard?
                            get-card]]
@@ -12,7 +12,7 @@
    [game.core.effects :refer [register-static-abilities unregister-lingering-effects]]
    [game.core.flags :refer [card-flag?]]
    [game.core.heat :refer [gain-heat]]
-   [game.core.moving :refer [move exile]]
+   [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
    [game.core.barrier :refer [get-barrier]]

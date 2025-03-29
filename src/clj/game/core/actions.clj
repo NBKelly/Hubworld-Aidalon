@@ -5,7 +5,7 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
-    [game.core.card :refer [get-agenda-points get-card installed?]]
+    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus]]
     [game.core.effects :refer [any-effects is-disabled-reg?]]
@@ -14,7 +14,7 @@
     [game.core.flags :refer [can-advance? can-score?]]
     [game.core.ice :refer [break-subroutine! break-subs-event-context get-current-ice get-pump-strength get-strength pump resolve-subroutine! resolve-unbroken-subs! substitute-x-credit-costs]]
     [game.core.initializing :refer [card-init]]
-    [game.core.moving :refer [move trash]]
+    [game.core.moving :refer [move archive-or-exile trash]]
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
     [game.core.expend :refer [expend expendable?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
@@ -83,8 +83,8 @@
          ability (nth (:abilities card) ability-idx)
          blocking-prompt? (not (no-blocking-prompt? state side))
          cannot-play (or (:disabled card)
-                         ;; cannot play actions during runs
-                         (and (:action ability) (:run @state))
+                         ;; cannot play actions during delves
+                         (and (:action ability) (:delve @state))
                          ;; while resolving another ability or promppt
                          blocking-prompt?
                          (not= side (to-keyword (:side card)))
@@ -94,6 +94,30 @@
               "warning"))
      (when-not cannot-play
        (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))))
+
+(defn play-collect
+  "Triggers a collect ability"
+  ([state side args] (play-collect state side nil args))
+  ([state side eid {:keys [card] :as args}]
+   (let [card (get-card state card)
+         ability (first (filter :collect (:abilities card)))]
+     (if (and ability (rezzed? card) (not (exhausted? card)))
+       (let [args (assoc args :card card)
+             ability-idx 0
+             blocking-prompt? (not (no-blocking-prompt? state side))
+             cannot-play (or (:disabled card)
+                             ;; cannot play actions during runs
+                             (and (:action ability) (:delve @state))
+                             ;; while resolving another ability or promppt
+                             blocking-prompt?
+                             (not= side (to-keyword (:side card)))
+                             (any-effects state side :prevent-paid-ability true? card [ability ability-idx]))]
+         (when blocking-prompt?
+           (toast state side (str "You cannot play abilities while other abilities are resolving.")
+                  "warning"))
+         (when-not cannot-play
+           (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))
+       (if eid (effect-completed state side eid) nil)))))
 
 (defn expend-ability
   "Called when the player clicks a card from hand."
@@ -134,20 +158,15 @@
                                   state side eid
                                   ;; TODO - distinguish between archive/exile here
                                   {:optional
-                                   {:prompt (str "trash " (:title old-card) " in the " (name slot) " row of your " (string/upper-case (name server)) "?")
-                                    :waiting-prompt true
+                                   {:prompt (str (if (rezzed? old-card) "Exile " "Archive ") (:title old-card) " in the " (name slot) " row of your " (string/capitalize (name server)) "?")
                                     :yes-ability {:async true
-                                                  :effect (req
-                                                            (system-msg state side (str "trashes " (card-str state old-card)))
-                                                            (wait-for
-                                                              (trash state side old-card {:unpreventable true})
-                                                              (play-ability
-                                                                state side eid
-                                                                {:card bac
-                                                                 :ability 3
-                                                                 :targets [{:card card-to-stage
-                                                                            :server server
-                                                                            :slot slot}]})))}}}
+                                                  :effect (req (play-ability
+                                                                 state side eid
+                                                                 {:card bac
+                                                                  :ability 3
+                                                                  :targets [{:card card-to-stage
+                                                                             :server server
+                                                                             :slot slot}]}))}}}
                                   bac nil)
                                 (play-ability
                                   state side eid
@@ -156,7 +175,7 @@
                                    :targets [{:card card-to-stage
                                               :server (:server context)
                                               :slot (:slot context)}]}))))}
-              {:waiting-prompt true}))
+              {}))
           nil)))))
 
 (defn cmd-shift

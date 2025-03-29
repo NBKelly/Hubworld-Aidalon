@@ -1,11 +1,12 @@
 (ns game.core.turns
   (:require
     [game.core.agendas :refer [update-all-advancement-requirements]]
-    [game.core.board :refer [all-active all-active-installed all-installed all-installed-and-scored]]
+    [game.core.board :refer [hubworld-all-installed]]
     [game.core.card :refer [facedown? get-card has-subtype? in-hand? installed?]]
     [game.core.drawing :refer [draw]]
     [game.core.effects :refer [unregister-lingering-effects update-lingering-effect-durations any-effects]]
     [game.core.eid :refer [effect-completed make-eid]]
+    [game.core.exhausting :refer [unexhaust]]
     [game.core.engine :refer [trigger-event trigger-event-simult unregister-floating-events update-floating-event-durations resolve-ability]]
     [game.core.flags :refer [card-flag-fn? clear-turn-register!]]
     [game.core.gaining :refer [gain lose gain-credits lose-credits]]
@@ -144,23 +145,24 @@
           (clamp-cards state s1)
           (wait-for
             (clamp-cards state s2)
-            ;; TODO - unexaust all cards
-            ;; passing the first player token is handled by start-turn, so don't worry about that
-            ;; unregister the floating effects, handle cleanup
-            (clean-set-aside! state s1)
-            (unregister-lingering-effects state s1 :end-of-turn)
-            (unregister-floating-events state s1 :end-of-turn)
-            (clean-set-aside! state s2)
-            (unregister-lingering-effects state s2 :end-of-turn)
-            (unregister-floating-events state s2 :end-of-turn)
-            (trigger-event-simult state s1 :turn-ends nil nil)
-            (trigger-event-simult state s1 :post-turn-ends nil nil)
-              (doseq [s (players state)]
-                ;; each player gains actions equal to their action limit
-                (let [clicks-to-gain (get-in @state [s :identity :action-limit] 3)]
-                  (gain state s :click clicks-to-gain)))
-            (swap! state assoc-in [s1 :register-last-turn] (-> @state s1 :register))
-            (swap! state assoc-in [s2 :register-last-turn] (-> @state s2 :register))
-            (swap! state dissoc-in [:turn :started])
-            (clear-turn-register! state)
-            (start-hubworld-turn state nil eid)))))))
+            (wait-for
+              (unexhaust state s1 (hubworld-all-installed state s1) {:no-msg true :suppress-checkpoint true})
+              (wait-for
+                (unexhaust state s2 (hubworld-all-installed state s2) {:no-msg true})
+                (clean-set-aside! state s1)
+                (unregister-lingering-effects state s1 :end-of-turn)
+                (unregister-floating-events state s1 :end-of-turn)
+                (clean-set-aside! state s2)
+                (unregister-lingering-effects state s2 :end-of-turn)
+                (unregister-floating-events state s2 :end-of-turn)
+                (trigger-event-simult state s1 :turn-ends nil nil)
+                (trigger-event-simult state s1 :post-turn-ends nil nil)
+                (doseq [s (players state)]
+                  ;; each player gains actions equal to their action limit
+                  (let [clicks-to-gain (get-in @state [s :identity :action-limit] 3)]
+                    (gain state s :click clicks-to-gain)))
+                (swap! state assoc-in [s1 :register-last-turn] (-> @state s1 :register))
+                (swap! state assoc-in [s2 :register-last-turn] (-> @state s2 :register))
+                (swap! state dissoc-in [:turn :started])
+                (clear-turn-register! state)
+                (start-hubworld-turn state nil eid)))))))))

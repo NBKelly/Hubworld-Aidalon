@@ -1,10 +1,10 @@
 (ns game.core.staging
   (:require
    [clojure.string :as str]
-   [game.core.card :refer [get-card]]
+   [game.core.card :refer [get-card rezzed?]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [resolve-ability]]
-   [game.core.moving :refer [move trash]]
+   [game.core.moving :refer [archive-or-exile move]]
    [game.core.prompts :refer [show-stage-prompt]]
    [game.core.say :refer [system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -40,13 +40,14 @@
                        state side eid
                        (if old-card
                          {:optional
-                          {:prompt (str "trash " (:title old-card) " in the " (name slot) " row of your " (str/capitalize (name server)) "?")
+                          {:prompt (str (if (rezzed? old-card) "Exile " "Archive ") (:title old-card) " in the " (name slot) " row of your " (str/capitalize (name server)) "?")
                            :waiting-prompt true
                            :yes-ability {:async true
-                                         :msg (msg "trash " (card-str state old-card) " and stage " (card-str state card-to-stage) " in it's place")
+                                         :msg (msg (if (rezzed? old-card) (str "Exile " (:title old-card)) (str "Archive " (card-str state old-card)))
+                                                   " and stage " (card-str state card-to-stage) " in it's place")
                                          :cost cost
                                          :effect (req (wait-for
-                                                        (trash state side old-card {:unpreventable true :suppress-checkpoint true})
+                                                        (archive-or-exile state side old-card {:unpreventable true :suppress-checkpoint true})
                                                         (stage state side eid card-to-stage server slot)))}}}
                          {:msg (msg "stage " (card-str state card-to-stage) " in the " (name slot) " of [their] " (str/capitalize (name server)) " path")
                           :async true

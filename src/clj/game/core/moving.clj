@@ -3,7 +3,7 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-all-agenda-points]]
     [game.core.board :refer [all-active-installed]]
-    [game.core.card :refer [active? agenda? asset? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner?]]
+    [game.core.card :refer [active? agenda? asset? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner? agent?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [is-disabled-reg? register-static-abilities unregister-static-abilities]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
@@ -16,12 +16,13 @@
     [game.core.memory :refer [init-mu-cost]]
     [game.core.prevention :refer [resolve-trash-prevention]]
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
-    [game.core.say :refer [enforce-msg system-msg]]
+    [game.core.say :refer [enforce-msg play-sfx system-msg]]
     [game.core.servers :refer [is-remote? same-server? target-server type->rig-zone]]
     [game.core.update :refer [update!]]
     [game.core.winning :refer [check-win-by-agenda]]
     [game.macros :refer [wait-for when-let*]]
     [game.utils :refer [dissoc-in make-cid remove-once same-card? same-side? to-keyword]]
+    [jinteki.utils :refer [other-side]]
     [medley.core :refer [insert-nth]]))
 
 (defn- trim-cause-card
@@ -414,66 +415,100 @@
   ([state side eid card] (trash-cards state side eid [card] nil))
   ([state side eid card args] (trash-cards state side eid [card] args)))
 
+(defn secure-agent
+  "Moves a card to the players :scored area, triggering events from the completion of the steal."
+  [state side eid card]
+  (let [c (move state side (dissoc card :advance-counter :new :exhausted :installed :rezzed) :scored {:force true})
+        _ (when (card-flag? c :has-events-when-secured true)
+            (register-default-events state side c)
+            (register-static-abilities state side c))
+        c (get-card state c)]
+    (swap! state update-in [side :register :secured-agent] #(+ (or % 0) 1))
+    (play-sfx state side "agenda-steal")
+    (when (:breach @state)
+      (swap! state assoc-in [:breach :did-secure] true))
+    (when (:delve @state)
+      (swap! state assoc-in [:delve :did-secure] true))
+    (when-let [on-secured (:on-secured (card-def c))]
+      (register-pending-event state :agent-secured c on-secured))
+    (check-win-by-agenda state side)
+    (queue-event state :on-secured {:card c})
+    (checkpoint state nil eid {:duration :agent-secured})))
+
+(defn- secure-agents
+  [state side eid agents]
+  (if-not (seq agents)
+    (effect-completed state side eid)
+    (let [[agent & remainder] agents]
+      (wait-for
+        (secure-agent state (other-side (keyword (string/lower-case (:side agent)))) agent)
+        (secure-agents state side eid remainder)))))
+
 (defn exile-cards
   "Attempts to trash each given card, and then once all given cards have been either
   added or not added to the trash list, all of those cards are trashed"
   ([state side eid cards] (trash-cards state side eid cards nil))
   ([state side eid cards {:keys [accessed cause cause-card keep-server-alive game-trash suppress-checkpoint] :as args}]
-   (println "exiling: " cards)
    (if (empty? (filter identity cards))
      (effect-completed state side eid)
-     (wait-for (resolve-trash-prevention state side cards (assoc args :target-destination :rfg))
-               (let [trashlist (:remaining async-result)]
-                 (wait-for
-                   (trigger-event-sync state side :pre-trash-interrupt (map :card trashlist))
-                   (let [exile-event (get-exile-event side game-trash)
-                         ;; No card should end up in the opponent's discard pile, so instead
-                         ;; of using `side`, we use the card's `:side`.
-                         move-card (fn [card dest]
-                                     (move state (to-keyword (:side card)) card dest))
-                         ;; Perform the move of the cards from their current location to
-                         ;; the rfg. At the same time, gather their `:trash-effect`s
-                         ;; to be used in the simult event later.
-                         moved-cards (reduce
-                                       (fn [acc {:keys [card destination]}]
-                                         (if-let [card (get-card? state card)]
-                                           (let [_ (set-duration-on-trash-events state card exile-event)
-                                                 moved-card (move-card card destination)
-                                                 exile-effect (get-exile-effect state side eid card args)]
-                                             (conj acc {:moved-card moved-card
-                                                        :exile-effect exile-effect
-                                                        :old-card card}))
-                                           (conj acc {:old-card card})))
-                                       [] trashlist)]
-                     (swap! state update-in [:trash :trash-list :card] dissoc eid)
-                     (when (and side (seq (remove #{side} (map #(to-keyword (:side %)) (map :card trashlist)))))
-                       (swap! state assoc-in [side :register :trashed-card] true))
-                     ;; Pseudo-shuffle archives. Keeps seen cards in play order and shuffles unseen cards.
-                     (swap! state assoc-in [side :discard]
-                            (vec (sort-by #(if (:seen %) -1 1) (get-in @state [side :discard]))))
-                     (let [eid (make-result eid (vec (keep :moved-card moved-cards)))]
-                       (doseq [{:keys [moved-card exile-effect]} moved-cards
-                               :when exile-effect]
-                         (register-pending-event state exile-event moved-card exile-effect))
-                       (doseq [{:keys [old-card moved-card]} moved-cards]
-                         (queue-event state exile-event {:card old-card
-                                                         :moved-card moved-card
-                                                         :cause cause
-                                                         :cause-card (trim-cause-card cause-card)
-                                                         :accessed accessed}))
-                       (if suppress-checkpoint
-                         (effect-completed state nil eid)
-                         (checkpoint state nil eid {:duration exile-event}))))))))))
+     (let [to-secure (filter agent? cards)
+           cards (filter (complement agent?) cards)]
+       (wait-for
+         (secure-agents state side to-secure)
+         (wait-for
+           (resolve-trash-prevention state side cards (assoc args :target-destination :rfg))
+           (let [trashlist (:remaining async-result)]
+             (wait-for
+               (trigger-event-sync state side :pre-trash-interrupt (map :card trashlist))
+               (let [exile-event (get-exile-event side game-trash)
+                     ;; No card should end up in the opponent's discard pile, so instead
+                     ;; of using `side`, we use the card's `:side`.
+                     move-card (fn [card dest]
+                                 (move state (to-keyword (:side card)) card dest))
+                     ;; Perform the move of the cards from their current location to
+                     ;; the rfg. At the same time, gather their `:trash-effect`s
+                     ;; to be used in the simult event later.
+                     moved-cards (reduce
+                                   (fn [acc {:keys [card destination]}]
+                                     (if-let [card (get-card? state card)]
+                                       (let [_ (set-duration-on-trash-events state card exile-event)
+                                             moved-card (move-card card destination)
+                                             exile-effect (get-exile-effect state side eid card args)]
+                                         (conj acc {:moved-card moved-card
+                                                    :exile-effect exile-effect
+                                                    :old-card card}))
+                                       (conj acc {:old-card card})))
+                                   [] trashlist)]
+                 (swap! state update-in [:trash :trash-list :card] dissoc eid)
+                 (when (and side (seq (remove #{side} (map #(to-keyword (:side %)) (map :card trashlist)))))
+                   (swap! state assoc-in [side :register :trashed-card] true))
+                 ;; Pseudo-shuffle archives. Keeps seen cards in play order and shuffles unseen cards.
+                 (swap! state assoc-in [side :discard]
+                        (vec (sort-by #(if (:seen %) -1 1) (get-in @state [side :discard]))))
+                 (let [eid (make-result eid (vec (keep :moved-card moved-cards)))]
+                   (doseq [{:keys [moved-card exile-effect]} moved-cards
+                           :when exile-effect]
+                     (register-pending-event state exile-event moved-card exile-effect))
+                   (doseq [{:keys [old-card moved-card]} moved-cards]
+                     (queue-event state exile-event {:card old-card
+                                                     :moved-card moved-card
+                                                     :cause cause
+                                                     :cause-card (trim-cause-card cause-card)
+                                                     :accessed accessed}))
+                   (if suppress-checkpoint
+                     (effect-completed state nil eid)
+                     (checkpoint state nil eid {:duration exile-event}))))))))))))
 
 (defn exile
-  ([state side eid card] (exile state side eid card nil));; TODO
+  ([state side eid card] (exile state side eid card nil))
   ([state side eid card args] (exile-cards state side eid [card] args)))
 
 (defn archive-or-exile
-  [state side eid card]
-  (if (and (rezzed? card) (installed? card))
-    (exile state side eid card)
-    (archive state side eid card)))
+  ([state side eid card] (archive-or-exile state side eid card nil))
+  ([state side eid card args]
+   (if (and (rezzed? card) (installed? card))
+     (exile state side eid card args)
+     (archive state side eid card args))))
 
 (defmethod engine/move* :trash [state side eid _action card args]
   (trash-cards state side eid [card] args))

@@ -9,7 +9,7 @@
    [game.core.engine :refer [checkpoint register-default-events register-pending-event resolve-ability trigger-event trigger-event-simult trigger-event-sync unregister-floating-events queue-event]]
    [game.core.effects :refer [register-static-abilities sum-effects register-lingering-effect unregister-lingering-effects gather-effects]]
    [game.core.flags :refer [card-flag?]]
-   [game.core.moving :refer [exile move]]
+   [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
    [game.core.say :refer [play-sfx system-msg]]
@@ -22,28 +22,6 @@
    [clojure.set :as clj-set]
    [medley.core :refer [find-first]]
    [clojure.string :as str]))
-
-
-
-(defn secure-agent
-  "Moves a card to the players :scored area, triggering events from the completion of the steal."
-  [state side eid card]
-  (let [c (move state side (dissoc card :advance-counter :new :exhausted :installed :rezzed) :scored {:force true})
-        _ (when (card-flag? c :has-events-when-secured true)
-            (register-default-events state side c)
-            (register-static-abilities state side c))
-        c (get-card state c)]
-    ;;(system-msg state side (str "secures " (:title c)))
-    (swap! state update-in [side :register :secured-agent] #(+ (or % 0) 1))
-    (play-sfx state side "agenda-steal")
-    (when (:breach @state)
-      (swap! state assoc-in [:breach :did-steal] true))
-    (when (:delve @state)
-      (swap! state assoc-in [:delve :did-secure] true))
-    (when-let [on-secured (:on-secured (card-def c))]
-      (register-pending-event state :agent-secured c on-secured))
-    (queue-event state :on-secured {:card c})
-    (checkpoint state nil eid {:duration :agent-secured})))
 
 ;; DISCOVERY - facedown installed cards, and cards in centrals, can be discovered
 ;;             go through all the discover abilities top->bottom, then the player may dispatch the card

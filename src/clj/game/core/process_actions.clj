@@ -4,7 +4,7 @@
    [game.core.actions :refer [click-advance click-credit click-draw click-run click-delve
                               close-deck do-purge generate-install-list cmd-shift
                               generate-runnable-zones move-card expend-ability
-                              pass play play-ability play-corp-ability
+                              pass play play-ability play-corp-ability play-collect
                               play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               resolve-prompt score select stage-done stage-select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
@@ -14,7 +14,7 @@
    [game.core.delving :refer [continue-delve continue-delve-post-encounter delve-discover-clicked delve-confront-clicked delve-bypass-clicked end-the-delve!]]
    [game.core.eid :refer [make-eid]]
    [game.core.exhausting :refer [exhaust unexhaust]]
-   [game.core.moving :refer [trash]]
+   [game.core.moving :refer [exile trash]]
    [game.core.rezzing :refer [derez rez]]
    [game.core.say :refer [indicate-action say system-msg system-say]]
    [game.core.set-up :refer [keep-hand mulligan]]
@@ -62,9 +62,13 @@
    "delve-discover"                   (fn [state side _] (delve-discover-clicked state side (make-eid state)))
    "delve-bypass"                     (fn [state side _] (delve-bypass-clicked state side (make-eid state)))
    "delve-confront"                   (fn [state side _] (delve-confront-clicked state side (make-eid state)))
+   "exile"                            #(exile %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
+   "collect" #'play-collect
+
 
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
+
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
    "end-turn" #'hubworld-refresh-phase
    "generate-install-list" #'generate-install-list

@@ -154,7 +154,7 @@
             (when (= (:cid value) (:cid clicked-card)) uuid))
           choices)))
 
-(defn handle-card-click [{:keys [type zone] :as card} shift-key-held]
+(defn handle-card-click [{:keys [type zone exhausted rezzed installed] :as card} shift-key-held]
   (let [side (:side @game-state)]
     (when (and (not-spectator?)
                (not (contains? #{"stage" "shift"} (get-in @game-state [side :prompt-state :prompt-type]))))
@@ -167,11 +167,6 @@
         (contains? (into #{} (get-in @game-state [side :prompt-state :selectable])) (:cid card))
         (send-command "choice" {:choice {:uuid (prompt-button-from-card? card (get-in @game-state [side :prompt-state]))}})
 
-        ;; Card is an identity of player's side
-        (and (= (:type card) "Seeker")
-             (= side (keyword (lower-case (:side card)))))
-        (handle-abilities side card)
-
         ;; player clicking on their own playable card
         (and (or (and (= side :runner) (= "Runner" (:side card)))
                  (and (= side :corp) (= "Corp" (:side card))))
@@ -179,11 +174,24 @@
              (playable? card))
         (send-command "play" {:card (card-for-click card) :shift-key-held shift-key-held})
 
-        :else (case (first zone)
-                ("onhost" "play-area" "scored" "paths")
-                (handle-abilities side card)
-                                        ; else
-                nil)))))
+        ;; just rez if the shift key is held
+        (and (= side (keyword (lower-case (:side card))))
+             installed (not rezzed) shift-key-held)
+        (send-command "forge" {:card (card-for-click card)})
+
+        ;; fire collect abilities with just the shift key held, if possible
+        (and (= side (keyword (lower-case (:side card))))
+             (or (= (:type card) "Seeker")
+                 (contains? #{"onhost" "play-area" "scored" "paths"} (first zone))))
+        (if (and shift-key-held (or rezzed (= (:type card) "Seeker")) (not exhausted))
+          ;; fire a collect ability if possible
+          (send-command "collect" {:card (card-for-click card) :shift-key-held shift-key-held})
+          (do (js/console.log (str "shift: " shift-key-held ", card: " (card-for-click card)
+                                   ", exhausted: " exhausted ", rezzed: " rezzed))
+              (handle-abilities side card)))
+
+        ;; no match
+        :else nil))))
 
 (defn spectate-side []
   (let [corp-specs (get-in @app-state [:current-game :corp-spectators])
@@ -629,7 +637,7 @@
                     (condition-counter? card))))))
 
 (defn card-view
-  [{:keys [zone code type abilities counter exhausted
+  [{:keys [zone code type abilities counter exhausted rezzed
            subtypes barrier current-barrier presence current-presence selected hosted
            side facedown card-target icon new ghost runner-abilities subroutines
            subtype-target corp-abilities]
@@ -995,10 +1003,10 @@
                                           :style {:left (when (> size 1) (* (/ 128 (dec size)) i))}}
                        [:div [card-view card]]])
                     @scored))
-     [label @scored {:opts {:name (tr [:game.scored-area "Scored Area"])}}]
-     [:div.stats-area
-      (ctrl :agenda-point [:div (tr [:game.agenda-count] @agenda-point)
-                           (tr [:game.agenda-point-req (if-not (= 7 agenda-point-req) (str " (" agenda-point-req " required)") "")] @agenda-point-req)])]]))
+     [label @scored {:opts {:name (tr [:game.secured-agents "Secured Agents"])}}]]))
+     ;; [:div.stats-area
+     ;;  (ctrl :agenda-point [:div (tr [:game.agenda-count] @agenda-point)
+     ;;                       (tr [:game.agenda-point-req (if-not (= 7 agenda-point-req) (str " (" agenda-point-req " required)") "")] @agenda-point-req)])]]))
 
 (defn run-arrow [run]
   [:div.run-arrow [:div {:class (cond

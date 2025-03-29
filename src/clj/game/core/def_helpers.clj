@@ -293,6 +293,7 @@
                  (when (and (pos? base-shards) (pos? base-cards)) " and ")
                  (when (pos? base-cards) (quantify base-cards "card")))
      :async true
+     :collect true
      :cost [(->c :exhaust-self)]
      :req (req (or (pos? (total-shards state side card))
                    (pos? (total-cards state side card))))
