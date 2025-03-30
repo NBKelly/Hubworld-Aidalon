@@ -8,7 +8,7 @@
    [game.core.choose-one :refer [choose-one-helper]]
    [game.core.cost-fns :refer [delve-cost delve-additional-cost-bonus]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
-   [game.core.engine :refer [checkpoint end-of-phase-checkpoint pay queue-event register-default-events register-pending-event resolve-ability]]
+   [game.core.engine :refer [checkpoint end-of-phase-checkpoint pay queue-event register-default-events register-pending-event resolve-ability trigger-event-simult]]
    [game.core.effects :refer [register-static-abilities unregister-lingering-effects]]
    [game.core.flags :refer [card-flag?]]
    [game.core.heat :refer [gain-heat]]
@@ -131,6 +131,11 @@
 
 ;; UTILS FOR DELVES
 
+(defn delve-toggle-pass-priority
+  [state]
+  (when (:delve @state)
+    (swap! state update-in [:delve :auto-pass-priority] not)))
+
 (defn total-delve-cost
   ([state side card] (total-delve-cost state side card nil))
   ([state side card {:keys [click-delve ignore-costs] :as args}]
@@ -231,11 +236,13 @@
 (defn delve-complete-encounter
   [state side eid]
   (swap! state dissoc-in [:delve :encounter-select])
-  (queue-event state :encounter-ended (assoc (delve-event state) :approached-card (card-for-current-slot state)))
-  (wait-for (checkpoint state side)
-            (when-not (delve-ended? state side eid)
-              (set-phase state :post-encounter)
-              (effect-completed state side eid))))
+  (wait-for
+    (trigger-event-simult state side :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+    (wait-for
+      (checkpoint state side)
+      (when-not (delve-ended? state side eid)
+        (set-phase state :post-encounter)
+        (effect-completed state side eid)))))
 
 (defn end-the-delve!
   [state side eid success?]
@@ -399,7 +406,9 @@
   [state side eid]
   (if (get-in @state [:delve :no-action side])
     (effect-completed state side eid)
-    (if (get-in @state [:delve :no-action (other-side side)])
+    (if (or (get-in @state [:delve :no-action (other-side side)])
+            (and (= side (-> @state :delve :delver))
+                 (-> @state :delve :auto-pass-priority)))
       (case (-> @state :delve :phase)
         :approach-slot (delve-encounter state (-> @state :delve :delver) eid)
         :approach-district (delve-generate-heat state (-> @state :delve :delver) eid)

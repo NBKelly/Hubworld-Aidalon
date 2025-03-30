@@ -17,7 +17,7 @@
    [game.core.initializing :refer [card-init deactivate make-card]]
    [game.core.moving :refer [move swap-installed trash]]
    [game.core.prompt-state :refer [remove-from-prompt-queue]]
-   [game.core.prompts :refer [show-prompt show-stage-prompt]]
+   [game.core.prompts :refer [show-prompt show-stage-prompt show-bluff-prompt]]
    [game.core.props :refer [set-prop]]
    [game.core.say :refer [system-msg system-say unsafe-say]]
    [game.core.set-up :refer [build-card]]
@@ -260,6 +260,7 @@
             nil)
           (case command
             "/bug"        command-bug-report
+            "/bluff"      #(show-bluff-prompt %1 %2 nil)
             "/card-info"  #(resolve-ability %1 %2
                                             {:effect (effect (system-msg (str "shows card-info of "
                                                                               (card-str state target)

@@ -6,6 +6,7 @@
     [cond-plus.core :refer [cond+]]
     [game.core.board :refer [clear-empty-remotes get-all-cards all-installed all-installed-runner
                              all-installed-runner-type all-active-installed]]
+    [game.core.bluffs :refer [bluffs]]
     [game.core.card :refer [active? facedown? faceup? get-card get-cid get-title ice? in-discard? in-hand? installed? rezzed? program? console? unique?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [get-effect-maps unregister-lingering-effects is-disabled? is-disabled-reg? update-disabled-cards]]
@@ -13,7 +14,7 @@
     [game.core.finding :refer [find-cid]]
     [game.core.payment :refer [build-spend-msg can-pay? handler]]
     [game.core.prompt-state :refer [add-to-prompt-queue]]
-    [game.core.prompts :refer [clear-wait-prompt show-prompt show-select show-wait-prompt]]
+    [game.core.prompts :refer [clear-wait-prompt show-prompt show-select show-wait-prompt show-bluff-prompt]]
     [game.core.say :refer [system-msg system-say]]
     [game.core.update :refer [update!]]
     [game.core.winning :refer [check-win-by-agenda]]
@@ -859,6 +860,7 @@
                                                        nil event-targets)
                                      (effect-completed state side eid))))))})))]
       (continue-ability state side (choose-handler handlers nil) nil event-targets))
+    ;; here is the window to bluff
     (effect-completed state side eid)))
 
 (defn ability-as-handler
@@ -874,6 +876,17 @@
   (if (keyword? event)
     (name event)
     (str event)))
+
+(defn maybe-bluff-instead
+  [state side eid events cancel-fn targets event]
+  (if-not (not-empty events)
+    (if-let [bluff-fn (event bluffs)]
+      (if (bluff-fn state side eid nil targets)
+        (wait-for (show-bluff-prompt state side  nil)
+                  (effect-completed state side eid))
+        (effect-completed state side eid))
+      (effect-completed state side eid))
+    (trigger-event-simult-player state side eid events cancel-fn targets)))
 
 (defn trigger-event-simult
   "Triggers the given event by showing a prompt of all handlers for the event, allowing manual resolution of
@@ -914,13 +927,13 @@
                     (show-wait-prompt state opponent
                                       (str (side-str active-player) " to resolve " (event-title event) " triggers"))
                     ; let active player activate their events first
-                    (wait-for (trigger-event-simult-player state side (make-eid state eid) active-player-events cancel-fn targets)
+                    (wait-for (maybe-bluff-instead state active-player (make-eid state eid) active-player-events cancel-fn targets event)
                               (when after-active-player
                                 (resolve-ability state side eid after-active-player nil nil))
                               (clear-wait-prompt state opponent)
                               (show-wait-prompt state active-player
                                                 (str (side-str opponent) " to resolve " (event-title event) " triggers"))
-                              (wait-for (trigger-event-simult-player state opponent (make-eid state eid) opponent-events cancel-fn targets)
+                              (wait-for (maybe-bluff-instead state opponent (make-eid state eid) opponent-events cancel-fn targets event)
                                         (clear-wait-prompt state active-player)
                                         (effect-completed state side eid))))))))
 

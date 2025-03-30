@@ -31,8 +31,8 @@
                                        (in-hand? card)
                                        (= (to-keyword (:side card)) side)
                                        (= (:delver context) side)))
-                        :waiting-prompt "Current phase: Success" ;; TODO - set up bluff window
-                        :prompt "gain 3 [credits]?"
+                        :waiting-prompt true
+                        :prompt "Exile Fun Run to gain 3 [credits]?"
                         :yes-ability {:cost [(->c :exile-reaction)]
                                       :msg "gain 3 [credits]"
                                       :async true
@@ -41,16 +41,15 @@
 (defcard "Infiltrate"
   {:events [{:event :breach-server
              :location :hand
-             :interactve (req true)
+             :interactive (req true)
              :optional {:hide-card? true
                         :req (req (and
-                                    (or (println context) true)
                                     (= (:breach-server context) :council)
-                                       (in-hand? card)
-                                       (= (to-keyword (:side card)) side)
-                                       (= (:delver context) side)))
-                        :waiting-prompt "Current phase: Success"
-                        :prompt "Discover 2 additional cards?"
+                                    (in-hand? card)
+                                    (= (to-keyword (:side card)) side)
+                                    (= (:delver context) side)))
+                        :waiting-prompt true
+                        :prompt "Exile Infiltrate to Discover 2 additional cards?"
                         :yes-ability {:cost [(->c :exile-reaction)]
                                       :msg "discover 2 additional cards"
                                       :effect (req (access-bonus state side :council 2))}}}]})
@@ -63,8 +62,8 @@
                                        (= (to-keyword (:side card)) side)
                                        (let [c (get-card state (:approached-card context))]
                                          (and c (not (rezzed? c))))))
-                        :waiting-prompt "Current phase: Post-Encounter" ;; TODO - set up bluff windows on some of these events or something - see what askteki does!
-                        :prompt (msg "Ask your opponent to discover " (:title (:approached-card context)) "?")
+                        :waiting-prompt true
+                        :prompt (msg "Exile Likely a Trap to Ask your opponent to discover " (:title (:approached-card context)) "?")
                         :hide-card? true
                         :yes-ability {:cost [(->c :exile-reaction)]
                                       :msg "lay some bait"

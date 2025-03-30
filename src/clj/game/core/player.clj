@@ -22,6 +22,7 @@
      paths
      click
      credit
+     bluffs
      heat
      commons-access-fn
      council-access-fn

@@ -1,6 +1,7 @@
 (ns game.core.prompts
   (:require
    [clj-uuid :as uuid]
+   [cljc.java-time.instant :as inst]
    [game.core.board :refer [get-all-cards]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.prompt-state :refer [add-to-prompt-queue remove-from-prompt-queue]]
@@ -82,6 +83,44 @@
                                   other-choices f args))
                   args))))
 
+(defn- clamp
+  [a b x]
+  (cond
+    (< x a) a
+    (> x b) b
+    :else x))
+
+(defn show-bluff-prompt
+  "Specific function for showing a bluff prompt"
+  ([state side args] (show-bluff-prompt state side (make-eid state) args))
+  ([state side eid args]
+   (let [low-end  (clamp 2 4 (get args :min-time 4))
+         high-end (clamp 5 10 (get args :max-time 5))
+         ;; this gives a random number of ms between high-low (ie 6500)
+         timer (+ (* 1000 low-end) (rand-int (* (- high-end low-end) 1000)))
+         now (inst/now)
+         terminates (inst/plus-millis now timer)
+         newitem {:eid eid
+                  :msg "You have no triggers - press OK to continue"
+                  :prompt-type :bluff
+                  :start-time (inst/to-epoch-milli now)
+                  :end-time (inst/to-epoch-milli terminates)}]
+     (add-to-prompt-queue
+       state (if (= :corp side) :runner :corp)
+       {:eid (select-keys eid [:eid])
+        :prompt-type :waiting
+        :msg (str "Waiting for " (str (side-str side) " to make a decision"))})
+     (add-to-prompt-queue state side newitem))))
+
+(defn cancel-bluff
+  [state side resolve-ability]
+  (let [prompt (first (filter #(= :bluff (:prompt-type %)) (get-in @state [side :prompt])))]
+    (when prompt
+      (remove-from-prompt-queue state side prompt)
+      (resolve-ability state side (:eid prompt) nil nil nil)
+      ;; this is 1000% a hack...
+      (cancel-bluff state side resolve-ability))))
+
 (defn show-stage-prompt
   "Specific function for showing a staging prompt"
   ([state side card message ab args] (show-stage-prompt state side (make-eid state) card message ab args))
@@ -129,7 +168,6 @@
                         (str (side-str side) " to make a decision")
                         waiting-prompt))}))
      (add-to-prompt-queue state side newitem))))
-
 
 (defn show-trace-prompt
   "Specific function for displaying a trace prompt. Works like `show-prompt` with some extensions.

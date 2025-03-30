@@ -247,6 +247,9 @@
    ;; hubworld stuff
    :target-paths
    :other-side?
+   ;; bluffs
+   :start-time
+   :end-time
    ;; traces
    :player
    :base
@@ -383,6 +386,7 @@
 
 (def delve-keys
   [:approached-card
+   :auto-pass-priority
    :delve-id
    :server
    :delver

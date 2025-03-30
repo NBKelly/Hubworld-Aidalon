@@ -157,7 +157,7 @@
 (defn handle-card-click [{:keys [type zone exhausted rezzed installed] :as card} shift-key-held]
   (let [side (:side @game-state)]
     (when (and (not-spectator?)
-               (not (contains? #{"stage" "shift"} (get-in @game-state [side :prompt-state :prompt-type]))))
+               (not (contains? #{"stage" "shift" "bluff" "waiting"} (get-in @game-state [side :prompt-state :prompt-type]))))
       (cond
         ;; Selecting card
         (= (get-in @game-state [side :prompt-state :prompt-type]) "select")
@@ -1167,8 +1167,6 @@
                                                   (= (get-in @game-state [viewing-side :prompt-state :prompt-type]) "shift")
                                                   (get-in @game-state [viewing-side :prompt-state :target-paths (keyword server-name) slot]))
                                              #(send-command "stage-select" {:server server-name :slot slot}))}
-             ;; todo - make these seen while discovery occurs
-             ;; that might be a backend task though
              (if-let [{:keys [rezzed seen] :as staged-card}
                       (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
                [:div.staged-card {:key (:cid staged-card)}
@@ -1644,11 +1642,18 @@
         (and approach (not (rezzed? approach)))
         #(send-command "forge" {:card approach})])
 
-     (when-not (contains? #{"post-encounter" "encounter"} phase)
+     (when-not (contains? #{"post-encounter" "encounter" "success" "breach"} phase)
        [cond-button
         (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
         (not (get-in @delve [:no-action side]))
-        #(send-command "delve-continue")])]))
+        #(send-command "delve-continue")])
+
+     (when (and @delve (not (contains? #{"success" "breach"} phase)))
+       [checkbox-button
+        (tr [:game.stop-pass "Stop passing priority"])
+        (tr [:game.auto-pass "Auto-pass priority"])
+        (get-in @delve [:auto-pass-priority])
+        #(send-command "delve-toggle-auto-pass")])]))
 
 (defn delve-div-attacker
   [delve side]
@@ -1663,7 +1668,7 @@
        [:h4 (tr [:game.encounter-start "You are encountering"]) ":" [:br] (if (rezzed? approach) (:title approach) "a facedown card")])
 
      ;; there's one where we can jack out - that's only post-encounter (after passing a slot)
-     (when-not (contains? #{"post-encounter" "encounter"} phase)
+     (when-not (contains? #{"post-encounter" "encounter" "success" "breach"} phase)
        [cond-button
         (str (tr [:game.continue-to "Continue to"]) " " (delve->next-phase-title phase (:position @delve)))
         (not (get-in @delve [:no-action side]))
@@ -1808,8 +1813,38 @@
      [:button#trace-submit {:on-click #(send-command "choice" {:choice (-> "#credit" js/$ .val str->int)})}
       (tr [:game.ok "OK"])]]))
 
+(defn now-unix-ms [] (-> (inst/now) (inst/to-epoch-milli)))
+
+(defn calculate-progress [start-time end-time]
+  (let [current-time (now-unix-ms)]
+    (if (>= current-time end-time)
+      100
+      (max 0 (* 100 (/ (- current-time start-time) (- end-time start-time)))))))
+
+(defn progress-bar [start-time end-time done]
+  (let [progress (r/atom (calculate-progress start-time end-time))]
+    (r/create-class
+      {:component-did-mount
+       (fn []
+         (js/setInterval (fn [] (let [new-progress (calculate-progress start-time end-time)]
+                                  (when (and (< @progress 100) (>= new-progress 100))
+                                    (done))
+                                  (reset! progress new-progress)))
+                         250)) ;; Update every 25ms second
+       :reagent-render
+       (fn []
+         [:div
+          [:div {:style {:width "100%"
+                         :background-color "#00000000"
+                         :border-radius "0px"}}
+           [:div {:style {:width (str (- 100 @progress) "%")
+                          :transition "width 0.25s linear"
+                          :background-color "#d0ba2f"
+                          :height "6px"
+                          :border-radius "0px"}}]]])})))
+
 (defn prompt-div
-  [me {:keys [card msg prompt-type choices] :as prompt-state}]
+  [me {:keys [card msg prompt-type choices start-time end-time] :as prompt-state}]
   (let [id (atom 0)]
     [:div.panel.blue-shade
      (when (and card (not= "Basic Action" (:type card)))
@@ -1857,6 +1892,13 @@
        (or (= prompt-type "stage") (= prompt-type "shift"))
        [:div [:button#stage-done {:on-click #(send-command "stage-done" {})}
               (tr [:game.done "Done"])]]
+
+       (= prompt-type "bluff")
+       [:div
+        [progress-bar start-time end-time #(when (= @prompt-type "bluff")
+                                             (send-command "bluff-done" {}))]
+        [:button#bluff-done {:on-click #(send-command "bluff-done" {})}
+         (tr [:game.done "Done"])]]
 
        ;; choice of number of credits
        (= choices "credit")
@@ -2349,7 +2391,7 @@
 
                 (if (:replay @game-state)
                   [content-pane :log :settings :notes :notes-shared]
-                  [content-pane :log :settings :run-timing :turn-timing])]
+                  [content-pane :log :settings])]
 
                [:div.centralpane
                 (if (= op-side :corp)

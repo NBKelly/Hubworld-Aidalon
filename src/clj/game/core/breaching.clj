@@ -193,7 +193,7 @@
   "Starts the breach routines for the delve's server."
   ([state side eid server] (breach-server state side eid server nil))
   ([state side eid server args]
-   (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) ", utilizing  " (count-heat state (other-side side)) "[heat]"))
+   (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) ", utilizing  " (count-heat state (other-side side)) " [heat]"))
    (wait-for (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
              (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
              (let [args (clean-access-args args)
@@ -202,7 +202,7 @@
                  (swap! state assoc-in [:delve :did-access] true))
                (wait-for (resolve-access-server state side server access-amount)
                          (swap! state dissoc-in [:breach :set-aside-eid])
-                         (wait-for (trigger-event-sync state side :end-breach-server (:breach @state))
+                         (wait-for (trigger-event-simult state side :end-breach-server nil (:breach @state))
                                    (swap! state dissoc :breach)
                                    (unregister-lingering-effects state side :end-of-breach)
                                    (unregister-floating-events state side :end-of-breach)

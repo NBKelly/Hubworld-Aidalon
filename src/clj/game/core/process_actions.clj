@@ -6,12 +6,12 @@
                               generate-runnable-zones move-card expend-ability
                               pass play play-ability play-corp-ability play-collect
                               play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
-                              resolve-prompt score select stage-done stage-select trash-resource view-deck]]
+                              resolve-prompt score select stage-done bluff-done stage-select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
    [game.core.change-vals :refer [change]]
    [game.core.checkpoint :refer [fake-checkpoint]]
    [game.core.commands :refer [parse-command]]
-   [game.core.delving :refer [continue-delve continue-delve-post-encounter delve-discover-clicked delve-confront-clicked delve-bypass-clicked end-the-delve!]]
+   [game.core.delving :refer [continue-delve continue-delve-post-encounter delve-discover-clicked delve-confront-clicked delve-bypass-clicked end-the-delve! delve-toggle-pass-priority]]
    [game.core.eid :refer [make-eid]]
    [game.core.exhausting :refer [exhaust unexhaust]]
    [game.core.moving :refer [exile trash]]
@@ -62,9 +62,9 @@
    "delve-discover"                   (fn [state side _] (delve-discover-clicked state side (make-eid state)))
    "delve-bypass"                     (fn [state side _] (delve-bypass-clicked state side (make-eid state)))
    "delve-confront"                   (fn [state side _] (delve-confront-clicked state side (make-eid state)))
+   "delve-toggle-auto-pass"           (fn [state _ _]        (delve-toggle-pass-priority state))
    "exile"                            #(exile %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
    "collect" #'play-collect
-
 
    "draw" #'click-draw
    "dynamic-ability" #'play-dynamic-ability
@@ -92,6 +92,7 @@
    "shuffle" #'shuffle-deck
    "start-turn" #'start-hubworld-turn
    "stage-done" #'stage-done
+   "bluff-done" #'bluff-done
    "stage-select" #'stage-select
    "subroutine" #'play-subroutine
    "system-msg" #(system-msg %1 %2 (:msg %3))

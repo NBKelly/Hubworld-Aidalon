@@ -5,7 +5,7 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
-    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted?]]
+    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus]]
     [game.core.effects :refer [any-effects is-disabled-reg?]]
@@ -18,7 +18,7 @@
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
     [game.core.expend :refer [expend expendable?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
-    [game.core.prompts :refer [cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift]]
+    [game.core.prompts :refer [cancel-bluff cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.runs :refer [continue get-runnable-zones]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
@@ -101,7 +101,7 @@
   ([state side eid {:keys [card] :as args}]
    (let [card (get-card state card)
          ability (first (filter :collect (:abilities card)))]
-     (if (and ability (rezzed? card) (not (exhausted? card)))
+     (if (and ability (or (rezzed? card) (seeker? card)) (not (exhausted? card)))
        (let [args (assoc args :card card)
              ability-idx 0
              blocking-prompt? (not (no-blocking-prompt? state side))
@@ -371,6 +371,13 @@
     (case (:prompt-type prompt)
       :stage (cancel-stage state side card update! resolve-ability)
       :shift (cancel-shift state side card update! resolve-ability))))
+
+(defn bluff-done
+  [state side args]
+  (let [prompt (first (get-in @state [side :prompt]))]
+    (case (:prompt-type prompt)
+      :bluff (cancel-bluff state side resolve-ability)
+      (println "? " (str "prompt: " prompt)))))
 
 (defn stage-select
   [state side {:keys [server slot shift-key-held]}]
