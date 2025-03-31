@@ -1,4 +1,4 @@
-# Hubworld: Aidalong in the browser
+# Hubworld: Aidalon in the browser
 
 Most of the stuff written below here isn't accurate, and I need to rewrite it all. I'll get around to it soon.
 
