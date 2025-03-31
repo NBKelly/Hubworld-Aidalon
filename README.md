@@ -1,4 +1,6 @@
-# Netrunner in the browser
+# Hubworld: Aidalong in the browser
+
+Most of the stuff written below here isn't accurate, and I need to rewrite it all. I'll get around to it soon.
 
 Hosted at [http://www.jinteki.net](http://www.jinteki.net). [Example of gameplay](https://www.youtube.com/watch?v=cnWudnpeY2c).
 
