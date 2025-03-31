@@ -12,98 +12,15 @@
       [:div
        [:label [:input {:type "checkbox"
                         :value true
-                        :checked (get-in @app-state [:options :stacked-cards])
-                        :on-change #(swap! app-state assoc-in [:options :stacked-cards] (.. % -target -checked))}]
-        (tr [:ingame-settings.stack-cards "Stack cards"])]]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
                         :checked (get-in @app-state [:options :labeled-unrezzed-cards])
                         :on-change #(swap! app-state assoc-in [:options :labeled-unrezzed-cards] (.. % -target -checked))}]
-        (tr [:ingame-settings.label-unrezzed-cards "Label unrezzed cards"])]]
+        (tr [:ingame-settings.label-unforged-cards "Label unforged cards"])]]
       [:div
        [:label [:input {:type "checkbox"
                         :value true
                         :checked (get-in @app-state [:options :labeled-cards])
                         :on-change #(swap! app-state assoc-in [:options :labeled-cards] (.. % -target -checked))}]
-        (tr [:ingame-settings.label-faceup-cards "Label face up cards"])]]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :ghost-trojans])
-                        :on-change #(swap! app-state assoc-in [:options :ghost-trojans] (.. % -target -checked))}]
-        (tr [:ingame-settings.ghost-trojans "Display hosted trojans in rig"])]]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :display-encounter-info])
-                        :on-change #(swap! app-state assoc-in [:options :display-encounter-info] (.. % -target -checked))}]
-        (tr [:ingame-settings.display-encounter-info "Always display encounter info"])]]]
-
-     [:section
-      [:h4 (tr [:ingame-settings.game-settings "Gameplay Settings"])]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :pass-on-rez])
-                        :on-change #(swap! app-state assoc-in [:options :pass-on-rez] (.. % -target -checked))}]
-        (tr [:ingame-settings.game-settings "Pass priority when rezzing ice"])]]]
-
-     [:section
-      [:h4 (tr [:ingame-settings.card-sorting "Sorting"])]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :archives-sorted])
-                        :on-change #(swap! app-state assoc-in [:options :archives-sorted] (.. % -target -checked))}]
-        (tr [:ingame-settings.sort-archives "Sort Archives"])]]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :heap-sorted])
-                        :on-change #(swap! app-state assoc-in [:options :heap-sorted] (.. % -target -checked))}]
-        (tr [:ingame-settings.sort-heap "Sort Heap"])]]]
-
-     [:section
-      [:h4 (tr [:ingame-settings.runner-board-order "Runner board order"])]
-      (doall (for [option [{:name (tr [:ingame-settings.runner-classic "classic"]) :ref "jnet"}
-                           {:name (tr [:ingame-settings.runner-reverse "reversed"]) :ref "irl"}]]
-               [:div.radio {:key (:name option)}
-                [:label [:input {:type "radio"
-                                 :name "runner-board-order"
-                                 :value (:ref option)
-                                 :on-change #(swap! app-state assoc-in [:options :runner-board-order] (.. % -target -value))
-                                 :checked (= (get-in @app-state [:options :runner-board-order]) (:ref option))}]
-                 (:name option)]]))]
-     [:section
-      [:h4 (tr [:ingame-settings.log-timestamps "Log timestamps"])]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :log-timestamps])
-                        :on-change #(swap! app-state assoc-in [:options :log-timestamps] (.. % -target -checked))}]
-        (tr [:ingame-settings.log-timestamps "Show log timestamps"])]]]
-
-     [:section
-      [:h4 (tr [:ingame-settings.board-overlap "Board overlap"])]
-      [:div
-       [:label [:input {:type "checkbox"
-                        :value true
-                        :checked (get-in @app-state [:options :sides-overlap])
-                        :on-change #(swap! app-state assoc-in [:options :sides-overlap] (.. % -target -checked))}]
-        (tr [:ingame-settings.sides-overlap "Runner and Corp may overlap"])]]]
-
-     [:section
-      [:h4 (tr [:ingame-settings.card-backs "Card backs"])]
-      (doall (for [option [{:name (tr [:settings.nsg "NSG"]) :ref "nsg"}
-                           {:name (tr [:settings.ffg "FFG"]) :ref "ffg"}]]
-               [:div.radio {:key (:name option)}
-                [:label [:input {:type "radio"
-                                 :name "card-back"
-                                 :value (:ref option)
-                                 :on-change #(swap! app-state assoc-in [:options :card-back] (.. % -target -value))
-                                 :checked (= (get-in @app-state [:options :card-back]) (:ref option))}]
-                 (:name option)]]))]
+        (tr [:ingame-settings.label-faceup-cards "Label face up cards"])]]]
 
      [:section
       [:h4 (tr [:ingame-settings.preview-zoom "Card preview zoom"])]

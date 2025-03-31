@@ -830,9 +830,7 @@
           [:div.panel.blue-shade.hand
            (drop-area (if (= :corp side) "HQ" "the Grip") {:class (when (> size 6) "squeeze")})
            [build-hand-card-view filled-hand size "card-wrapper"]
-           [label filled-hand {:opts {:name (if (= :corp side)
-                                              (tr [:game.hq "HQ"])
-                                              (tr [:game.grip "Grip"]))
+           [label filled-hand {:opts {:name (tr [:game.council "Council"])
                                       :fn (fn [_] (str size "/" (:total @hand-size)))}}]]
           (when popup
             [:div.panel.blue-shade.hand-expand
@@ -931,9 +929,7 @@
           [:div.header {:class "server-label darkbg"}
            (let [total (count @discard)
                  face-up (count (filter faceup? @discard))]
-             (str (tr [:game.archives "Archives"])
-                  ;; use non-breaking space to keep counts on same line
-                  " (" (tr [:game.up-down-count] total face-up) ")"))]]
+             (str (tr [:game.archives "Archives"]) " (" total ")"))]]
          [:div.panel.blue-shade.popup {:ref #(swap! s assoc :popup %)
                                        :class (if (not= player-side (utils/other-side discard-side)) "me" "opponent")}
           [:div
@@ -1383,7 +1379,7 @@
                                                     :key (str (:cid card) "-" i "-" @mulliganed)}
                              [:div.flipper
                               [:div.card-back
-                               [:img.start-card {:src (str "/img/" card-back "-" (lower-case (:side @my-ident)) ".png")}]]
+                               [:img.start-card {:src (str "/img/hubworld-card-back-2.png")}]]
                               [:div.card-front
                                (when-let [url (image-url card)]
                                  [:div {:on-mouse-enter #(put-game-card-in-channel card zoom-channel)

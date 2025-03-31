@@ -187,20 +187,20 @@
          [command-menu !input-ref state]]))))
 
 (defn format-system-timestamp [timestamp text corp runner]
-  (if (get-in @app-state [:options :log-timestamps])
-    (render-message (render-player-highlight text corp runner (str "[" (string/replace (.toLocaleTimeString (js/Date. timestamp)) #"\s\w*" "") "]")))
-    (render-message (render-player-highlight text corp runner))
-    )
+  ;; (if (get-in @app-state [:options :log-timestamps])
+  ;;   (render-message (render-player-highlight text corp runner (str "[" (string/replace (.toLocaleTimeString (js/Date. timestamp)) #"\s\w*" "") "]")))
+  (render-message (render-player-highlight text corp runner))
+  ;;    )
   )
 
 (defn format-user-timestamp [timestamp user]
-  (if (get-in @app-state [:options :log-timestamps])
-    [:div.timestamp-wrapper
-     [:div.username (:username user)]
-     [:div.timestamp "[" (string/replace (.toLocaleTimeString (js/Date. timestamp)) #"\s\w*" "") "]"]
-     ]
-    [:div.username (:username user)]
-    )
+  ;; (if (get-in @app-state [:options :log-timestamps])
+  ;;   [:div.timestamp-wrapper
+  ;;    [:div.username (:username user)]
+  ;;    [:div.timestamp "[" (string/replace (.toLocaleTimeString (js/Date. timestamp)) #"\s\w*" "") "]"]
+  ;;    ]
+  [:div.username (:username user)]
+  ;;  )
   )
 
 (defn log-messages []
