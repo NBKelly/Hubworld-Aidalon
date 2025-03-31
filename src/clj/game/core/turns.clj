@@ -164,5 +164,22 @@
                 (swap! state assoc-in [s1 :register-last-turn] (-> @state s1 :register))
                 (swap! state assoc-in [s2 :register-last-turn] (-> @state s2 :register))
                 (swap! state dissoc-in [:turn :started])
+                (swap! state dissoc-in [:turn :ending])
                 (clear-turn-register! state)
                 (start-hubworld-turn state nil eid)))))))))
+
+(defn end-turn-consent
+  [state side eid]
+  (cond
+    ;; we can end the turn
+    (and (get-in @state [:turn :ending (other-side side)]) (not (get-in @state [:turn :ending :initiated])))
+    (do (swap! state assoc-in [:turn :ending :initiated] true) (hubworld-refresh-phase state side eid))
+    ;; we're the first player to hit it
+    (and (not (get-in @state [:turn :ending side]))
+         (not (get-in @state [:turn :ending (other-side side)]))
+         (not (get-in @state [:turn :ending :initiated])))
+    (do (system-msg state side "has no further actions")
+        (swap! state assoc-in [:turn :ending side] true)
+        (effect-completed state side eid))
+    ;; it's already been initiated
+    :else (effect-completed state side eid)))

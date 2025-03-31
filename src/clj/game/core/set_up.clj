@@ -11,11 +11,12 @@
    [game.core.engine :refer [trigger-event trigger-event-sync resolve-ability]]
    [game.core.initializing :refer [card-init make-card]]
    [game.core.moving :refer [move]]
-   [game.core.player :refer [new-player]] ;;new-corp new-runner]]
+   [game.core.player :refer [new-player]]
    [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
    [game.core.say :refer [system-msg system-say implementation-msg]]
    [game.core.shuffling :refer [shuffle-into-deck shuffle!]]
    [game.core.state :refer [new-state]]
+   [game.core.turns :refer [start-hubworld-turn]]
    [game.macros :refer [wait-for req]]
    [game.quotes :as quotes]
    [game.utils :refer [server-card]]))
@@ -64,7 +65,9 @@
                     (shuffle! state side :deck)
                     (swap! state assoc-in [side :keep] :mulligan)
                     (toggle-wait-prompts state side)
-                    (effect-completed state side eid)))}
+                    (if (= side :runner)
+                      (start-hubworld-turn state side eid)
+                      (effect-completed state side eid))))}
     nil nil))
 
 (defn keep-hand
@@ -74,7 +77,9 @@
   (system-msg state side "keeps [their] hand")
   (trigger-event state side :pre-first-turn)
   (toggle-wait-prompts state side)
-  (effect-completed state side eid))
+  (if (= side :runner)
+    (start-hubworld-turn state side eid)
+    (effect-completed state side eid)))
 
 (defn- init-hands [state]
   (draw state :corp (make-eid state) (draw-limit state :corp) {:suppress-event true})

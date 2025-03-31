@@ -20,7 +20,7 @@
    [game.core.set-up :refer [keep-hand mulligan]]
    [game.core.shuffling :refer [shuffle-deck]]
    [game.core.toasts :refer [ack-toast toast]]
-   [game.core.turns :refer [start-hubworld-turn hubworld-refresh-phase]]
+   [game.core.turns :refer [start-hubworld-turn hubworld-refresh-phase end-turn-consent]]
    [game.core.winning :refer [concede]]))
 
 (defn checkpoint+clean-up
@@ -70,7 +70,7 @@
    "dynamic-ability" #'play-dynamic-ability
 
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
-   "end-turn" #'hubworld-refresh-phase
+   "end-turn" (fn [state side _] (end-turn-consent state side (make-eid state)))
    "generate-install-list" #'generate-install-list
    "generate-runnable-zones" #'generate-runnable-zones
    "indicate-action" #'indicate-action

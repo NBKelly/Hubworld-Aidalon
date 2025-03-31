@@ -186,9 +186,7 @@
         (if (and shift-key-held (or rezzed (= (:type card) "Seeker")) (not exhausted))
           ;; fire a collect ability if possible
           (send-command "collect" {:card (card-for-click card) :shift-key-held shift-key-held})
-          (do (js/console.log (str "shift: " shift-key-held ", card: " (card-for-click card)
-                                   ", exhausted: " exhausted ", rezzed: " rezzed))
-              (handle-abilities side card)))
+          (handle-abilities side card))
 
         ;; no match
         :else nil))))
@@ -1020,7 +1018,6 @@
                                   "")}]])
 
 (defn delve-arrow [{:keys [phase position server] :as delve} me?] ;; todo - rename
-  (js/console.log (str "delve arrow: " delve))
   [:div {:class (if me? "delve-arrow-me" "delve-arrow-op")}
    [:div {:class (str (case (:phase delve)
                         "initiation" "initiation"
@@ -1172,7 +1169,6 @@
                [:div.staged-card {:key (:cid staged-card)}
                 [card-view staged-card (not (or rezzed seen))]]
                (str "placeholder: " (name slot)))
-             (js/console.log (str "delve: " @delve))
              (when (and (= (:server @delve) server-name)
                         (= (:position @delve) (name slot))
                         (= (:delver @delve) (name player-side)))
@@ -1821,16 +1817,21 @@
       100
       (max 0 (* 100 (/ (- current-time start-time) (- end-time start-time)))))))
 
+(defonce interval-id (atom nil))
+
 (defn progress-bar [start-time end-time done]
   (let [progress (r/atom (calculate-progress start-time end-time))]
     (r/create-class
       {:component-did-mount
        (fn []
-         (js/setInterval (fn [] (let [new-progress (calculate-progress start-time end-time)]
-                                  (when (and (< @progress 100) (>= new-progress 100))
-                                    (done))
-                                  (reset! progress new-progress)))
-                         250)) ;; Update every 25ms second
+         (when @interval-id (js/clearInterval @interval-id))
+         (reset! interval-id
+                 (js/setInterval (fn [] (let [new-progress (calculate-progress start-time end-time)]
+                                          (when (and (< @progress 100) (>= new-progress 100))
+                                            (do (when @interval-id (js/clearInterval @interval-id))
+                                                (done)))
+                                          (reset! progress new-progress)))
+                                 250))) ;; Update every 25ms second
        :reagent-render
        (fn []
          [:div
@@ -1897,7 +1898,10 @@
        [:div
         [progress-bar start-time end-time #(when (= @prompt-type "bluff")
                                              (send-command "bluff-done" {}))]
-        [:button#bluff-done {:on-click #(send-command "bluff-done" {})}
+        [:button#bluff-done {:on-click #(do (when @interval-id
+                                              (js/clearInterval @interval-id)
+                                              (reset! interval-id nil))
+                                            (send-command "bluff-done" {}))}
          (tr [:game.done "Done"])]]
 
        ;; choice of number of credits
@@ -1957,18 +1961,22 @@
 
 (defn basic-actions [{:keys [delve side active-player end-turn runner-phase-12 corp-phase-12 me opponent delve]}]
   [:div.panel.blue-shade
-   (if (= (keyword @active-player) side)
-     (if (and (zero? (:click @me))
-              (pos? (:click @opponent)))
+   (let [turn (r/cursor game-state [:turn])]
+     (when (and (zero? (:click @me))
+                (zero? (:click @opponent)))
        [:button {:on-click #(do (close-card-menu)
                                 (send-command "pass"))}
         (tr [:game.pass "Pass Turn"])]
        (when (and (zero? (:click @me))
                   (zero? (:click @opponent))
+                  (not (get-in @turn [:ending :initiated]))
+                  (not (get-in @turn [:ending side]))
                   (not @end-turn))
          [:button {:on-click #(do (close-card-menu)
                                   (send-command "end-turn"))}
-          (tr [:game.end-turn "End Turn"])]))
+          (tr [:game.end-turn "End Turn"])])))
+
+   (if (= (keyword @active-player) side)
      (when @end-turn
        [:button {:on-click #(do
                               (swap! app-state assoc :start-shown true)
@@ -2028,7 +2036,7 @@
            (-> "#card-title" js/$ .focus)))
 
        :reagent-render
-       (fn [{:keys [side run encounters prompt-state me opponent] :as button-pane-args}]
+       (fn [{:keys [side run encounters prompt-state me opponent turn] :as button-pane-args}]
          [:div.button-pane {:on-mouse-over #(card-preview-mouse-over % zoom-channel)
                             :on-mouse-out  #(card-preview-mouse-out % zoom-channel)}
           (let [delve (r/cursor game-state [:delve])]
