@@ -89,6 +89,7 @@
   {:on-play {:additional-cost [(->c :click 1)]
              :action true
              :prompt "Choose a player"
+             :waiting-prompt true
              :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
                                      (same-card? target (get-in @state [:runner :identity]))))
                        :all true}

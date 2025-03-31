@@ -62,7 +62,7 @@
    "delve-discover"                   (fn [state side _] (delve-discover-clicked state side (make-eid state)))
    "delve-bypass"                     (fn [state side _] (delve-bypass-clicked state side (make-eid state)))
    "delve-confront"                   (fn [state side _] (delve-confront-clicked state side (make-eid state)))
-   "delve-toggle-auto-pass"           (fn [state _ _]        (delve-toggle-pass-priority state))
+   "delve-toggle-auto-pass"           (fn [state side _]        (delve-toggle-pass-priority state side (make-eid state)))
    "exile"                            #(exile %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
    "collect" #'play-collect
 

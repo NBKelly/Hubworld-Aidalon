@@ -7,7 +7,7 @@
    [game.core.moving :refer [move trash swap-installed shift-installed]]
    [game.core.prompts :refer [show-shift-prompt]]
    [game.core.say :refer [system-msg]]
-   [game.core.to-string :refer [card-str]]
+   [game.core.to-string :refer [hubworld-card-str]]
    [game.macros :refer [msg req wait-for]]
    [jinteki.utils :refer [other-side adjacent-zones]]))
 
@@ -27,10 +27,10 @@
      {:cost cost
       :msg (msg (let [server (:server context)
                       slot (:slot context)
-                      old-card (get-in @state [side :paths server slot 0])]
+                      old-card (get-in @state [(if other-side? (other-side side) side) :paths server slot 0])]
                   (if old-card
-                    (str "swap " (card-str state card-to-shift) " with " (card-str state old-card))
-                    (str "shift " (card-str state card-to-shift) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
+                    (str "swap " (hubworld-card-str state card-to-shift {:opponent? other-side}) " with " (hubworld-card-str state old-card {:opponent? other-side}))
+                    (str "shift " (hubworld-card-str state card-to-shift {:opponent? other-side}) " to the " (name slot) " position of the " (str/capitalize (name server)) " path"))))
       :effect (req (let [server (:server context)
                          slot (:slot context)]
                      (shift state (if other-side? (other-side side) side) card-to-shift server slot nil)))}

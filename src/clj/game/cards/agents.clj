@@ -19,6 +19,7 @@
   (collect
     {:shards 1}
     {:on-forge {:prompt "Choose a player"
+                :waiting-prompt true
                 :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
                                         (same-card? target (get-in @state [:runner :identity]))))
                           :all true}
@@ -86,6 +87,7 @@
                                          (= (:breach-server context) :archives)
                                          (= (:delver context) side)))
                           :prompt (msg "Archive the top 2 cards of " (other-player-name state side) "'s Commons?")
+                          :waiting-prompt true
                           :yes-ability {:cost [(->c :exhaust-self)]
                                         :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
                                         :async true

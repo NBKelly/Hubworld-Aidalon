@@ -25,6 +25,7 @@
                                          (seq (get-in @state [(other-side side) :hand]))
                                          (= (:delver context) side)))
                           :prompt (msg "Archive 1 card at random from " (other-player-name state side) "'s Council?")
+                          :waiting-prompt true
                           :yes-ability {:cost [(->c :exhaust-self) (->c :trash-from-deck 1)]
                                         :msg (msg "Archive 1 card at random from " (other-player-name state side) "'s Council")
                                         :async true

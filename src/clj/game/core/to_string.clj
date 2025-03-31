@@ -1,6 +1,53 @@
 (ns game.core.to-string
-  (:require [game.core.card :refer [get-card rezzed? ice? installed? corp? card-index get-title]]
-            [game.core.servers :refer [is-root? zone->name name-zone]]))
+  (:require
+   [clojure.string :as string]
+   [game.core.card :refer [get-card rezzed? ice? installed? corp? card-index get-title
+                           seeker?]]
+   [game.core.servers :refer [is-root? zone->name name-zone]]
+   [jinteki.utils :refer [player-name]]))
+
+(defn path-name
+  [[_ server slot] verb]
+  (str "in the " (case slot
+                :inner  "innermost"
+                :middle "middle"
+                :outer  "outermost")
+       " position of " verb " " (string/capitalize (name server)) " path"))
+
+(defn hname-zone
+  "Gets a string representation for the given zone."
+  ([zone verb] (hname-zone nil zone verb))
+  ([side zone verb]
+   (let [zone (if (keyword? zone) [zone] (vec zone))]
+     (cond
+       (= zone [:hand])      "Council"
+       (= zone [:discard])   "Archives"
+       (= zone [:rfg])       "Exile"
+       (= zone [:deck])      "Commons"
+       (= zone [:set-aside]) "set-aside cards"
+       (= (first zone) :paths) (path-name zone verb)
+       :else (zone->name (second zone))))))
+
+
+(defn hubworld-card-str
+  ([state card] (hubworld-card-str state card nil))
+  ([state {:keys [zone type rezzed visible seen] :as card} {:keys [not-verbose? visible opponent?]}]
+   (let [is-facedown? (and (not visible)
+                           (or ((every-pred installed? (complement seeker?) (complement rezzed?)) card)
+                               (and (not (:seen card))
+                                    (not (contains? #{:discard :hand :deck} (:zone card))))))
+         ctitle (if is-facedown? "a facedown card" (or (:title card) (:printed-title card)))]
+     (if not-verbose?
+       ctitle
+       (let [side (keyword (string/lower-case (:side card)))
+             verb (if opponent? (let [on (or (player-name state side) "(unknown)")]
+                                  (if (= (last on) \s)
+                                    (str on "'")
+                                    (str on "'s")))
+                      "[their]")]
+         (if (contains? #{:hand :discard :rfg :deck :set-aside} (first zone))
+           (str ctitle " in " verb " " (hname-zone zone verb))
+           (str ctitle " " (hname-zone zone verb))))))))
 
 (defn card-str
   "Gets a string description of an installed card, reflecting whether it is rezzed,

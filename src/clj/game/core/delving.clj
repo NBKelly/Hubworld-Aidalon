@@ -131,11 +131,6 @@
 
 ;; UTILS FOR DELVES
 
-(defn delve-toggle-pass-priority
-  [state]
-  (when (:delve @state)
-    (swap! state update-in [:delve :auto-pass-priority] not)))
-
 (defn total-delve-cost
   ([state side card] (total-delve-cost state side card nil))
   ([state side card {:keys [click-delve ignore-costs] :as args}]
@@ -415,6 +410,15 @@
         nil)
       (do (swap! state assoc-in [:delve :no-action side] true)
           (system-msg state side "has no further action")))))
+
+(defn delve-toggle-pass-priority
+  [state side eid]
+  (if (:delve @state)
+    (do (swap! state update-in [:delve :auto-pass-priority] not)
+        (if (get-in @state [:delve :no-action (other-side side)])
+          (continue-delve state side eid)
+          (effect-completed state side eid)))
+    (effect-completed state side eid)))
 
 (defn continue-delve-post-encounter
   [state side eid]

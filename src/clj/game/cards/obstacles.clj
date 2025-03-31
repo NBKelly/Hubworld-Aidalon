@@ -41,6 +41,7 @@
 (defcard "Canal Network"
   {:confront-abilities [{:async true
                          :prompt "Shift an unforged card on your opponent's grid"
+                         :waiting-prompt true
                          :req (req (seq (filter #(and (installed? %)
                                                   (not= side (to-keyword (:side %)))
                                                   (not= "Seeker" (:type %))
@@ -53,6 +54,7 @@
                          :effect (req (shift-a-card state side eid card target {:other-side? true}))}]
    :discover-abilities [{:async true
                          :prompt "Exhaust your Seeker: Shift a card on your opponent's grid"
+                         :waiting-prompt true
                          :req (req (and (can-pay? state side eid card nil [(->c :exhaust-seeker)])
                                         (seq (filter #(and (installed? %)
                                                            (not (seeker? %)))
