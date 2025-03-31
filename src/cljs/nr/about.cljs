@@ -27,66 +27,66 @@
        (fn [_ _]
          [:div.about.panel.content-page.blue-shade
           [:h3 "About"]
-          [:p "This website was founded by " [:a {:href "http://twitter.com/mtgred" :target "_blank"} "@mtgred"]
-           ", an avid Netrunner player from Belgium. The goal is to provide a great way to create and test Netrunner decks online."]
+          [:p "This website was founded by Nathan Kelly, an avid card game player from New Zealand. The goal is to provide a great way to create and test Hubworld: Aidalon decks online, and to meet new friends playing a game I enjoy"]
 
           [:h3 "Development"]
           [:h4 "Software Development Team"]
           [:ul.list.compact
-           [:li "mtgred: Founder, original sole developer. Retired."]
-           [:li "NoahTheDuke: Project maintainer, lead developer."]
-           [:li "nbkelly, butzopower, francescopellegrini: Current active contributors."]
-           [:li [:a {:href "https://github.com/mtgred/netrunner/graphs/contributors" :target "_blank"} "Many past contributors"]]]
+           [:li "nbkelly: Founder, project manager, lead developer"]]
+           ;; [:li "mtgred: Founder, original sole developer. Retired."]
+           ;; [:li "NoahTheDuke: Project maintainer, lead developer."]
+           ;; [:li "nbkelly, butzopower, francescopellegrini: Current active contributors."]
+           ;; [:li [:a {:href "https://github.com/mtgred/netrunner/graphs/contributors" :target "_blank"} "Many past contributors"]]]
 
-          [:h4 "Content Creators"]
-          [:ul.list.compact
-           [:li "0thmxma, Sanjay, quarg, znsolomon, hbarsquared, yankeeflatline, rumirumirumirumi: Corp and Runner quotes for start-of-game splash screen."]
-           [:li "PopTartNZ: High-resolution card images."]
-           [:li "Rhahi: Labelling and other QoL functionality ported with permission from "
-            [:a {:href "https://addons.mozilla.org/en-US/firefox/addon/cyberfeeder/" :target "_blank"} "Cyberfeeder"] " Firefox plugin"]
-           [make-artists alt-info]]
+          ;; [:h4 "Content Creators"]
+          ;; [:ul.list.compact
+          ;;  [:li "0thmxma, Sanjay, quarg, znsolomon, hbarsquared, yankeeflatline, rumirumirumirumi: Corp and Runner quotes for start-of-game splash screen."]
+          ;;  [:li "PopTartNZ: High-resolution card images."]
+          ;;  [:li "Rhahi: Labelling and other QoL functionality ported with permission from "
+          ;;   [:a {:href "https://addons.mozilla.org/en-US/firefox/addon/cyberfeeder/" :target "_blank"} "Cyberfeeder"] " Firefox plugin"]
+          ;;  [make-artists alt-info]]
 
-          [:h4 "UI Translators"]
-          [:ul.list.compact
-           [:li "Chinese (Simplified): bbbbbbbbba, klingeling"]
-           [:li "French: canisinhorto"]
-           [:li "Japanese: csbisa"]
-           [:li "Korean: Seojun Park"]
-           [:li "Pig-Latin: jwarwick"]
-           [:li "Polish: vesperius"]
-           [:li "Portuguese: Vacilotto"]
-           [:li "Russian: xiaat"]]
+          ;; [:h4 "UI Translators"]
+          ;; [:ul.list.compact
+          ;;  [:li "Chinese (Simplified): bbbbbbbbba, klingeling"]
+          ;;  [:li "French: canisinhorto"]
+          ;;  [:li "Japanese: csbisa"]
+          ;;  [:li "Korean: Seojun Park"]
+          ;;  [:li "Pig-Latin: jwarwick"]
+          ;;  [:li "Polish: vesperius"]
+          ;;  [:li "Portuguese: Vacilotto"]
+          ;;  [:li "Russian: xiaat"]]
 
           [:h4 "Tech Stack"]
           [:ul.list.compact
-           [:li [:b "Game engine:"] " Clojure. Card data from " [:a {:href "https://netrunnerdb.com/" :target "_blank"} "NetrunnerDB"] " API."]
+           [:li [:b "Game engine:"] " Clojure."];; Card data from " [:a {:href "https://netrunnerdb.com/" :target "_blank"} "NetrunnerDB"] " API."]
            [:li [:b "Server:"] " Clojure. Ring and Compojure running on http-kit. Sente for websocket communications."]
            [:li [:b "Front-end client:"] " ClojureScript. Reagent (React). "]]
 
-          [:p "The code is open source and available on "
-           [:a {:href "https://github.com/mtgred/netrunner" :target "_blank"} "Github"] "."]
+          ;; [:p "The code is open source and available on "
+          ;;  [:a {:href "https://github.com/mtgred/netrunner" :target "_blank"} "Github"] "."]
 
-          [:p "Bug reports and feature suggestions can be submitted "
-           [:a {:href "https://github.com/mtgred/netrunner/issues" :target "_blank"} "here"] "."]
+          ;; [:p "Bug reports and feature suggestions can be submitted "
+          ;;  [:a {:href "https://github.com/mtgred/netrunner/issues" :target "_blank"} "here"] "."]
 
-          [:p "Card automation "
-           [:a {:href "https://docs.google.com/spreadsheets/d/1ICv19cNjSaW9C-DoEEGH3iFt09PBTob4CAutGex0gnE/pubhtml"
-                :target "_blank"} "status"] "."]
+          ;; [:p "Card automation "
+          ;;  [:a {:href "https://docs.google.com/spreadsheets/d/1ICv19cNjSaW9C-DoEEGH3iFt09PBTob4CAutGex0gnE/pubhtml"
+          ;;       :target "_blank"} "status"] "."]
 
-          [:h3 "Donations"]
-          [:p "Donations are appreciated and help finance fast servers. You can support the project financially with PayPal or Bitcoin. Alternate art cards will be enabled on your account as a token of gratitude. Please specify your username with your donation."]
-          [:ul.list.compact
-           [:li "PayPal: mtgred@gmail.com or " [:a {:href "https://www.paypal.me/mtgred" :title "PayPal" :target "_blank"} "paypal.me/mtgred"]]
-           [:li "Bitcoin: " [:span.bitcoin "1MRRtCsZYGdgwvRo4NMhmo14q7KJNtAiKL" [:img.qr {:src "/img/bitcoin.png" :alt "Bitcoin QR Code"}]]]]
+          ;; [:h3 "Donations"]
+          ;; [:p "Donations are appreciated and help finance fast servers. You can support the project financially with PayPal or Bitcoin. Alternate art cards will be enabled on your account as a token of gratitude. Please specify your username with your donation."]
+          ;; [:ul.list.compact
+          ;;  [:li "PayPal: mtgred@gmail.com or " [:a {:href "https://www.paypal.me/mtgred" :title "PayPal" :target "_blank"} "paypal.me/mtgred"]]
+          ;;  [:li "Bitcoin: " [:span.bitcoin "1MRRtCsZYGdgwvRo4NMhmo14q7KJNtAiKL" [:img.qr {:src "/img/bitcoin.png" :alt "Bitcoin QR Code"}]]]]
 
-          [:p "Many thanks to all the donors. Your contributions and kind words are greatly appreciated. You help finance fast servers."]
+          ;; [:p "Many thanks to all the donors. Your contributions and kind words are greatly appreciated. You help finance fast servers."]
           [:ul.list.compact
            (for [d @donors]
              ^{:key d}
              [:li d])]
           [:h3 "Disclaimer"]
-          [:p "Netrunner is a trademark of Fantasy Flight Publishing, Inc. and/or Wizards of the Coast LLC."]
-          [:p "This is website is not affiliated with Fantasy Flight Games or Wizards of the Coast."]
+          [:p "Hubworld: Aidalon is a trademark of Earthborne Games."]
+          [:p "This is website is not affiliated with Earthborne Games."]
           [:p "Targeting icon made by "
            [:a {:href "http://www.freepik.com" :title "Freepik" :target "_blank"} "Freepik"]
            " from "

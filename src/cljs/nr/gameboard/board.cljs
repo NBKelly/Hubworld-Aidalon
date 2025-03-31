@@ -295,17 +295,15 @@
   "Image element of a facedown card"
   ([side] (facedown-card side [] nil))
   ([side class-list alt-alt-text]
-   (let [card-back (get-in @app-state [:options :card-back])
-         s (lower-case side)
-         alt (if (nil? alt-alt-text)
-               (str "Facedown " s " card")
-               alt-alt-text)
-         tag (->> class-list
+   (let [tag (->> class-list
                   vec
                   (concat ["img" "card"])
                   (join ".")
-                  keyword)]
-     [tag {:src (str "/img/" card-back "-" s ".png")
+                  keyword)
+         alt (if (nil? alt-alt-text)
+               "Facedown card"
+               alt-alt-text)]
+     [tag {:src (str "/img/hubworld-card-back-2.png")
            :alt alt}])))
 
 (defn sort-archives

@@ -300,9 +300,9 @@
                             {:name (tr [:pronouns.zezir "Ze/zir"]) :ref "zezir"}
                             {:name (tr [:pronouns.xe "Xe/xem"]) :ref "xe"}
                             {:name (tr [:pronouns.xi "Xi/xir"]) :ref "xi"}]]
-                [:option {:value (:ref option) :key (:ref option)} (:name option)]))]
-           [:div "If your personal pronouns are not represented, you can request them "
-            [:a {:href "https://github.com/mtgred/netrunner/issues"} "here"]]]
+                [:option {:value (:ref option) :key (:ref option)} (:name option)]))]]
+           ;; [:div "If your personal pronouns are not represented, you can request them "
+           ;;  [:a {:href "https://github.com/mtgred/netrunner/issues"} "here"]]]
           [:section
            [:h3 (tr [:settings.language "Language"])]
            [:select {:value (:language @s "en")
@@ -343,20 +343,20 @@
                      :value (or (:volume @s) 50)
                      :disabled (not (or (:sounds @s) (:lobby-sounds @s)))}]]]
 
-          [:section
-           [:h3 (tr [:settings.bespoke-sounds-header "Card-Specific Sounds"])]
-           (doall
-             (for [grouping (distinct (map :grouping (vals bespoke-sounds)))]
-               ^{:key grouping}
-               [:div
-                [:label [:input {:type "checkbox"
-                                 :value true
-                                 :checked (get-in @s [:bespoke-sounds grouping])
-                                 :on-change #(let [checked (.. % -target -checked)]
-                                               (when checked
-                                                 (play-sfx [(select-random-from-grouping grouping)] {:volume (or (:volume @s) 50) :force true}))
-                                               (swap! s assoc-in [:bespoke-sounds grouping] checked))}]
-                 (tr [(keyword (str "settings.bespoke-sounds." (name grouping))) (name grouping)])]]))]
+          ;; [:section
+          ;;  [:h3 (tr [:settings.bespoke-sounds-header "Card-Specific Sounds"])]
+          ;;  (doall
+          ;;    (for [grouping (distinct (map :grouping (vals bespoke-sounds)))]
+          ;;      ^{:key grouping}
+          ;;      [:div
+          ;;       [:label [:input {:type "checkbox"
+          ;;                        :value true
+          ;;                        :checked (get-in @s [:bespoke-sounds grouping])
+          ;;                        :on-change #(let [checked (.. % -target -checked)]
+          ;;                                      (when checked
+          ;;                                        (play-sfx [(select-random-from-grouping grouping)] {:volume (or (:volume @s) 50) :force true}))
+          ;;                                      (swap! s assoc-in [:bespoke-sounds grouping] checked))}]
+          ;;        (tr [(keyword (str "settings.bespoke-sounds." (name grouping))) (name grouping)])]]))]
 
           [:section
            [:h3 (tr [:lobby.default-game-format "Default game format"])]
@@ -376,55 +376,55 @@
                              :checked (:player-stats-icons @s)
                              :on-change #(swap! s assoc-in [:player-stats-icons] (.. % -target -checked))}]
              (tr [:settings.player-stats-icons "Use icons for player stats"])]]
-           [:div
-            [:label [:input {:type "checkbox"
-                             :value true
-                             :checked (:stacked-cards @s)
-                             :on-change #(swap! s assoc-in [:stacked-cards] (.. % -target -checked))}]
-             (tr [:settings.stacked-cards "Card stacking (on by default)"])]]
-           [:div
-            [:label [:input {:type "checkbox"
-                             :value true
-                             :checked (:ghost-trojans @s)
-                             :on-change #(swap! s assoc-in [:ghost-trojans] (.. % -target -checked))}]
-             (tr [:settings.display-encounter-info "Display ghosts for hosted programs"])]]
-           [:div
-            [:label [:input {:type "checkbox"
-                             :value true
-                             :checked (:display-encounter-info @s)
-                             :on-change #(swap! s assoc-in [:display-encounter-info] (.. % -target -checked))}]
-             (tr [:settings.display-encounter-info "Always display encounter info dialog"])]]
-           [:div
-            [:label [:input {:type "checkbox"
-                             :value true
-                             :checked (:sides-overlap @s)
-                             :on-change #(swap! s assoc-in [:sides-overlap] (.. % -target -checked))}]
-             (tr [:settings.sides-overlap "Runner and Corp board may overlap"])]]
-           [:div
-            [:label [:input {:type "checkbox"
-                             :value true
-                             :checked (:log-timestamps @s)
-                             :on-change #(swap! s assoc-in [:log-timestamps] (.. % -target -checked))}]
-             (tr [:settings.log-timestamps "Show log timestamps"])]]
+           ;; [:div
+           ;;  [:label [:input {:type "checkbox"
+           ;;                   :value true
+           ;;                   :checked (:stacked-cards @s)
+           ;;                   :on-change #(swap! s assoc-in [:stacked-cards] (.. % -target -checked))}]
+           ;;   (tr [:settings.stacked-cards "Card stacking (on by default)"])]]
+           ;; [:div
+           ;;  [:label [:input {:type "checkbox"
+           ;;                   :value true
+           ;;                   :checked (:ghost-trojans @s)
+           ;;                   :on-change #(swap! s assoc-in [:ghost-trojans] (.. % -target -checked))}]
+           ;;   (tr [:settings.display-encounter-info "Display ghosts for hosted programs"])]]
+           ;; [:div
+           ;;  [:label [:input {:type "checkbox"
+           ;;                   :value true
+           ;;                   :checked (:display-encounter-info @s)
+           ;;                   :on-change #(swap! s assoc-in [:display-encounter-info] (.. % -target -checked))}]
+           ;;   (tr [:settings.display-encounter-info "Always display encounter info dialog"])]]
+           ;; [:div
+           ;;  [:label [:input {:type "checkbox"
+           ;;                   :value true
+           ;;                   :checked (:sides-overlap @s)
+           ;;                   :on-change #(swap! s assoc-in [:sides-overlap] (.. % -target -checked))}]
+           ;;   (tr [:settings.sides-overlap "Runner and Corp board may overlap"])]]
+           ;; [:div
+           ;;  [:label [:input {:type "checkbox"
+           ;;                   :value true
+           ;;                   :checked (:log-timestamps @s)
+           ;;                   :on-change #(swap! s assoc-in [:log-timestamps] (.. % -target -checked))}]
+           ;;   (tr [:settings.log-timestamps "Show log timestamps"])]]
 
-           [:br]
-           [:h4 (tr [:settings.runner-layout "Runner layout from Corp perspective"])]
-           [:div
-            [:div.radio
-             [:label [:input {:name "runner-board-order"
-                              :type "radio"
-                              :value "jnet"
-                              :checked (= "jnet" (:runner-board-order @s))
-                              :on-change #(swap! s assoc :runner-board-order (.. % -target -value))}]
-              (tr [:settings.runner-classic "Runner rig layout is classic jnet (Top to bottom: Programs, Hardware, Resources)"])]]
+           ;; [:br]
+           ;; [:h4 (tr [:settings.runner-layout "Runner layout from Corp perspective"])]
+           ;; [:div
+           ;;  [:div.radio
+           ;;   [:label [:input {:name "runner-board-order"
+           ;;                    :type "radio"
+           ;;                    :value "jnet"
+           ;;                    :checked (= "jnet" (:runner-board-order @s))
+           ;;                    :on-change #(swap! s assoc :runner-board-order (.. % -target -value))}]
+           ;;    (tr [:settings.runner-classic "Runner rig layout is classic jnet (Top to bottom: Programs, Hardware, Resources)"])]]
 
-            [:div.radio
-             [:label [:input {:name "runner-board-order"
-                              :type "radio"
-                              :value "irl"
-                              :checked (= "irl" (:runner-board-order @s))
-                              :on-change #(swap! s assoc :runner-board-order (.. % -target -value))}]
-              (tr [:settings.runner-reverse "Runner rig layout is reversed (Top to bottom: Resources, Hardware, Programs)"])]]]
+           ;;  [:div.radio
+           ;;   [:label [:input {:name "runner-board-order"
+           ;;                    :type "radio"
+           ;;                    :value "irl"
+           ;;                    :checked (= "irl" (:runner-board-order @s))
+           ;;                    :on-change #(swap! s assoc :runner-board-order (.. % -target -value))}]
+           ;;    (tr [:settings.runner-reverse "Runner rig layout is reversed (Top to bottom: Resources, Hardware, Programs)"])]]]
 
            [:br]
            [:h4 (tr [:settings.log-size "Log size"])]
@@ -454,15 +454,13 @@
                 custom-bg-url (r/atom (:custom-bg-url @s))]
             [:section
              [:h3  (tr [:settings.background "Game board background"])]
-             (doall (for [option [{:name (tr [:settings.the-root-bg "The Root"])              :ref "lobby-bg"}
-                                  {:name (tr [:settings.freelancer-bg "Freelancer"])          :ref "freelancer-bg"}
-                                  {:name (tr [:settings.mushin-no-shin-bg "Mushin No Shin"])  :ref "mushin-no-shin-bg"}
-                                  {:name (tr [:settings.traffic-jam-bg "Traffic Jam"])        :ref "traffic-jam-bg"}
-                                  {:name (tr [:settings.rumor-mill-bg "Rumor Mill"])          :ref "rumor-mill-bg"}
-                                  {:name (tr [:settings.find-the-truth-bg "Find The Truth"])  :ref "find-the-truth-bg"}
-                                  {:name (tr [:settings.push-your-luck-bg "Push Your Luck"])  :ref "push-your-luck-bg"}
-                                  {:name (tr [:settings.apex-bg "Apex"])                      :ref "apex-bg"}
-                                  {:name (tr [:settings.worlds2020-bg "Worlds 2020"])         :ref "worlds2020"}
+             (doall (for [option [{:name (tr [:settings.barbican-gate-bg "Barbican Gate"])         :ref "barbican-gate-bg"}
+                                  {:name (tr [:settings.hubworld-bg "Hubworld"])                   :ref "hubworld-bg"}
+                                  {:name (tr [:settings.calling-in-favors-bg "Calling in Favors"]) :ref "calling-in-favors-bg"}
+                                  {:name (tr [:settings.eye-enforcers-bg "Eye Enforcers"])         :ref "eye-enforcers-bg"}
+                                  {:name (tr [:settings.kyzar-the-rat-bg "Kyzar the Rat"])         :ref "kyzar-the-rat-bg"}
+                                  {:name (tr [:settings.smooth-handoff-bg "Smooth Handoff"])       :ref "smooth-handoff-bg"}
+
                                   {:name (tr [:settings.monochrome-bg "Monochrome"])          :ref "monochrome-bg"}
                                   {:name (str (tr [:settings.custom-bg "Custom BG"]) (when custom-bg-selected (tr [:settings.input-url-below " (input URL below)"])))
                                    :ref "custom-bg"}]]
@@ -480,17 +478,17 @@
                                             (reset! custom-bg-url (.. % -target -value)))
                             :value @custom-bg-url}]]])
 
-          [:section
-           [:h3  (tr [:settings.card-backs "Card backs"])]
-           (doall (for [option [{:name (tr [:settings.nsg "NSG"]) :ref "nsg"}
-                                {:name (tr [:settings.ffg "FFG"]) :ref "ffg"}]]
-                    [:div.radio {:key (:name option)}
-                     [:label [:input {:type "radio"
-                                      :name "card-back"
-                                      :value (:ref option)
-                                      :on-change #(swap! s assoc :card-back (.. % -target -value))
-                                      :checked (= (:card-back @s) (:ref option))}]
-                      (:name option)]]))]
+          ;; [:section
+          ;;  [:h3  (tr [:settings.card-backs "Card backs"])]
+          ;;  (doall (for [option [{:name (tr [:settings.nsg "Transparent Edges"]) :ref ""}
+          ;;                       {:name (tr [:settings.ffg "Darkened Edges"]) :ref "ffg"}]]
+          ;;           [:div.radio {:key (:name option)}
+          ;;            [:label [:input {:type "radio"
+          ;;                             :name "card-back"
+          ;;                             :value (:ref option)
+          ;;                             :on-change #(swap! s assoc :card-back (.. % -target -value))
+          ;;                             :checked (= (:card-back @s) (:ref option))}]
+          ;;             (:name option)]]))]
 
           [:section
            [:h3  (tr [:settings.card-preview-zoom "Card preview zoom"])]
