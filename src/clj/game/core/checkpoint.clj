@@ -1,16 +1,11 @@
 (ns game.core.checkpoint
   (:require
-   [game.core.agendas :refer [update-all-advancement-requirements update-all-agenda-points]]
-   [game.core.actions :refer [generate-runnable-zones]]
-   [game.core.board :refer [get-remotes clear-empty-remotes]]
    [game.core.barrier :refer [update-all-barrier]]
-   [game.core.effects :refer [update-disabled-cards sum-effects]]
    [game.core.hand-size :refer [update-hand-size]]
    [game.core.heat :refer [update-heat sum-heat-effects]]
    [game.core.initializing :refer [update-all-card-labels]]
    [game.core.presence :refer [update-all-presence]]
-   [game.core.subtypes :refer [update-all-subtypes]]
-   [game.core.tags :refer [update-tag-status]]))
+   [game.core.subtypes :refer [update-all-subtypes]]))
 
 (defn fake-checkpoint
   [state]

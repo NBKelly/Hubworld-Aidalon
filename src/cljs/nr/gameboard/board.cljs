@@ -6,7 +6,7 @@
    [cljc.java-time.temporal.chrono-unit :as chrono]
    [cljs.core.async :refer [<! chan put!] :as async]
    [clojure.string :as s :refer [capitalize ends-with? join lower-case split
-                           starts-with?]]
+                                 starts-with?]]
    [game.core.card :refer [active? asset? corp? facedown? faceup?
                            get-counters get-title has-subtype? ice? program? rezzed?
                            same-card? operation? condition-counter?]]
@@ -1162,7 +1162,7 @@
                       (get-in @game-state [(utils/other-side player-side) :paths (keyword server-name) slot 0])]
                [:div.staged-card {:key (:cid staged-card)}
                 [card-view staged-card (not (or rezzed seen))]]
-               (str "placeholder: " (name slot)))
+               [:span.district-tier (str (capitalize (name slot)))]) ;; todo - option for if these display
              (when (and (= (:server @delve) server-name)
                         (= (:position @delve) (name slot))
                         (= (:delver @delve) (name player-side)))

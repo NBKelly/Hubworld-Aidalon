@@ -58,7 +58,6 @@
     [game.core.shuffling]
     [game.core.state]
     [game.core.subtypes]
-    [game.core.tags]
     [game.core.threat]
     [game.core.to-string]
     [game.core.toasts]
@@ -774,11 +773,6 @@
 (expose-vars
   [game.core.subtypes
    update-all-subtypes])
-
-(expose-vars
-  [game.core.tags
-   gain-tags
-   lose-tags])
 
 (expose-vars
   [game.core.threat
