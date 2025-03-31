@@ -90,9 +90,10 @@
            (tr [:lobby.deck-selected "Deck selected"]))]])
      (when-let [deck (:deck player)]
        [:div.float-right [deck-format-status-span deck (:format @current-game "pre-release") true]])
-     [:span.fake-link.deck-load
-      {:on-click #(reagent-modals/modal! [select-deck-modal user current-game])}
-      (tr [:lobby.select-deck "Select Deck"])]]))
+     (when this-player
+       [:span.fake-link.deck-load
+        {:on-click #(reagent-modals/modal! [select-deck-modal user current-game])}
+        (tr [:lobby.select-deck "Select Deck"])])]))
 
 (defn player-list [user current-game players]
   [:<>

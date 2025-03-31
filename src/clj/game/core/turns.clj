@@ -173,7 +173,10 @@
   (cond
     ;; we can end the turn
     (and (get-in @state [:turn :ending (other-side side)]) (not (get-in @state [:turn :ending :initiated])))
-    (do (swap! state assoc-in [:turn :ending :initiated] true) (hubworld-refresh-phase state side eid))
+    (do
+      (system-msg state side "has no further actions")
+      (swap! state assoc-in [:turn :ending :initiated] true)
+      (hubworld-refresh-phase state side eid))
     ;; we're the first player to hit it
     (and (not (get-in @state [:turn :ending side]))
          (not (get-in @state [:turn :ending (other-side side)]))

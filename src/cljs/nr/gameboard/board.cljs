@@ -1954,58 +1954,60 @@
                  (render-message (or (not-empty (get-title value)) value))])))]))
 
 (defn basic-actions [{:keys [delve side active-player end-turn runner-phase-12 corp-phase-12 me opponent delve]}]
-  [:div.panel.blue-shade
-   (let [turn (r/cursor game-state [:turn])]
+  (let [turn (r/cursor game-state [:turn])]
+    [:div.panel.blue-shade
      (when (and (zero? (:click @me))
-                (zero? (:click @opponent)))
+                (pos? (:click @opponent))
+                (= (keyword @active-player) side))
        [:button {:on-click #(do (close-card-menu)
                                 (send-command "pass"))}
-        (tr [:game.pass "Pass Turn"])]
-       (when (and (zero? (:click @me))
-                  (zero? (:click @opponent))
-                  (not (get-in @turn [:ending :initiated]))
-                  (not (get-in @turn [:ending side]))
-                  (not @end-turn))
-         [:button {:on-click #(do (close-card-menu)
-                                  (send-command "end-turn"))}
-          (tr [:game.end-turn "End Turn"])])))
+        (tr [:game.pass "Pass Turn"])])
 
-   (if (= (keyword @active-player) side)
-     (when @end-turn
-       [:button {:on-click #(do
-                              (swap! app-state assoc :start-shown true)
-                              (send-command "start-turn"))}
-        (tr [:game.start-turn "Start Turn"])]))
-   [:div.run-button.menu-container
-    [cond-button (tr [:game.delve "Delve"])
-     (and (pos? (:click @me))
-          (= (keyword @active-player) side)
-          (playable? (get-in @me [:basic-action-card :abilities  6])))
-     #(do (if (= :run-button (:source @card-menu))
-            (close-card-menu)
-            (open-card-menu :run-button)))]
-    [:div.panel.blue-shade.servers-menu (when (= :run-button (:source @card-menu))
-                                          {:class "active-menu"
-                                           :style {:display "inline"}})
-     [:ul
-      (let [servers ["Archives" "Council" "Commons"]]
-        (doall
-          (map-indexed (fn [_ label]
-                         ^{:key label}
-                         [card-menu-item (tr-game-prompt label)
-                          #(do (close-card-menu)
-                               (send-command "delve" {:server label}))])
-                       servers)))]]]
-   [cond-button (tr [:game.draw "Draw"])
-    (and (playable? (get-in @me [:basic-action-card :abilities 1]))
-         (pos? (:deck-count @me)))
-    #(send-command "draw")]
-   [cond-button (tr [:game.gain-credit "Gain Credit"])
-    (playable? (get-in @me [:basic-action-card :abilities 0]))
-    #(send-command "credit")]
-   [cond-button (tr [:game.shift "Shift Card"])
-    (playable? (get-in @me [:basic-action-card :abilities 5]))
-    #(send-command "shift")]])
+     (when (and (zero? (:click @me))
+                (zero? (:click @opponent)))
+       [cond-button (tr [:game.end-turn "End Turn"])
+        (and (not (get-in @turn [:ending :initiated]))
+             (not (get-in @turn [:ending side]))
+             (not @end-turn))
+        #(do (close-card-menu)
+             (send-command "end-turn"))])
+
+     (if (= (keyword @active-player) side)
+       (when @end-turn
+         [:button {:on-click #(do
+                                (swap! app-state assoc :start-shown true)
+                                (send-command "start-turn"))}
+          (tr [:game.start-turn "Start Turn"])]))
+     [:div.run-button.menu-container
+      [cond-button (tr [:game.delve "Delve"])
+       (and (pos? (:click @me))
+            (= (keyword @active-player) side)
+            (playable? (get-in @me [:basic-action-card :abilities  6])))
+       #(do (if (= :run-button (:source @card-menu))
+              (close-card-menu)
+              (open-card-menu :run-button)))]
+      [:div.panel.blue-shade.servers-menu (when (= :run-button (:source @card-menu))
+                                            {:class "active-menu"
+                                             :style {:display "inline"}})
+       [:ul
+        (let [servers ["Archives" "Council" "Commons"]]
+          (doall
+            (map-indexed (fn [_ label]
+                           ^{:key label}
+                           [card-menu-item (tr-game-prompt label)
+                            #(do (close-card-menu)
+                                 (send-command "delve" {:server label}))])
+                         servers)))]]]
+     [cond-button (tr [:game.draw "Draw"])
+      (and (playable? (get-in @me [:basic-action-card :abilities 1]))
+           (pos? (:deck-count @me)))
+      #(send-command "draw")]
+     [cond-button (tr [:game.gain-credit "Gain Credit"])
+      (playable? (get-in @me [:basic-action-card :abilities 0]))
+      #(send-command "credit")]
+     [cond-button (tr [:game.shift "Shift Card"])
+      (playable? (get-in @me [:basic-action-card :abilities 5]))
+      #(send-command "shift")]]))
 
 (defn button-pane [{:keys [side prompt-state]}]
   (let [autocomp (r/track (fn [] (get-in @prompt-state [:choices :autocomplete])))
