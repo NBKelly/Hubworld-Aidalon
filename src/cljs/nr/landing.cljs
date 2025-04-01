@@ -24,6 +24,6 @@
 
 (defn landing []
   [:div.page-container
-   [:div.eye-enforcers-bg]
+   [:div.barbican-gate-bg]
    landing-content])
 

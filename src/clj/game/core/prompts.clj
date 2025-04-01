@@ -62,7 +62,7 @@
             :prompt-type :waiting
             :msg (str "Waiting for "
                       (if (true? waiting-prompt)
-                        (str (side-str side) " to make a decision")
+                        "your opponent to make a decision"
                         waiting-prompt))}))
        (add-to-prompt-queue state side newitem)))))
 

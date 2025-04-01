@@ -298,7 +298,7 @@
     (fn []
       [:div.container
        [:div.home-bg]
-       [:h1 (tr [:chat.title "Play Hubworld: Aidalon in your browser"])]
+       [:h1 (tr [:chat.hubworld-title "Play Hubworld: Aidalon in your browser"])]
        [news]
        [chat s curr-msg old scroll-top]
        [:div#version [:span (str "Version " (or (get @app-state :app-version) "Unknown"))]]])))
