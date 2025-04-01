@@ -51,7 +51,7 @@
                                                   (not= side (to-keyword (:side target)))
                                                   (not= "Seeker" (:type target))
                                                   (not (rezzed? target))))}
-                         :effect (req (shift-a-card state side eid card target {:other-side? true}))}]
+                         :effect (req (shift-a-card state side eid card target {:other-side? true :no-wait-prompt? true}))}]
    :discover-abilities [{:async true
                          :prompt "Exhaust your Seeker: Shift a card on your opponent's grid"
                          :waiting-prompt true
@@ -62,7 +62,7 @@
                          :choices {:req (req (and (installed? target)
                                                   (not= side (to-keyword (:side target)))
                                                   (not= "Seeker" (:type target))))}
-                         :effect (req (shift-a-card state side eid card target {:other-side? true :cost [(->c :exhaust-seeker)]}))}]})
+                         :effect (req (shift-a-card state side eid card target {:other-side? true :cost [(->c :exhaust-seeker)] :no-wait-prompt? true}))}]})
 
 (defcard "Eye Enforcers"
   {:confront-abilities [{:optional

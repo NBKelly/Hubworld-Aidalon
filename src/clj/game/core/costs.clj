@@ -15,7 +15,7 @@
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.heat :refer [gain-heat]]
-   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile]]
+   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
    [game.core.props :refer [add-counter add-prop]]
@@ -646,16 +646,18 @@
                :req (req (and (in-discard? target)
                               (same-side? (:side card) side)))}
      :async true
-     :effect (req (doseq [t targets]
-                    (move state side (assoc-in t [:persistent :from-cid] (:cid card)) :rfg))
-                  (complete-with-result
-                    state side eid
-                    {:paid/msg (str "exiles " (quantify (value cost) "card")
-                                    " from [their] archives ("
-                                    (enumerate-str (map :title targets)) ")")
-                     :paid/type :exile-from-archives
-                     :paid/value (value cost)
-                     :paid/targets targets}))}
+     :effect (req (wait-for (exile-cards state side eid targets {:cause :ability-cost
+                                                                 :seen true
+                                                                 :unpreventable true
+                                                                 :suppress-checkpoint true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exiles " (quantify (value cost) "card")
+                                              " from [their] archives ("
+                                              (enumerate-str (map :title targets)) ")")
+                               :paid/type :exile-from-archives
+                               :paid/value (value cost)
+                               :paid/targets targets})))}
     card nil))
 
 ;; Gain heat
