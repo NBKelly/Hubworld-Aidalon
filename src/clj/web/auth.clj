@@ -221,9 +221,9 @@
     (let [code (set-password-reset-code! db email)
           msg (mail/send-message
                 email-settings
-                {:from    "support@jinteki.net"
+                {:from    "support@hubteki.com"
                  :to      email
-                 :subject "Jinteki Password Reset"
+                 :subject "Hubteki Password Reset"
                  :body    (str "You are receiving this because you (or someone else) have requested the reset of the password for your account " (user :username) ".\n\n"
                                "Please click on the following link, or paste this into your browser to complete the process:\n\n"
                                "http://" (headers "host") "/reset/" code "\n\n"
@@ -250,7 +250,7 @@
                             :resetPasswordToken   nil}})
         (mail/send-message
           email-settings
-          {:from    "support@jinteki.net"
+          {:from    "support@hubteki.com"
            :to      email
            :subject "Your password has been changed"
            :body    (str "Hello,\n\n"

@@ -20,10 +20,10 @@
         [:meta {:name "viewport" :content "width=device-width, initial-scale=0.6, minimal-ui"}]
         [:meta {:name "apple-mobile-web-app-capable" :content "yes"}]
         [:meta {:property "og:type" :content (:type og "website")}]
-        [:meta {:property "og:url" :content (:url og "https://jinteki.net")}]
-        [:meta {:property "og:image" :content (:image og "https://www.jinteki.net/img/icons/jinteki_167.png")}]
+        [:meta {:property "og:url" :content (:url og "https://hubteki.com")}]
+        [:meta {:property "og:image" :content (:image og "https://www.hubteki.com/img/icons/jinteki_167.png")}]
         [:meta {:property "og:title" :content (:title og "Play Hubworld: Aidalon in your browser")}]
-        [:meta {:property "og:site_name" :content (:site_name og "jinteki.net")}]
+        [:meta {:property "og:site_name" :content (:site_name og "hubteki.com")}]
         [:meta {:property "og:description" :content (:description og "Build Hubworld: Aidalon decks and test them online against other players.")}]
         [:link {:rel "apple-touch-icon" :href "/img/icons/jinteki_167.png"}]
         [:title "Hubworld Aidalon"]
@@ -64,7 +64,7 @@
       200
       (hiccup/html5
         [:head
-         [:title "Jinteki"]
+         [:title "Hubteki"]
          (hiccup/include-css "/css/netrunner.css")]
         [:body
          [:div.reset-bg]
