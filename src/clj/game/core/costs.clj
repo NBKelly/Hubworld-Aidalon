@@ -646,10 +646,10 @@
                :req (req (and (in-discard? target)
                               (same-side? (:side card) side)))}
      :async true
-     :effect (req (wait-for (exile-cards state side eid targets {:cause :ability-cost
-                                                                 :seen true
-                                                                 :unpreventable true
-                                                                 :suppress-checkpoint true})
+     :effect (req (wait-for (exile-cards state side targets {:cause :ability-cost
+                                                             :seen true
+                                                             :unpreventable true
+                                                             :suppress-checkpoint true})
                             (complete-with-result
                               state side eid
                               {:paid/msg (str "exiles " (quantify (value cost) "card")
