@@ -1,11 +1,11 @@
 (ns game.core.process-actions
   (:require
    [clojure.string :as str]
-   [game.core.actions :refer [click-advance click-credit click-draw click-run click-delve
+   [game.core.actions :refer [click-advance click-credit click-draw click-delve
                               close-deck do-purge generate-install-list cmd-shift
-                              generate-runnable-zones move-card expend-ability
+                               move-card expend-ability
                               pass play play-ability play-corp-ability play-collect
-                              play-dynamic-ability play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
+                              play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               resolve-prompt score select stage-done bluff-done stage-select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
    [game.core.change-vals :refer [change]]
@@ -67,12 +67,10 @@
    "collect" #'play-collect
 
    "draw" #'click-draw
-   "dynamic-ability" #'play-dynamic-ability
 
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
    "end-turn" (fn [state side _] (end-turn-consent state side (make-eid state)))
    "generate-install-list" #'generate-install-list
-   "generate-runnable-zones" #'generate-runnable-zones
    "indicate-action" #'indicate-action
    "keep" #'keep-hand
    "move" #'move-card
@@ -83,7 +81,6 @@
    "purge" #'do-purge
    "remove-tag" #'remove-tag
    "forge" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
-   "run" #'click-run
    "runner-ability" #'play-runner-ability
    "score" #(score %1 %2 (make-eid %1) (get-card %1 (:card %3)) nil)
    "select" #'select
