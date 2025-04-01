@@ -164,8 +164,8 @@
   (if (and (pos? remaining) (seq (get-in @state [(other-side side) :deck])))
     (let [next-access (first (get-in @state [(other-side side) :deck]))]
       (resolve-breach-discovery-for-card state side eid next-access remaining resolve-access-commons))
-    (do (doseq [c (get-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]))]
-          (move state (other-side side) c :deck))
+    (do (doseq [c (reverse (get-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid])))]
+          (move state (other-side side) c :deck {:front true}))
         (effect-completed state side eid))))
 
 (defn resolve-access-archives
