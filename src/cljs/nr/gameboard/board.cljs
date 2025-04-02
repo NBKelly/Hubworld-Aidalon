@@ -1601,7 +1601,7 @@
      (when (and approach (= phase "approach-slot"))
        [cond-button
         (str (tr [:game.forge "Forge"]) " " (get-title approach))
-        (and approach (not (rezzed? approach)))
+        (and approach (not (rezzed? approach)) (:forgeable approach))
         #(send-command "forge" {:card approach})])
 
      (when-not (contains? #{"post-encounter" "encounter" "success" "breach"} phase)
