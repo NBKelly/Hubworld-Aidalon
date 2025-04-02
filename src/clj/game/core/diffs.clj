@@ -1,5 +1,6 @@
 (ns game.core.diffs
   (:require
+   [clojure.string :as string]
    [cond-plus.core :refer [cond+]]
    [differ.core :as differ]
    [game.core.board :refer [installable-servers]]
@@ -7,12 +8,14 @@
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [card-ability-cost]]
    [game.core.delving :refer [card-for-current-slot]]
+   [game.core.eid :refer [make-eid]]
    [game.core.engine :refer [can-trigger?]]
    [game.core.effects :refer [any-effects is-disabled-reg?]]
    [game.core.installing :refer [corp-can-pay-and-install?
                                  runner-can-pay-and-install?]]
    [game.core.payment :refer [can-pay? ->c]]
    [game.core.play-instants :refer [can-play-instant?]]
+   [game.core.rezzing :refer [get-rez-cost]]
    [game.core.winning :refer [agenda-points-required-to-win]]
    [game.utils :refer [dissoc-in]]
    [jinteki.utils :refer [other-side select-non-nil-keys]]
@@ -38,42 +41,12 @@
       (assoc card :playable true)
       card)))
 
-;; (defn playable? [card state side]
-;;   (if (and ((if (= :corp side) corp? runner?) card)
-;;            (in-hand? card)
-;;            (not (:corp-phase-12 @state))
-;;            (not (:runner-phase-12 @state))
-;;            (cond+
-;;              [(or (agenda? card)
-;;                   (asset? card)
-;;                   (ice? card)
-;;                   (upgrade? card))
-;;               (some
-;;                 (fn [server]
-;;                   (corp-can-pay-and-install?
-;;                     state :corp {:source card :source-type :corp-install}
-;;                     card server {:base-cost [(->c :click 1)]
-;;                                  :action :corp-click-install
-;;                                  :no-toast true}))
-;;                 (installable-servers state card))]
-;;              [(or (hardware? card)
-;;                   (program? card)
-;;                   (resource? card))
-;;               (and (not (:run @state))
-;;                    (runner-can-pay-and-install?
-;;                      state :runner {:source card :source-type :runner-install}
-;;                      card {:base-cost [(->c :click 1)]
-;;                            :no-toast true}))]
-;;              [(or (event? card)
-;;                   (operation? card))
-;;               (and (not (:run @state))
-;;                    (can-play-instant?
-;;                      state side {:source card :source-type :play}
-;;                      card {:base-cost [(->c :click 1)]
-;;                            :silent true}))])
-;;            true)
-;;     (assoc card :playable true)
-;;     card))
+(defn forgeable [card state side]
+  (if (and (installed? card)
+           (not (rezzed? card))
+           (can-pay? state side (make-eid state) card nil (or (get-rez-cost state side card nil) 0)))
+    (assoc card :forgeable true)
+    card))
 
 (defn ability-playable? [ability ability-idx state side card]
   (let [cost (card-ability-cost state side ability card)
@@ -161,6 +134,7 @@
    :face
    :faces
    :facedown
+   :forgeable
    :host
    :hosted
    :icon
@@ -215,6 +189,7 @@
           (:hosted card) (update :hosted cards-summary state side))
         (hubworld-playable? state side)
         (card-abilities-summary state side)
+        (forgeable state side)
         (select-non-nil-keys card-keys))
     (-> (cond-> card
           (:host card) (-> (dissoc-in [:host :hosted])
@@ -414,7 +389,7 @@
     (-> delve
         ;; todo - if we ever need this, then we have to side correct it
         (assoc :cannot-end-delve (any-effects state (:delver delve) :cannot-end-delve true?))
-        (assoc :approached-card (card-for-current-slot state))
+        (assoc :approached-card (forgeable (card-for-current-slot state) state (:defender delve)))
         (select-non-nil-keys delve-keys))))
 
 (defn run-summary
