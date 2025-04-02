@@ -4,6 +4,7 @@
    [game.core.card :refer [get-card
                            in-hand?
                            rezzed?]]
+   [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
@@ -30,6 +31,7 @@
                               (and ;; INFILTRATE
                                 (= (:breach-server context) :council)
                                 (= (:delver context) side)
+                                (can-pay? state side eid card nil [(->c :credit 1)])
                                 (< (known-copies state side "Infiltrate") 2)))))
 
    ;; ENCOUNTER ENDED
