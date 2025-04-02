@@ -29,7 +29,8 @@
   (when-let [prompt (find-first #(and (= (:eid eid) (:eid (:eid %)))
                                       (= :waiting (:prompt-type %)))
                                 (get-in @state [side :prompt]))]
-    (remove-from-prompt-queue state side prompt)))
+    (remove-from-prompt-queue state side prompt)
+    (clear-eid-wait-prompt state side eid)))
 
 (defn effect-completed
   [state _ eid]
