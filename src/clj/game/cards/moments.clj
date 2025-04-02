@@ -9,7 +9,7 @@
    [game.core.drawing :refer [draw]]
    [game.core.gaining :refer [gain-credits lose]]
    [game.core.moving :refer [mill]]
-   [game.core.payment :refer [->c]]
+   [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
@@ -44,13 +44,14 @@
              :interactive (req true)
              :optional {:hide-card? true
                         :req (req (and
+                                    (can-pay? state side eid card nil [(->c :credit 1)])
                                     (= (:breach-server context) :council)
                                     (in-hand? card)
                                     (= (to-keyword (:side card)) side)
                                     (= (:delver context) side)))
                         :waiting-prompt true
                         :prompt "Exile Infiltrate to Discover 2 additional cards?"
-                        :yes-ability {:cost [(->c :exile-reaction)]
+                        :yes-ability {:cost [(->c :exile-reaction) (->c :credit 1)]
                                       :msg "discover 2 additional cards"
                                       :effect (req (access-bonus state side :council 2))}}}]})
 
