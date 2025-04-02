@@ -1,73 +1,59 @@
 (ns game.core
   (:require
-    [game.core.access]
-    [game.core.actions]
-    [game.core.agendas]
-    [game.core.bad-publicity]
-    [game.core.board]
-    [game.core.card]
-    [game.core.card-defs]
-    [game.core.change-vals]
-    [game.core.charge]
-    [game.core.checkpoint]
-    [game.core.commands]
-    [game.core.cost-fns]
-    [game.core.costs]
-    [game.core.damage]
-    [game.core.def-helpers]
-    [game.core.diffs]
-    [game.core.drawing]
-    [game.core.effects]
-    [game.core.eid]
-    [game.core.engine]
-    [game.core.events]
-    [game.core.expose]
-    [game.core.finding]
-    [game.core.flags]
-    [game.core.gaining]
-    [game.core.hand-size]
-    [game.core.hosting]
-    [game.core.ice]
-    [game.core.identities]
-    [game.core.initializing]
-    [game.core.installing]
-    [game.core.link]
-    [game.core.mark]
-    [game.core.memory]
-    [game.core.moving]
-    [game.core.optional]
-    [game.core.payment]
-    [game.core.pick-counters]
-    [game.core.expend]
-    [game.core.play-instants]
-    [game.core.player]
-    [game.core.process-actions]
-    [game.core.prompt-state]
-    [game.core.prompts]
-    [game.core.props]
-    [game.core.psi]
-    [game.core.purging]
-    [game.core.revealing]
-    [game.core.rezzing]
-    [game.core.runs]
-    [game.core.sabotage]
-    [game.core.say]
-    [game.core.servers]
-    [game.core.set-aside]
-    [game.core.set-up]
-    [game.core.shuffling]
-    [game.core.state]
-    [game.core.subtypes]
-    [game.core.threat]
-    [game.core.to-string]
-    [game.core.toasts]
-    [game.core.trace]
-    [game.core.turns]
-    [game.core.update]
-    [game.core.virus]
-    [game.core.winning]
-    [game.macros]
-    [potemkin :refer [import-vars]]))
+   [game.core.actions]
+   [game.core.board]
+   [game.core.card]
+   [game.core.card-defs]
+   [game.core.change-vals]
+   [game.core.checkpoint]
+   [game.core.commands]
+   [game.core.cost-fns]
+   [game.core.costs]
+   [game.core.def-helpers]
+   [game.core.diffs]
+   [game.core.drawing]
+   [game.core.effects]
+   [game.core.eid]
+   [game.core.engine]
+   [game.core.events]
+   [game.core.finding]
+   [game.core.flags]
+   [game.core.gaining]
+   [game.core.hand-size]
+   [game.core.hosting]
+   [game.core.ice]
+   [game.core.identities]
+   [game.core.initializing]
+   [game.core.installing]
+   [game.core.memory]
+   [game.core.moving]
+   [game.core.optional]
+   [game.core.payment]
+   [game.core.pick-counters]
+   [game.core.play-instants]
+   [game.core.player]
+   [game.core.process-actions]
+   [game.core.prompt-state]
+   [game.core.prompts]
+   [game.core.props]
+   [game.core.revealing]
+   [game.core.rezzing]
+   [game.core.sabotage]
+   [game.core.say]
+   [game.core.servers]
+   [game.core.set-aside]
+   [game.core.set-up]
+   [game.core.shuffling]
+   [game.core.state]
+   [game.core.subtypes]
+   [game.core.to-string]
+   [game.core.toasts]
+   [game.core.turns]
+   [game.core.update]
+   [game.core.virus]
+   [game.core.winning]
+   [game.macros]
+   [potemkin :refer [import-vars]]))
 
 (defmacro expose-vars
   "Surrounds a import-vars call with an anonymous function to get arround the 64kb limit on the method size in the JVM"
@@ -114,18 +100,12 @@
    click-advance
    click-credit
    click-draw
-   click-run
    close-deck
    do-purge
    generate-install-list
-   generate-runnable-zones
    move-card
    play-ability
-   play-auto-pump
-   play-auto-pump-and-break
    play-corp-ability
-   play-dynamic-ability
-   play-heap-breaker-auto-pump-and-break
    play-runner-ability
    play-subroutine
    play-unbroken-subroutines
@@ -135,17 +115,6 @@
    select
    trash-resource
    view-deck])
-
-(expose-vars
-  [game.core.agendas
-   update-advancement-requirement
-   update-all-advancement-requirements
-   update-all-agenda-points])
-
-(expose-vars
-  [game.core.bad-publicity
-   gain-bad-publicity
-   lose-bad-publicity])
 
 (expose-vars
   [game.core.board
@@ -234,12 +203,6 @@
    change])
 
 (expose-vars
-  [game.core.charge
-   can-charge
-   charge-ability
-   charge-card])
-
-(expose-vars
   [game.core.checkpoint
    fake-checkpoint])
 
@@ -273,15 +236,6 @@
    total-available-credits])
 
 (expose-vars
-  [game.core.damage
-   chosen-damage
-   corp-can-choose-damage?
-   damage
-   enable-corp-damage-choice
-   enable-runner-damage-choice
-   runner-can-choose-damage?])
-
-(expose-vars
   [game.core.def-helpers
    breach-access-bonus
    combine-abilities
@@ -291,7 +245,6 @@
    do-meat-damage
    do-net-damage
    make-recurring-ability
-   offer-jack-out
    reorder-choice
    trash-on-empty
    corp-recur])
@@ -378,10 +331,6 @@
    run-events
    second-event?
    turn-events])
-
-(expose-vars
-  [game.core.expose
-   expose])
 
 (expose-vars
   [game.core.finding
@@ -540,19 +489,6 @@
    runner-install])
 
 (expose-vars
-  [game.core.link
-   get-link
-   link+
-   update-link])
-
-(expose-vars
-  [game.core.mark
-   set-mark
-   is-mark?
-   identify-mark
-   identify-mark-ability])
-
-(expose-vars
   [game.core.memory
    available-mu
    caissa-mu+
@@ -615,10 +551,6 @@
    pick-virus-counters-to-spend])
 
 (expose-vars
-  [game.core.expend
-   expend])
-
-(expose-vars
   [game.core.process-actions
    command-parser
    process-action])
@@ -654,14 +586,6 @@
    show-wait-prompt])
 
 (expose-vars
-  [game.core.psi
-   psi-game])
-
-(expose-vars
-  [game.core.purging
-   purge])
-
-(expose-vars
   [game.core.revealing
    conceal-hand
    reveal
@@ -672,42 +596,6 @@
    derez
    get-rez-cost
    rez])
-
-(expose-vars
-  [game.core.runs
-   add-run-effect
-   bypass-ice
-   can-bypass-ice
-   can-run-server?
-   check-auto-no-action
-   check-for-empty-server
-   complete-run
-   continue
-   encounter-ends
-   end-run
-   force-ice-encounter
-   gain-next-run-credits
-   gain-run-credits
-   get-current-encounter
-   get-runnable-zones
-   handle-end-run
-   jack-out
-   make-run
-   pass-ice
-   prevent-access
-   redirect-run
-   set-next-phase
-   set-phase
-   start-next-phase
-   successful-run
-   successful-run-replace-breach
-   toggle-auto-no-action
-   total-cards-accessed])
-
-
-(expose-vars
-  [game.core.sabotage
-   sabotage-ability])
 
 (expose-vars
   [game.core.say
@@ -775,11 +663,6 @@
    update-all-subtypes])
 
 (expose-vars
-  [game.core.threat
-   threat
-   threat-level])
-
-(expose-vars
   [game.core.to-string
    card-str])
 
@@ -787,11 +670,6 @@
   [game.core.toasts
    show-error-toast
    toast])
-
-(expose-vars
-  [game.core.trace
-   force-base
-   init-trace])
 
 (expose-vars
   [game.core.turns])

@@ -1,6 +1,5 @@
 (ns game.core.costs
   (:require
-   [game.core.bad-publicity :refer [gain-bad-publicity]]
    [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
                            rezzed? in-discard? installed?
