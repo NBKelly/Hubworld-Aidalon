@@ -1301,86 +1301,86 @@
            [:br]
            [build-in-game-decklists corp-list runner-list]])))))
 
-(defn build-start-box
-  "Builds the start-of-game pop up box"
-  [my-ident my-user my-hand prompt-state my-keep op-ident op-user op-keep me-quote op-quote my-side]
-  (let [visible-quote (r/atom true)
-        mulliganed (r/atom false)
-        start-shown (r/cursor app-state [:start-shown])
-        card-back (get-in @app-state [:options :card-back])]
-    (fn [my-ident my-user my-hand prompt-state my-keep op-ident op-user op-keep me-quote op-quote my-side]
-      (when (and (not @start-shown)
-                 (:username @op-user)
-                 (pos? (count @my-hand)))
-        (let [squeeze (< 5 (count @my-hand))]
-          [:div.win.centered.blue-shade.start-game
-           [:div
-            [:div
-             [:div.box
-              [:div.start-game.ident.column
-               {:class (case @my-keep "mulligan" "mulligan-me" "keep" "keep-me" "")}
-               (when-let [url (image-url @my-ident)]
-                 [:img {:src     url :alt (get-title @my-ident) :onLoad #(-> % .-target js/$ .show)
-                        :class   (when @visible-quote "selected")
-                        :onClick #(reset! visible-quote true)}])]
-              [:div.column.contestants
-               [:div (:username @my-user)]
-               [:div.vs "VS"]
-               [:div (:username @op-user)]
-               [:div.intro-blurb
-                (if @visible-quote
-                  (str "\"" @me-quote "\"")
-                  (str "\"" @op-quote "\""))]]
-              [:div.start-game.ident.column
-               {:class (case @op-keep "mulligan" "mulligan-op" "keep" "keep-op" "")}
-               (when-let [url (image-url @op-ident)]
-                 [:img {:src url
-                        :alt (get-title @op-ident)
-                        :onLoad #(-> % .-target js/$ .show)
-                        :class (when-not @visible-quote "selected")
-                        :onClick #(reset! visible-quote false)}])]]
-             (when (not= :spectator @my-side)
-               [:div.start-hand
-                [:div {:class (when squeeze "squeeze")}
-                 (doall (map-indexed
-                          (fn [i {:keys [title] :as card}]
-                            [:div.start-card-frame {:style (when squeeze
-                                                             {:left (* (/ 610 (dec (count @my-hand))) i)
-                                                              :position "absolute"})
-                                                    :id (str "startcard" i)
-                                                    :key (str (:cid card) "-" i "-" @mulliganed)}
-                             [:div.flipper
-                              [:div.card-back
-                               [:img.start-card {:src (str "/img/hubworld-card-back-2.png")}]]
-                              [:div.card-front
-                               (when-let [url (image-url card)]
-                                 [:div {:on-mouse-enter #(put-game-card-in-channel card zoom-channel)
-                                        :on-mouse-leave #(put! zoom-channel false)}
-                                  [:img.start-card {:src url :alt title :onError #(-> % .-target js/$ .hide)}]])]]
-                             (when-let [elem (.querySelector js/document (str "#startcard" i))]
-                               (js/setTimeout #(.add (.-classList elem) "flip") (+ 1000 (* i 300))))])
-                          @my-hand))]])
-             [:div.mulligan
-              (if (or (= :spectator @my-side)
-                      (and @my-keep @op-keep))
-                [cond-button (if (= :spectator @my-side)
-                               (tr [:game.close "Close"]) (tr [:game.start "Start Game"]))
-                 true #(swap! app-state assoc :start-shown true)]
-                (list ^{:key "keepbtn"} [cond-button (tr [:game.keep "Keep"])
-                                         (= "mulligan" (:prompt-type @prompt-state))
-                                         #(send-command "choice" {:choice {:uuid (->> (:choices @prompt-state)
-                                                                                      (filter (fn [c] (= "Keep" (:value c))))
-                                                                                      first
-                                                                                      :uuid)}})]
-                      ^{:key "mullbtn"} [cond-button (tr [:game.mulligan "Mulligan"])
-                                         (= "mulligan" (:prompt-type @prompt-state))
-                                         #(do (send-command "choice" {:choice {:uuid (->> (:choices @prompt-state)
-                                                                                          (filter (fn [c] (= "Mulligan" (:value c))))
-                                                                                          first
-                                                                                          :uuid)}})
-                                              (reset! mulliganed true))]))]]]
-           [:br]
-           [:button.win-right {:on-click #(swap! app-state assoc :start-shown true) :type "button"} "✘"]])))))
+;; (defn build-start-box
+;;   "Builds the start-of-game pop up box"
+;;   [my-ident my-user my-hand prompt-state my-keep op-ident op-user op-keep me-quote op-quote my-side]
+;;   (let [visible-quote (r/atom true)
+;;         mulliganed (r/atom false)
+;;         start-shown (r/cursor app-state [:start-shown])
+;;         card-back (get-in @app-state [:options :card-back])]
+;;     (fn [my-ident my-user my-hand prompt-state my-keep op-ident op-user op-keep me-quote op-quote my-side]
+;;       (when (and (not @start-shown)
+;;                  (:username @op-user)
+;;                  (pos? (count @my-hand)))
+;;         (let [squeeze (< 5 (count @my-hand))]
+;;           [:div.win.centered.blue-shade.start-game
+;;            [:div
+;;             [:div
+;;              [:div.box
+;;               [:div.start-game.ident.column
+;;                {:class (case @my-keep "mulligan" "mulligan-me" "keep" "keep-me" "")}
+;;                (when-let [url (image-url @my-ident)]
+;;                  [:img {:src     url :alt (get-title @my-ident) :onLoad #(-> % .-target js/$ .show)
+;;                         :class   (when @visible-quote "selected")
+;;                         :onClick #(reset! visible-quote true)}])]
+;;               [:div.column.contestants
+;;                [:div (:username @my-user)]
+;;                [:div.vs "VS"]
+;;                [:div (:username @op-user)]
+;;                [:div.intro-blurb
+;;                 (if @visible-quote
+;;                   (str "\"" @me-quote "\"")
+;;                   (str "\"" @op-quote "\""))]]
+;;               [:div.start-game.ident.column
+;;                {:class (case @op-keep "mulligan" "mulligan-op" "keep" "keep-op" "")}
+;;                (when-let [url (image-url @op-ident)]
+;;                  [:img {:src url
+;;                         :alt (get-title @op-ident)
+;;                         :onLoad #(-> % .-target js/$ .show)
+;;                         :class (when-not @visible-quote "selected")
+;;                         :onClick #(reset! visible-quote false)}])]]
+;;              (when (not= :spectator @my-side)
+;;                [:div.start-hand
+;;                 [:div {:class (when squeeze "squeeze")}
+;;                  (doall (map-indexed
+;;                           (fn [i {:keys [title] :as card}]
+;;                             [:div.start-card-frame {:style (when squeeze
+;;                                                              {:left (* (/ 610 (dec (count @my-hand))) i)
+;;                                                               :position "absolute"})
+;;                                                     :id (str "startcard" i)
+;;                                                     :key (str (:cid card) "-" i "-" @mulliganed)}
+;;                              [:div.flipper
+;;                               [:div.card-back
+;;                                [:img.start-card {:src (str "/img/hubworld-card-back-2.png")}]]
+;;                               [:div.card-front
+;;                                (when-let [url (image-url card)]
+;;                                  [:div {:on-mouse-enter #(put-game-card-in-channel card zoom-channel)
+;;                                         :on-mouse-leave #(put! zoom-channel false)}
+;;                                   [:img.start-card {:src url :alt title :onError #(-> % .-target js/$ .hide)}]])]]
+;;                              (when-let [elem (.querySelector js/document (str "#startcard" i))]
+;;                                (js/setTimeout #(.add (.-classList elem) "flip") (+ 1000 (* i 300))))])
+;;                           @my-hand))]])
+;;              [:div.mulligan
+;;               (if (or (= :spectator @my-side)
+;;                       (and @my-keep @op-keep))
+;;                 [cond-button (if (= :spectator @my-side)
+;;                                (tr [:game.close "Close"]) (tr [:game.start "Start Game"]))
+;;                  true #(swap! app-state assoc :start-shown true)]
+;;                 (list ^{:key "keepbtn"} [cond-button (tr [:game.keep "Keep"])
+;;                                          (= "mulligan" (:prompt-type @prompt-state))
+;;                                          #(send-command "choice" {:choice {:uuid (->> (:choices @prompt-state)
+;;                                                                                       (filter (fn [c] (= "Keep" (:value c))))
+;;                                                                                       first
+;;                                                                                       :uuid)}})]
+;;                       ^{:key "mullbtn"} [cond-button (tr [:game.mulligan "Mulligan"])
+;;                                          (= "mulligan" (:prompt-type @prompt-state))
+;;                                          #(do (send-command "choice" {:choice {:uuid (->> (:choices @prompt-state)
+;;                                                                                           (filter (fn [c] (= "Mulligan" (:value c))))
+;;                                                                                           first
+;;                                                                                           :uuid)}})
+;;                                               (reset! mulliganed true))]))]]]
+;;            [:br]
+;;            [:button.win-right {:on-click #(swap! app-state assoc :start-shown true) :type "button"} "✘"]])))))
 
 (defn get-run-ices []
   (let [server (-> (:run @game-state)
@@ -2342,11 +2342,11 @@
               [:div {:class [:gameboard
                              (when @labeled-unrezzed-cards :show-unrezzed-card-labels)
                              (when @labeled-cards :show-card-labels)]}
-               (let [me-keep (r/cursor game-state [me-side :keep])
-                     op-keep (r/cursor game-state [op-side :keep])
-                     me-quote (r/cursor game-state [me-side :quote])
-                     op-quote (r/cursor game-state [op-side :quote])]
-                 [build-start-box me-ident me-user me-hand prompt-state me-keep op-ident op-user op-keep me-quote op-quote side])
+               ;; (let [me-keep (r/cursor game-state [me-side :keep])
+               ;;       op-keep (r/cursor game-state [op-side :keep])
+               ;;       me-quote (r/cursor game-state [me-side :quote])
+               ;;       op-quote (r/cursor game-state [op-side :quote])]
+               ;;   [build-start-box me-ident me-user me-hand prompt-state me-keep op-ident op-user op-keep me-quote op-quote side])
 
                [build-decks-box game-state]
                [build-win-box game-state]
