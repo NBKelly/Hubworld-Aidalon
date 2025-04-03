@@ -752,15 +752,10 @@
   (if (nil? event)
     (effect-completed state side eid)
     (do (log-event state event targets)
-        (let [handlers (gather-events state side eid event targets nil)
-              active-player (:active-player @state)
+        (let [active-player (:active-player @state)
               opponent (other-side active-player)
-              is-player (fn [player ability]
-                          (#{(get-side ability) (get-ability-side ability)} player))
-              get-handlers (fn [player-side]
-                             (filterv (partial is-player player-side) handlers))
-              active-player-events (get-handlers active-player)
-              opponent-events (get-handlers opponent)]
+              active-player-events (gather-events state active-player eid event targets nil)
+              opponent-events (gather-events state opponent eid event targets nil)]
           (wait-for (trigger-event-sync-next state active-player active-player-events event targets)
                     (trigger-event-sync-next state opponent eid opponent-events event targets))))))
 
@@ -927,11 +922,8 @@
                                       (not (sequential? card-abilities)))
                                [card-abilities]
                                card-abilities)
-              handlers (gather-events state side eid event targets card-abilities)
-              get-handlers (fn [player-side]
-                             (filterv (partial is-player player-side) handlers))
-              active-player-events (get-handlers active-player)
-              opponent-events (get-handlers opponent)]
+              active-player-events (gather-events state active-player eid event targets card-abilities)
+              opponent-events (gather-events state opponent eid event targets nil)]
           (wait-for (resolve-ability state side (make-eid state eid) first-ability nil nil)
                     (show-wait-prompt state opponent
                                       (str (side-str active-player) " to resolve " (event-title event) " triggers"))

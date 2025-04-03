@@ -58,11 +58,12 @@
 (defcard "Likely a Trap"
   {:events [{:event :encounter-ended
              :location :hand
-             :optional {:req (req (and (= (:defender context) side)
-                                       (in-hand? card)
-                                       (= (to-keyword (:side card)) side)
-                                       (let [c (get-card state (:approached-card context))]
-                                         (and c (not (rezzed? c))))))
+             :optional {:req (req
+                               (and
+                                 (= (:defender context) side)
+                                 (in-hand? card)
+                                 (let [c (get-card state (:approached-card context))]
+                                   (and c (not (rezzed? c))))))
                         :waiting-prompt true
                         :prompt (msg "Exile Likely a Trap to Ask your opponent to discover " (:title (:approached-card context)) "?")
                         :hide-card? true

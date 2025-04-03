@@ -78,6 +78,11 @@
   [state side expected-discard]
   `(error-wrapper (is-zone-impl ~state ~side :discard ~expected-discard)))
 
+(defmacro is-exile?
+  "Is the exile exactly equal to a given set of cards?"
+  [state side expected-discard]
+  `(error-wrapper (is-zone-impl ~state ~side :rfg ~expected-discard)))
+
 ;;; helper functions for prompt interaction
 (defn get-prompt
   [state side]
@@ -99,7 +104,7 @@
   [state side]
   (let [prompt (get-prompt state side)]
     (or (empty? prompt)
-        (= :run (:prompt-type prompt)))))
+        (= :delve (:prompt-type prompt)))))
 
 (defn waiting?
   "Is there a waiting-prompt for the given side?"
@@ -228,6 +233,7 @@
   ([state side & prompts]
    `(error-wrapper (click-prompts-impl ~state ~side ~(vec prompts)))))
 
+;; TODO - exile! (state cost)
 (defn do-trash-prompt
   [state cost]
   (click-prompt state :runner (str "Pay " cost " [Credits] to trash")))
@@ -302,7 +308,7 @@
                                             (:score-area corp)
                                             (:discard corp)))
                     (:deck corp)
-                    (transform "Corp" (qty "Hedge Fund" 3)))
+                    (transform "Corp" (qty "Fun Run" 10)))
           :hand (when-let [hand (:hand corp)]
                   (flatten hand))
           :score-area (when-let [scored (:score-area corp)]
@@ -316,7 +322,7 @@
                                                 (:hand runner)
                                                 (:discard runner)))
                       (:deck runner)
-                      (transform "Runner" (qty "Sure Gamble" 3)))
+                      (transform "Runner" (qty "Fun Run" 10)))
             :hand (when-let [hand (:hand runner)]
                     (flatten hand))
             :score-area (when-let [scored (:score-area runner)]
@@ -366,13 +372,8 @@
                              :user {:username "Runner"}
                              :deck {:identity (:identity runner)
                                     :cards (:deck runner)}}]})]
-     (when-not dont-start-game
-       (if (#{:both :corp} mulligan)
-         (click-prompt state :corp "Mulligan")
-         (click-prompt state :corp "Keep"))
-       (if (#{:both :runner} mulligan)
-         (click-prompt state :runner "Mulligan")
-         (click-prompt state :runner "Keep")))
+     (click-prompt state :corp "Keep"))
+     (click-prompt state :runner "Keep"))
    ;; Gotta move cards where they need to go
      (starting-score-areas state (:score-area corp) (:score-area runner))
      (doseq [side [:corp :runner]]
@@ -422,19 +423,6 @@
   [state side card ability & targets]
   `(error-wrapper (card-ability-impl ~state ~side ~card ~ability ~@targets)))
 
-(defn expend-impl
-  [state side card]
-  (let [card (get-card state card)]
-    (is' (some? card) (str (:title card) " exists"))
-    (when (some? card)
-      (is' (core/process-action "expend" state side {:card card}))
-      true)))
-
-(defmacro expend
-  "Trigger an Expendable card's ability."
-  [state side card]
-  `(error-wrapper (expend-impl ~state ~side ~card)))
-
 (defn card-side-ability
   [state side card ability & targets]
   (let [ab {:card (get-card state card)
@@ -456,44 +444,6 @@
   [state side value-key delta]
   `(error-wrapper (change-impl ~state ~side ~value-key ~delta)))
 
-(defn get-ice
-  "Get installed ice protecting server by position. If no pos, get all ice on the server."
-  ([state server]
-   (get-in @state [:corp :servers server :ices]))
-  ([state server pos]
-   (get-in @state [:corp :servers server :ices pos])))
-
-(defn get-content
-  "Get card in a server by position. If no pos, get all cards in the server."
-  ([state server]
-   (get-in @state [:corp :servers server :content]))
-  ([state server pos]
-   (get-in @state [:corp :servers server :content pos])))
-
-(defn get-program
-  "Get non-hosted program by position. If no pos, get all installed programs."
-  ([state] (get-in @state [:runner :rig :program]))
-  ([state pos]
-   (get-in @state [:runner :rig :program pos])))
-
-(defn get-hardware
-  "Get hardware by position. If no pos, get all installed hardware."
-  ([state] (get-in @state [:runner :rig :hardware]))
-  ([state pos]
-   (get-in @state [:runner :rig :hardware pos])))
-
-(defn get-resource
-  "Get non-hosted resource by position. If no pos, get all installed resources."
-  ([state] (get-in @state [:runner :rig :resource]))
-  ([state pos]
-   (get-in @state [:runner :rig :resource pos])))
-
-(defn get-runner-facedown
-  "Get non-hosted runner facedown by position. If no pos, get all runner facedown installed cards."
-  ([state] (get-in @state [:runner :rig :facedown]))
-  ([state pos]
-   (get-in @state [:runner :rig :facedown pos])))
-
 (defn get-discarded
   "Get discarded card by position. If no pos, selects most recently discarded card."
   ([state side] (get-discarded state side (-> @state side :discard count dec)))
@@ -512,10 +462,14 @@
      (when (string? x)
        (find-card x (get-in @state [side :scored]))))))
 
-(defn get-rfg
+(defn get-exile
   ([state side] (get-in @state [side :rfg]))
   ([state side pos]
    (get-in @state [side :rfg pos])))
+
+(defn- stage-select-impl
+  [state side server slot]
+  (core/process-action "stage-select" state side {:server server :slot slot}))
 
 (defn play-from-hand-impl
   [state side title server slot]
@@ -535,7 +489,7 @@
     (when (some? card)
       (is' (core/process-action "play" state side {:card card :server server}))
       (when (and server slot)
-        (core/process-action "stage-select" state side {:server server :slot slot}))
+        (stage-select-impl state side server slot))
       true)))
 
 (defmacro play-from-hand
@@ -572,14 +526,14 @@
 
 (defn forge-impl
   ([state side card] (forge-impl state side card nil))
-  ([state side card {:keys [expect-rez] :or {expect-rez true}}]
+  ([state side card {:keys [expect-forge] :or {expect-forge true}}]
    (let [card (get-card state card)]
      (is' (installed? card) (str (:title card) " is installed"))
      (is' (not (rezzed? card)) (str (:title card) " is unrezzed"))
      (when (and (installed? card)
                 (not (rezzed? card)))
        (core/process-action "forge" state side {:card card})
-       (if expect-rez
+       (if expect-forge
          (is' (rezzed? (get-card state card)) (str (:title card) " is forged"))
          (is' (not (rezzed? (get-card state card))) (str (:title card) " is still unforged")))))))
 
@@ -600,17 +554,6 @@
   [state side card]
   `(error-wrapper (unforge-impl ~state ~side ~card)))
 
-(defn end-phase-12-impl
-  [state side]
-  (let [phase (keyword (str (name side) "-phase-12"))]
-    (is' (phase @state) (str (jutils/capitalize (name side)) " in Step 1.2"))
-    (when (phase @state)
-      (core/process-action "end-phase-12" state side nil))))
-
-(defmacro end-phase-12
-  [state side]
-  `(error-wrapper (end-phase-12-impl ~state ~side)))
-
 (defn click-draw-impl
   [state side]
   (ensure-no-prompts state)
@@ -629,20 +572,6 @@
   [state side]
   `(error-wrapper (click-credit-impl ~state ~side)))
 
-(defn click-advance-impl
-  [state side card]
-  (let [card (get-card state card)]
-    (ensure-no-prompts state)
-    (is' (some? card) (str (:title card) " exists"))
-    (is' (installed? card) (str (:title card) " is installed"))
-    (when (and (some? card) (installed? card))
-      (is' (core/process-action "advance" state side {:card card}))
-      true)))
-
-(defmacro click-advance
-  [state side card]
-  `(error-wrapper (click-advance-impl ~state ~side ~card)))
-
 (defn trash-impl
   [state side card]
   (let [card (get-card state card)]
@@ -654,41 +583,6 @@
 (defmacro trash
   [state side card]
   `(error-wrapper (trash-impl ~state ~side ~card)))
-
-(defn score-agenda-impl
-  [state card]
-  (let [card (get-card state card)
-        advancementcost (:current-advancement-requirement card)]
-    (ensure-no-prompts state)
-    (is' (some? card) (str (:title card) " exists"))
-    (is' (number? advancementcost) (str (:title card) " has an advancement cost"))
-    (when (some? card)
-      (core/gain state :corp :click advancementcost :credit advancementcost)
-      (core/fake-checkpoint state)
-      (dotimes [_ advancementcost]
-        (core/process-action "advance" state :corp {:card card}))
-      (is' (= advancementcost (get-counters (get-card state card) :advancement)))
-      (when (= advancementcost (get-counters (get-card state card) :advancement))
-        (core/process-action "score" state :corp {:card card})
-        (is' (find-card (:title card) (get-scored state :corp)))
-        true))))
-
-(defmacro score-agenda
-  "Take clicks and credits needed to advance and score the given agenda."
-  [state _ card]
-  `(error-wrapper (score-agenda-impl ~state ~card)))
-
-(defn score
-  "Needed for calling the internal function directly"
-  ([state _ card] (core/process-action "score" state :corp {:card card}))
-  ([state _ card args] (core/process-action "score" state :corp (merge args {:card card}))))
-
-(defn advance
-  "Advance the given card."
-  ([state card] (advance state card 1))
-  ([state card n]
-   (dotimes [_ n]
-     (click-advance state :corp card))))
 
 (defn trash-from-hand-impl
   [state side title]
@@ -713,26 +607,10 @@
   [state side card]
   `(error-wrapper (trash-card-impl ~state ~side ~card)))
 
-(defn trash-resource-impl
-  "Click-trash a resource as the corp"
-  [state]
-  (ensure-no-prompts state)
-  (let [card (get-card state (get-in @state [:corp :basic-action-card]))
-        abilities (:abilities card)
-        ab (nth abilities 5)
-        cost (core/card-ability-cost state :corp ab card nil)]
-    (is' (core/can-pay? state :corp nil cost)))
-  (is' (core/process-action "trash-resource" state :corp nil))
-  true)
-
-(defmacro trash-resource
-  [state]
-  `(error-wrapper (trash-resource-impl ~state)))
-
 (defn accessing
-  "Checks to see if the runner has a prompt accessing the given card title"
+  "Checks to see if the delve has a prompt accessing the given card title"
   [state title]
-  (= title (-> @state :runner :prompt first :card :title)))
+  (= title (-> @state (:delver @state) :prompt first :card :title)))
 
 (defn move
   ([state side card location] (move state side card location nil))
