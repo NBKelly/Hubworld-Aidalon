@@ -372,8 +372,8 @@
                              :user {:username "Runner"}
                              :deck {:identity (:identity runner)
                                     :cards (:deck runner)}}]})]
-     (click-prompt state :corp "Keep"))
-     (click-prompt state :runner "Keep"))
+     (click-prompt state :corp "Keep")
+     (click-prompt state :runner "Keep")
    ;; Gotta move cards where they need to go
      (starting-score-areas state (:score-area corp) (:score-area runner))
      (doseq [side [:corp :runner]]
