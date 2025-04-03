@@ -15,7 +15,7 @@
     [tasks.index :refer [create-indexes]]
     [tasks.setup :refer [connect disconnect]]))
 
-(def ^:const edn-base-url "https://raw.githubusercontent.com/NoahTheDuke/netrunner-data/master/edn/raw_data.edn")
+(def ^:const edn-base-url "https://raw.githubusercontent.com/nbkelly/hubworld-data/master/edn/raw_data.edn")
 (def ^:const jnet-image-url "https://card-images.netrunnerdb.com/v1/large/")
 (def ^:const jnet-image-url-v2 "https://card-images.netrunnerdb.com/v2/large/")
 
