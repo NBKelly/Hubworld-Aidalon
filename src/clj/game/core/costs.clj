@@ -21,7 +21,7 @@
    [game.core.revealing :refer [reveal reveal-and-queue-event]]
    [game.core.rezzing :refer [derez]]
    [game.core.shuffling :refer [shuffle!]]
-   [game.core.to-string :refer [card-str]]
+   [game.core.to-string :refer [card-str hubworld-card-str]]
    [game.core.update :refer [update!]]
    [game.core.virus :refer [number-of-virus-counters]]
    [game.macros :refer [continue-ability req wait-for]]
@@ -537,7 +537,7 @@
                             (complete-with-result
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " card")
-                                              " (" (enumerate-str (map #(card-str state %) targets)) ")")
+                                              " (" (enumerate-str (map #(hubworld-card-str state %) targets)) ")")
                                :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}

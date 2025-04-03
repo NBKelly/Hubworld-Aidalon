@@ -232,7 +232,7 @@
   [state side eid]
   (swap! state dissoc-in [:delve :encounter-select])
   (wait-for
-    (trigger-event-simult state side :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+    (trigger-event-simult state (-> @state :delve :defender) :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
     (wait-for
       (checkpoint state side)
       (when-not (delve-ended? state side eid)

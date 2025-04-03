@@ -70,19 +70,19 @@
 
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
    "end-turn" (fn [state side _] (end-turn-consent state side (make-eid state)))
-   "generate-install-list" #'generate-install-list
+   "generate-install-list" #'generate-install-list ;; OBSOLETE - but keep
    "indicate-action" #'indicate-action
    "keep" #'keep-hand
    "move" #'move-card
    "mulligan" #'mulligan
    "play" #'play
-   "expend" #'expend-ability
+   "expend" #'expend-ability ;; OBSOLETE
    "pass" #'pass
-   "purge" #'do-purge
-   "remove-tag" #'remove-tag
+   "purge" #'do-purge ;; OBSOLETE
+   "remove-tag" #'remove-tag ;; OBSOLETE
    "forge" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
    "runner-ability" #'play-runner-ability
-   "score" #(score %1 %2 (make-eid %1) (get-card %1 (:card %3)) nil)
+   "score" #(score %1 %2 (make-eid %1) (get-card %1 (:card %3)) nil) ;; OBSOLETE
    "select" #'select
    "set-property" #'set-property
    "shift" #'cmd-shift
@@ -91,14 +91,14 @@
    "stage-done" #'stage-done
    "bluff-done" #'bluff-done
    "stage-select" #'stage-select
-   "subroutine" #'play-subroutine
+   "subroutine" #'play-subroutine ;; OBSOLETE
    "system-msg" #(system-msg %1 %2 (:msg %3))
    "toast" #'ack-toast
    ;; "toggle-auto-no-action" #'toggle-auto-no-action - todo - this is fine
    "trash" #(trash %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
-   "trash-resource" #'trash-resource
+   "trash-resource" #'trash-resource    ;; OBSOLETE
    "unexhaust" #(unexhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
-   "unbroken-subroutines" #'play-unbroken-subroutines
+   "unbroken-subroutines" #'play-unbroken-subroutines  ;; OBSOLETE
    "view-deck" #'view-deck})
 
 (defn process-action

@@ -6,7 +6,7 @@
    [game.core.eid :refer [complete-with-result effect-completed]]
    [game.core.engine :refer [checkpoint queue-event register-pending-event]]
    [game.core.say :refer [system-msg]]
-   [game.core.to-string :refer [card-str]]
+   [game.core.to-string :refer [hubworld-card-str]]
    [game.core.update :refer [update!]]
    [game.macros :refer [wait-for]]
    [game.utils :refer [enumerate-str]]))
@@ -17,7 +17,7 @@
   ([state side eid cards {:keys [no-event suppress-checkpoint no-msg] :as args}]
    (if-let [cards (seq (filter (complement :exhausted) (map #(get-card state %) (flatten [cards]))))]
      (do (when-not no-msg
-           (system-msg state side (str "exhausts " (enumerate-str (map #(card-str state %) cards)))))
+           (system-msg state side (str "exhausts " (enumerate-str (map #(hubworld-card-str state %) cards)))))
          (doseq [card cards]
            (let [card (update! state side (assoc card :exhausted true))
                  cdef (card-def card)]
@@ -39,7 +39,7 @@
   ([state side eid cards {:keys [no-event suppress-checkpoint no-msg] :as args}]
    (if-let [cards (seq (filter :exhausted (map #(get-card state %) (flatten [cards]))))]
      (do (when-not no-msg
-           (system-msg state side (str "readies " (enumerate-str (map #(card-str state %) cards)))))
+           (system-msg state side (str "readies " (enumerate-str (map #(hubworld-card-str state %) cards)))))
          (doseq [card cards]
            (let [card (update! state side (assoc card :exhausted nil))
                  cdef (card-def card)]
