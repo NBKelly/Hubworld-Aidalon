@@ -1,22 +1,23 @@
 (ns game.core.initializing
   (:require
-    [game.core.board :refer [all-active all-active-installed]]
-    [game.core.card :refer [get-card map->Card program? runner?]]
-    [game.core.card-defs :refer [card-def]]
-    [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost]]
-    [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
-    [game.core.eid :refer [effect-completed make-eid]]
-    [game.core.engine :refer [is-ability? register-default-events register-events resolve-ability unregister-events]]
-    [game.core.finding :refer [find-cid]]
-    [game.core.gaining :refer [gain lose]]
-    [game.core.ice :refer [add-sub]]
-    [game.core.memory :refer [init-mu-cost]]
-    [game.core.payment :refer [add-cost-label-to-ability]]
-    [game.core.props :refer [add-counter]]
-    [game.core.update :refer [update!]]
-    [game.macros :refer [req]]
-    [game.utils :refer [make-cid server-card to-keyword]]
-    [jinteki.utils :refer [make-label]]))
+   [clojure.string :as str]
+   [game.core.board :refer [all-active all-active-installed]]
+   [game.core.card :refer [get-card map->Card program? runner?]]
+   [game.core.card-defs :refer [card-def]]
+   [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost]]
+   [game.core.effects :refer [register-static-abilities unregister-static-abilities]]
+   [game.core.eid :refer [effect-completed make-eid]]
+   [game.core.engine :refer [is-ability? register-default-events register-events resolve-ability unregister-events]]
+   [game.core.finding :refer [find-cid]]
+   [game.core.gaining :refer [gain lose]]
+   [game.core.ice :refer [add-sub]]
+   [game.core.memory :refer [init-mu-cost]]
+   [game.core.payment :refer [add-cost-label-to-ability]]
+   [game.core.props :refer [add-counter]]
+   [game.core.update :refer [update!]]
+   [game.macros :refer [req]]
+   [game.utils :refer [make-cid server-card to-keyword]]
+   [jinteki.utils :refer [make-label]]))
 
 (defn subroutines-init
   "Initialised the subroutines associated with the card, these work as abilities"
@@ -102,21 +103,12 @@
          corp-abs (corp-ability-init cdef)
          special (merge (:special card) (:special cdef))
          c (update! state side
-                    (merge card {:runner-abilities run-abs
-                                 :special special
-                                 :corp-abilities corp-abs}))
+                    (assoc (merge card {:runner-abilities run-abs
+                                        :special special
+                                        :corp-abilities corp-abs})
+                           :side (str/capitalize (name side))))
+         c (update! state side (assoc card :side (str/capitalize (name side))))
          c (if init-data c (assoc-in c [:special :skipped-loading] true))
-         data (merge
-                (when init-data (:counter (:data cdef)))
-                (when recurring
-                  {:recurring
-                   (cond
-                     (fn? recurring) (recurring state side eid c nil)
-                     (number? recurring) recurring
-                     :else (throw (Exception. (str (:title card) " - Recurring isn't number or fn"))))}))
-         _ (when recurring (update! state side (assoc-in c [:counter :recurring] 0)))
-         _ (doseq [[c-type c-num] data]
-             (add-counter state side (make-eid state eid) c c-type c-num {:placed true :suppress-checkpoint true}))
          c (get-card state c)]
      ;; TODO - handle recurring credits as part of the start of turn phase (as in the CR), rather than applying events to each card
      (when recurring

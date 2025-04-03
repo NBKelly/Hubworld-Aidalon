@@ -2342,12 +2342,6 @@
               [:div {:class [:gameboard
                              (when @labeled-unrezzed-cards :show-unrezzed-card-labels)
                              (when @labeled-cards :show-card-labels)]}
-               ;; (let [me-keep (r/cursor game-state [me-side :keep])
-               ;;       op-keep (r/cursor game-state [op-side :keep])
-               ;;       me-quote (r/cursor game-state [me-side :quote])
-               ;;       op-quote (r/cursor game-state [op-side :quote])]
-               ;;   [build-start-box me-ident me-user me-hand prompt-state me-keep op-ident op-user op-keep me-quote op-quote side])
-
                [build-decks-box game-state]
                [build-win-box game-state]
 
