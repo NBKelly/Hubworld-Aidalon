@@ -51,3 +51,28 @@
 (deftest doctor-twilight-collects
   (collects? {:name "Doctor Twilight: Dream Surgeon"
               :cards 1}))
+
+(deftest gargala-larga-imperator-of-growth-unexhaust-seeker
+  (do-game
+    (new-game {:corp {:hand ["Gargala Larga: Imperator of Growth"]}})
+    (play-from-hand state :corp "Gargala Larga: Imperator of Growth" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (core/process-action "exhaust" state :corp {:card (get-id state :corp)})
+    (is (exhausted? (get-id state :corp)) "ID is exhausted")
+    (card-ability state :corp (pick-card state :corp :council :inner) 1)
+    (is (not (exhausted? (get-id state :corp))) "ID is unexhausted")))
+
+(deftest doctor-twilight-collects
+  (collects? {:name "Gargala Larga: Imperator of Growth"
+              :credits 1}))
+
+(deftest gargala-larga-cipher-lose-one-action
+  (do-game
+    (new-game {:runner {:hand ["Gargala Larga: Imperator of Growth"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (is (changed? [(get-credits state :corp) -1]
+          (click-prompt state :corp "Pay 1 [Credits] and Exhaust your Seeker: Secure"))
+        "Secured gargala larga")
+    (is (= 1 (count (get-scored state :corp))) "Gargala Larga is in the score area")))
