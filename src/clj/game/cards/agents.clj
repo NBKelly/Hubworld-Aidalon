@@ -50,6 +50,7 @@
                   :label "Unexhaust your seeker"
                   :req (req (get-in @state [side :identity :exhausted]))
                   :msg (msg "ready " (get-in @state [side :identity :title]))
+                  :async true
                   :effect (req (unexhaust state side eid (get-in @state [side :identity]) {:no-msg true}))}]}))
 
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"

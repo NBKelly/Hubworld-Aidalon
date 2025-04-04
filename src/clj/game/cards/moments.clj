@@ -83,6 +83,7 @@
                                                                                  :effect (req (discover-card state side eid enc-card))}
                                                                    :no-ability {:player me
                                                                                 :display-side me
+                                                                                :async true
                                                                                 :msg (msg "archive the top 2 cards of " (other-player-name state me) "'s commons")
                                                                                 :effect (req (mill state me eid op 2))}}}
                                                        card nil)))}}}]})

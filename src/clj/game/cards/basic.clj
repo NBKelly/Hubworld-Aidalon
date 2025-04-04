@@ -95,7 +95,8 @@
                               (str "shift " (card-str state target-card) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
                 :cost [(->c :click 1)]
                 :req (req (> (count (hubworld-all-installed state side)) 1))
-                :effect (req (shift state side (:card context) (:server context) (:slot context) nil))}
+                :async true
+                :effect (req (shift state side eid (:card context) (:server context) (:slot context) nil))}
 
                ;; --> 6
                {:action true
@@ -108,4 +109,5 @@
                               (pos? (event-count state side :action-resolved #(= side (:player (first %)))))
                               true)))
                 :msg (msg "delve " (:server context))
+                :async true
                 :effect (req (make-delve state side eid (str/lower-case (:server context)) card {:click-delve true}))}]})
