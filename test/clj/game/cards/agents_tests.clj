@@ -36,3 +36,18 @@
           (click-prompt state :corp "Spend Lose [Click] and pay 2 [Credits]: Secure"))
         "Secured auntie ruth")
     (is (= 1 (count (get-scored state :corp))) "Ruth is in the score area")))
+
+(deftest doctor-twilight-dream-surgeon-gain-3
+  (do-game
+    (new-game {:corp {:hand ["Doctor Twilight: Dream Surgeon"]
+                      :discard ["Infiltrate"]}})
+    (play-from-hand state :corp "Doctor Twilight: Dream Surgeon" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (card-ability state :corp (pick-card state :corp :council :inner) 1)
+    (is (changed? [(:credit (get-corp)) 3]
+          (click-card state :corp "Infiltrate"))
+        "Gained 3")))
+
+(deftest doctor-twilight-collects
+  (collects? {:name "Doctor Twilight: Dream Surgeon"
+              :cards 1}))
