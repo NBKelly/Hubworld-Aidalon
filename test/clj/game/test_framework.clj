@@ -52,6 +52,8 @@
 (defn get-rfg      [state side] (get-in @state [side :rfg]))
 (defn get-exile    [state side] (get-rfg state side))
 
+(defn get-credits  [state side] (get-in @state [side :credit]))
+
 (defn pick-card
   [state side server slot]
   (get-in @state [side :paths server slot 0]))
@@ -710,3 +712,23 @@
   {:style/indent [1 [[:defn]] :form]}
   [bindings & body]
   (bad-usage "changed?"))
+
+(defn collects?-impl
+  [{:keys [name server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]
+  (is' name (str "Collects? usage: {:name name, optional: server, slot, credits, cards}"))
+  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)]}})]
+    (play-from-hand state :corp name server slot)
+    (forge state :corp (pick-card state :corp server slot))
+    (when prompts (click-prompts-impl state :corp prompts))
+    (let [old-cr (get-credits state :corp)
+          old-ca (count (get-hand state :corp))]
+      (core/process-action "collect" state :corp {:card (pick-card state :corp server slot)})
+      (is' (and (= (+ old-cr credits) (get-credits state :corp))
+                (= (+ old-ca cards)   (count (get-hand state :corp))))
+           (str name " should have collected " credits " credits, and " cards " cards")))
+    state))
+
+(defmacro collects?
+  "Is the hand exactly equal to a given set of cards?"
+  [args]
+  `(error-wrapper (collects?-impl ~args)))

@@ -411,6 +411,11 @@
       (do (swap! state assoc-in [:delve :no-action side] true)
           (system-msg state side "has no further action")))))
 
+(defn reset-delve-continue!
+  [state side]
+  (when (get-in @state [:delve :no-action side])
+    (swap! state dissoc-in [:delve :no-action side])))
+
 (defn delve-toggle-pass-priority
   [state side eid]
   (if (:delve @state)

@@ -19,3 +19,8 @@
       (is (changed? [(count (get-hand state s)) 3]
             (click-card state :corp (get-id state s)))
           (str "side: " s " drew 3")))))
+
+(deftest auntie-ruth-collects
+  (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
+              :credits 1
+              :prompts ["Goldie Xin: Tinkering Technician"]}))
