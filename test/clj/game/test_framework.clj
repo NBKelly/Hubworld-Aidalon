@@ -40,19 +40,25 @@
 
 (defn get-id [state side] (get-in @state [side :identity]))
 
-(defn get-hand     [state side] (get-in @state [side :hand]))
-(defn get-council  [state side] (get-hand state side))
+(defn get-hand      [state side] (get-in @state [side :hand]))
+(defn get-council   [state side] (get-hand state side))
 
-(defn get-deck     [state side] (get-in @state [side :deck]))
-(defn get-council  [state side] (get-deck state side))
+(defn get-deck      [state side] (get-in @state [side :deck]))
+(defn get-council   [state side] (get-deck state side))
 
-(defn get-discard  [state side] (get-in @state [side :discard]))
-(defn get-archives [state side] (get-discard state side))
+(defn get-discard   [state side] (get-in @state [side :discard]))
+(defn get-archives  [state side] (get-discard state side))
 
-(defn get-rfg      [state side] (get-in @state [side :rfg]))
-(defn get-exile    [state side] (get-rfg state side))
+(defn get-rfg       [state side] (get-in @state [side :rfg]))
+(defn get-exile     [state side] (get-rfg state side))
 
-(defn get-credits  [state side] (get-in @state [side :credit]))
+(defn get-credits   [state side] (get-in @state [side :credit]))
+(defn get-clicks    [state side] (get-in @state [side :click]))
+(defn has-priority? [state side] (= (:active-player @state) side))
+
+(defn get-delve-event
+  ([state side] (get-in @state [side :play-area]))
+  ([state side pos] (get-in @state [side :play-area pos])))
 
 (defn pick-card
   [state side server slot]
@@ -521,11 +527,6 @@
   ([state side title & prompts]
    `(error-wrapper (play-from-hand-with-prompts-impl ~state ~side ~title ~(vec prompts)))))
 
-(defn get-run-event
-  ([state] (get-in @state [:runner :play-area]))
-  ([state pos]
-   (get-in @state [:runner :play-area pos])))
-
 (defn forge-impl
   ([state side card] (forge-impl state side card nil))
   ([state side card {:keys [expect-forge] :or {expect-forge true}}]
@@ -608,6 +609,72 @@
 (defmacro trash-card
   [state side card]
   `(error-wrapper (trash-card-impl ~state ~side ~card)))
+
+(defn delve-server-impl
+  [state side server]
+  (is' (and (has-priority? state side)
+            (pos? (get-clicks state side)))
+       "Cannot delve without either priority or available actions")
+  ;; the server is, in fact, empty
+  (let [delver side
+        defender (if (= side :runner) :corp :runner)]
+    (core/process-action "delve" state delver {:server (name server)})
+    (core/process-action "delve-toggle-auto-pass" state defender nil)
+    (is' (:delve @state) "delving")))
+
+(defmacro delve-server [state side server]
+  `(error-wrapper (delve-server-impl ~state ~side ~server)))
+
+(defn delve-continue-impl
+  [state side]
+  (core/process-action "delve-continue" state side nil))
+
+(defn delve-bypass-impl
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-bypass" state side nil))
+
+(defn delve-confront-impl
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-confront" state side nil))
+
+(defn delve-pass-empty-space
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-continue-post-encounter" state side nil))
+
+(defn close-bluff-prompts
+  [state]
+  (doseq [s [:corp :runner :corp]]
+    (let [prompt (first (get-in @state [s :prompt]))]
+      (when (= (:prompt-type prompt) :bluff)
+        (core/process-action "bluff-done" state s nil)))))
+
+(defn delve-empty-server-impl
+  [state side server {:keys [give-heat?]}]
+  (let [delver side
+        defender (if (= side :runner) :corp :runner)]
+    (doseq [slot [:inner :middle :outer]]
+      (is' (empty? (get-in @state [defender :paths server slot])) "server is not empty"))
+    (delve-server-impl state delver server)
+    ;; we should be at the give-heat? step now, if we can afford it
+    (dotimes [n 3]
+      (is' (= (-> @state :delve :phase) :approach-slot) "Approaching district")
+      (delve-pass-empty-space state delver))
+    (is' (= (-> @state :delve :phase) :approach-district) "Approaching district")
+    (delve-continue-impl state delver)
+    (let [prompt (first (get-in @state [delver :prompt]))]
+      (if give-heat?
+        (do (is' (str/includes? (:msg prompt) "an additional [heat]?") "Prompt is for heat")
+            (click-prompt state delver "Yes"))
+        (when (str/includes? (:msg prompt) "an additional [heat]?")
+          (click-prompt state delver "No"))))
+    (close-bluff-prompts state)))
+
+(defmacro delve-empty-server
+  ([state side server]      `(error-wrapper (delve-empty-server-impl ~state ~side ~server nil)))
+  ([state side server args] `(error-wrapper (delve-empty-server-impl ~state ~side ~server ~args))))
 
 (defn accessing
   "Checks to see if the delve has a prompt accessing the given card title"

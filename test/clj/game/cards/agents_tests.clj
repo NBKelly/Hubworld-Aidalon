@@ -24,3 +24,15 @@
   (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
               :credits 1
               :prompts ["Goldie Xin: Tinkering Technician"]}))
+
+(deftest auntie-ruth-cipher-lose-one-action
+  (do-game
+    (new-game {:runner {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (is (changed? [(get-credits state :corp) -2
+                   (get-clicks state :corp) -1]
+          (click-prompt state :corp "Spend Lose [Click] and pay 2 [Credits]: Secure"))
+        "Secured auntie ruth")
+    (is (= 1 (count (get-scored state :corp))) "Ruth is in the score area")))
