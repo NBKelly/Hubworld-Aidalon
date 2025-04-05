@@ -3,6 +3,7 @@
     [game.core.card :refer [asset? condition-counter? get-card ice? upgrade? source? obstacle? agent?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [rez-additional-cost-bonus rez-cost]]
+    [game.core.delving :refer [reset-delve-continue!]]
     [game.core.effects :refer [is-disabled? unregister-static-abilities update-disabled-cards]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid]]
     [game.core.engine :refer [register-pending-event queue-event checkpoint pay register-events resolve-ability trigger-event unregister-events]]
@@ -16,7 +17,8 @@
     [game.core.to-string :refer [card-str]]
     [game.core.update :refer [update!]]
     [game.macros :refer [continue-ability effect wait-for]]
-    [game.utils :refer [enumerate-str to-keyword]]))
+    [game.utils :refer [enumerate-str to-keyword]]
+    [jinteki.utils :refer [other-side]]))
 
 (defn get-rez-cost
   [state side card {:keys [ignore-cost alternative-cost cost-bonus]}]
@@ -83,6 +85,7 @@
                       (trash-hosted-cards state side (make-eid state eid) (get-card state card))
                       (wait-for
                         (checkpoint state nil (make-eid state eid) {:duration :forge})
+                        (reset-delve-continue! state (other-side side))
                         (complete-with-result state side eid {:card (get-card state card)})))))))))
 
 (defn can-pay-to-rez?

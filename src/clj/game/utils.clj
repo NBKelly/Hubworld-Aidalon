@@ -12,7 +12,7 @@
   ([title strict?]
    (let [card (get @all-cards title)]
      (cond
-       (and title card) card
+       (and title card) (update-in card [:type] #(str %)) ;; idk why, but I need this for unit tests
        (= title "Hubworld Basic Action Card") {}
        :else (when strict?
                (throw (Exception. (str "Tried to select server-card for " title))))))))

@@ -14,7 +14,9 @@
   "the slot is empty, we can install now"
   ([state side eid card server slot args]
    ;; ->> paths server slot
-   (let [moved-card (move state side card [:paths server slot])
+   (let [moved-card (move state side
+                          (assoc card :new true :installed :this-turn)
+                          [:paths server slot])
          moved-card (get-card state moved-card)]
      (effect-completed state side eid))))
 
