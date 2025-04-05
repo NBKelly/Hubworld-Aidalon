@@ -76,3 +76,64 @@
           (click-prompt state :corp "Pay 1 [Credits] and Exhaust your Seeker: Secure"))
         "Secured gargala larga")
     (is (= 1 (count (get-scored state :corp))) "Gargala Larga is in the score area")))
+
+(deftest kryzar-free-stage
+  (do-game
+    (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
+                             "Eye Enforcers"]}})
+    (play-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (delve-server state :corp :council)
+    (delve-continue-to-approach state :corp)
+    (click-card state :corp "Eye Enforcers")
+    (stage-select state :corp :council :outer)
+    (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted kryzar")
+    (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
+
+(deftest kryzar-the-rat-collects
+  (collects? {:name "Kryzar the Rat: Navigator of the Cortex Maze"
+              :credits 1}))
+
+(deftest rory-and-bug-moves
+  (do-game
+    (new-game {:corp {:hand ["Rory & Bug: “You Catch It, We Fetch It!”"]}})
+    (play-from-hand state :corp "Rory & Bug: “You Catch It, We Fetch It!”" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (card-ability state :corp (pick-card state :corp :council :inner) 1)
+    (stage-select state :corp :council :middle)
+    (is (= "Rory & Bug: “You Catch It, We Fetch It!”"
+           (:title (pick-card state :corp :council :middle)))
+        "Shifted to middle")))
+
+(deftest rory-and-bug-collects
+  (collects? {:name "Rory & Bug: “You Catch It, We Fetch It!”"
+              :credits 1}))
+
+(deftest sergeant-cole-collects
+  (collects? {:name "Sergeant Cole: Precinct 204, 3rd Level"
+              :credits 1}))
+
+(deftest sergeant-cole-cipher-exhaust-archives-path
+  (do-game
+    (new-game {:runner {:hand ["Sergeant Cole: Precinct 204, 3rd Level"]}
+               :corp {:hand ["Eye Enforcers"]}})
+    (play-from-hand state :corp "Eye Enforcers" :archives :inner)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (is (changed? [(get-credits state :corp) -1]
+          (click-prompt state :corp "Pay 1 [Credits] and exhaust 1 card protecting Archives: Secure")
+          (click-card state :corp (pick-card state :corp :archives :inner)))
+        "Secured Sgt. Cole")
+    (is (= 1 (count (get-scored state :corp))) "Ruth is in the score area")))
+
+(deftest sergeant-cole-mills-2-cards
+  (do-game
+    (new-game {:corp {:hand ["Sergeant Cole: Precinct 204, 3rd Level"]}
+               :runner {:deck [(qty "Fun Run" 10)]}})
+    (play-from-hand state :corp "Sergeant Cole: Precinct 204, 3rd Level" :archives :inner)
+    (forge state :corp (pick-card state :corp :archives :inner))
+    (click-credit state :runner)
+    (delve-empty-server state :corp :archives {:give-heat? true})
+    (click-prompt state :corp "Yes")
+    (is (= 2 (count (get-discard state :runner))) "Milled 2")))

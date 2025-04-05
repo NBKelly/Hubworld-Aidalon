@@ -475,9 +475,13 @@
   ([state side pos]
    (get-in @state [side :rfg pos])))
 
-(defn- stage-select-impl
+(defn stage-select-impl
   [state side server slot]
   (core/process-action "stage-select" state side {:server server :slot slot}))
+
+(defmacro stage-select
+  [state side server slot]
+  `(error-wrapper (stage-select-impl ~state ~side ~server ~slot)))
 
 (defn play-from-hand-impl
   [state side title server slot]
@@ -644,6 +648,19 @@
   (delve-continue-impl state side)
   (core/process-action "delve-continue-post-encounter" state side nil))
 
+(defn delve-continue-to-approach-impl
+  [state side]
+  (is' (:delve @state) "Delving")
+  (is' (= side (-> @state :delve :delver)) "Correct side")
+  (dotimes [n 3]
+    (when (= (-> @state :delve :phase) :approach-slot)
+      (delve-pass-empty-space state side)))
+  (is' (= (->@ state :delve :phase) :approach-district) "Approaching district"))
+
+(defmacro delve-continue-to-approach
+  [state side]
+  `(error-wrapper (delve-continue-to-approach-impl ~state ~side)))
+
 (defn close-bluff-prompts
   [state]
   (doseq [s [:corp :runner :corp]]
@@ -659,9 +676,7 @@
       (is' (empty? (get-in @state [defender :paths server slot])) "server is not empty"))
     (delve-server-impl state delver server)
     ;; we should be at the give-heat? step now, if we can afford it
-    (dotimes [n 3]
-      (is' (= (-> @state :delve :phase) :approach-slot) "Approaching district")
-      (delve-pass-empty-space state delver))
+    (delve-continue-to-approach-impl state delver)
     (is' (= (-> @state :delve :phase) :approach-district) "Approaching district")
     (delve-continue-impl state delver)
     (let [prompt (first (get-in @state [delver :prompt]))]
