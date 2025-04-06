@@ -54,9 +54,8 @@
 (defcard "Shardwinner"
   (collect
     {:shards 1}
-    {:presence-bonus (req (if (and (same-card? card target)
-                                   (installed? card)
-                                   (in-commons-path? (get-card state card)))
+    {:presence-bonus (req (if (and (installed? card)
+                                   (in-commons-path? card))
                             4 0))
      :static-abilities [{:type :collect-shards-bonus
                          :req (req (and (same-card? card target)
