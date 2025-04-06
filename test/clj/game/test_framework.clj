@@ -807,7 +807,9 @@
       (core/process-action "collect" state :corp {:card (pick-card state :corp server slot)})
       (is' (and (= (+ old-cr credits) (get-credits state :corp))
                 (= (+ old-ca cards)   (count (get-hand state :corp))))
-           (str name " should have collected " credits " credits, and " cards " cards")))
+           (str name " should have collected " credits " credits, and " cards
+                " cards, but instead collected " (- (get-credits state :corp) old-cr)
+                " credits and "  (- (count (get-hand state :corp)) old-ca) " cards")))
     state))
 
 (defmacro collects?
