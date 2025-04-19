@@ -579,7 +579,7 @@
 
 ;; exhaust any number of cards protected archives - this may target the source card (itself)
 (defmethod value :exhaust-archives [cost] (:cost/amount cost))
-(defmethod label :exhaust-archives [cost] (str "exhaust " (quantify (value cost) " card") " protecting Archives"))
+(defmethod label :exhaust-archives [cost] (str "exhaust " (quantify (value cost) "card") " protecting Archives"))
 (defmethod payable? :exhaust-archives
   [cost state side eid card]
   (<= 0 (- (count (filter (every-pred (complement :exhausted) in-archives-path?)
@@ -589,11 +589,11 @@
   [cost state side eid card]
   (continue-ability
     state side
-    {:prompt (str "Choose " (quantify (value cost) "forged card") " to exhaust")
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your Archives path to exhaust")
      :choices {:all true
                :max (value cost)
                :card #(and (installed? %)
-                           in-archives-path?
+                           (in-archives-path? %)
                            (not= "Seeker" (:type %))
                            (if (= side :runner)
                              (runner? %)

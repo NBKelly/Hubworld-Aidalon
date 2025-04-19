@@ -60,10 +60,16 @@
 
     (swap! state update-in [:turn :index] inc)
 
-    ;; dissoc "new" from all cards in discard piles
+    ;; dissoc "new" from all cards in discard piles, and all installed tcards
     (doseq [s (players state)]
       (doseq [c (get-in @state [s :discard])]
-        (update! state s (dissoc (get-card state c) :new))))
+        (update! state s (dissoc (get-card state c) :new)))
+      (doseq [serv [:council :commons :archives]]
+        (doseq [slot [:inner :middle :outer]]
+          (when-let [c (get-in @state [s :paths serv slot 0])]
+            ;; make them not new, and not installed this turn (round)
+            (update! state s (assoc (dissoc (get-card state c) :new)
+                                    :installed true))))))
 
     (swap! state assoc
            :active-player (-> @state :turn :first-player)
