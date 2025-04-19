@@ -8,6 +8,7 @@
    [game.core.board :refer [server-list]]
    [game.core.card :refer [active? get-card get-counters get-title installed?
                            rezzed?]]
+   [game.core.delving :as delve]
    [game.core.eid :as eid]
    [game.core.ice :refer [active-ice?]]
    [game.core.initializing :refer [make-card]]
@@ -629,6 +630,16 @@
 (defmacro delve-server [state side server]
   `(error-wrapper (delve-server-impl ~state ~side ~server)))
 
+(defn presence
+  ([card] (game.core.presence/get-presence card))
+  ([state side server slot]
+   (presence (pick-card state side server slot))))
+
+(defn barrier
+  ([card] (game.core.barrier/get-barrier card))
+  ([state side server slot]
+   (barrier (pick-card state side server slot))))
+
 (defn delve-continue-impl
   [state side]
   (core/process-action "delve-continue" state side nil))
@@ -794,6 +805,21 @@
   {:style/indent [1 [[:defn]] :form]}
   [bindings & body]
   (bad-usage "changed?"))
+
+(defn presence?-impl
+  [{:keys [name server slot presence-value prompts forged?] :or {server :council slot :inner forged? true} :as args}]
+  (is' (and name presence-value) (str "Presence? usage: {:name name, :presence-value [int], optional: server, slot, forged?}"))
+  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)]}})]
+    (play-from-hand state :corp name server slot)
+    (when forged? (forge state :corp (pick-card state :corp server slot)))
+    (is' (= (presence (pick-card state :corp server slot)) presence-value)
+         (str name "has correct presence value of " presence-value))
+    state))
+
+(defmacro presence?
+  "Is the hand exactly equal to a given set of cards?"
+  [args]
+  `(error-wrapper (presence?-impl ~args)))
 
 (defn collects?-impl
   [{:keys [name server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]

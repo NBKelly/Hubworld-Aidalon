@@ -20,16 +20,35 @@
     (is-hand? state :corp ["Fun Run"])
     (is-discard? state :corp ["Shardwinner"])))
 
-;; TODO: DISAGREEABLE INSPECTOR
+(deftest disagreeable-inspector-test
+  (collects? {:name "Disagreeable Inspector"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Disagreeable Inspector"]}
+               :runner {:hand ["Doctor Twilight: Dream Surgeon"]}})
+    (play-from-hand state :corp "Disagreeable Inspector" :council :inner)
+    (play-from-hand state :runner "Doctor Twilight: Dream Surgeon" :council :outer)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (forge state :runner (pick-card state :runner :council :outer))
+    (delve-server state :corp :council)
+    (delve-confront-impl state :corp)
+    (is (changed? [(barrier (pick-card state :runner :council :outer)) -2]
+          (click-prompt state :corp "Yes"))
+        "Reduced barrier by 2 on encounter")))
 
-;; todo - unit test the presence maybe?
 (deftest shardwinner-test
   (collects? {:name "Shardwinner"
               :server :council
               :credits 2})
   (collects? {:name "Shardwinner"
               :server :commons
-              :credits 1}))
+              :credits 1})
+  (presence? {:name "Shardwinner"
+              :presence-value 5
+              :server :commons})
+  (presence? {:name "Shardwinner"
+              :presence-value 2
+              :server :commons}))
 
 (deftest tele-mail-cluster-test
   (collects? {:name "Tele-Mail Cluster"
@@ -42,7 +61,6 @@
     (stage-select state :corp :council :outer)
     (is (= "Shardwinner" (:title (pick-card state :corp :council :outer))))))
 
-;; TODO: THE DRAGONS HOARD
 (deftest the-dragons-hoard
   (collects? {:name "The Dragon’s Hoard"
               :credits 1})
