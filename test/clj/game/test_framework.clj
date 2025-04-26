@@ -400,6 +400,8 @@
                             (when (empty? (:hand side-map))
                               (find-card ctitle (get-in @state [side :hand]))))
                         :discard)))
+         (when (:heat side-map)
+           (swap! state assoc-in [side :heat :base] (:heat side-map)))
          (when (:credits side-map)
            (swap! state assoc-in [side :credit] (:credits side-map))))
        (core/clear-win state side))
