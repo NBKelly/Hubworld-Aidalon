@@ -57,6 +57,8 @@
 (defn get-clicks    [state side] (get-in @state [side :click]))
 (defn has-priority? [state side] (= (:active-player @state) side))
 
+(defn get-heat [state side] (jutils/count-heat state side))
+
 (defn get-delve-event
   ([state side] (get-in @state [side :play-area]))
   ([state side pos] (get-in @state [side :play-area pos])))
@@ -822,18 +824,21 @@
   `(error-wrapper (presence?-impl ~args)))
 
 (defn collects?-impl
-  [{:keys [name server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]
-  (is' name (str "Collects? usage: {:name name, optional: server, slot, credits, cards}"))
-  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)]}})]
-    (play-from-hand state :corp name server slot)
-    (forge state :corp (pick-card state :corp server slot))
+  [{:keys [name id server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]
+  (is' (or name id) (str "Collects? usage: {:name name, optional: server, slot, credits, cards}"))
+  (let [state (new-game {:corp {:hand [name] :id id :deck [(qty "Fun Run" 10)]}})]
+    (when name
+      (play-from-hand state :corp name server slot)
+      (forge state :corp (pick-card state :corp server slot)))
     (when prompts (click-prompts-impl state :corp prompts))
     (let [old-cr (get-credits state :corp)
           old-ca (count (get-hand state :corp))]
-      (core/process-action "collect" state :corp {:card (pick-card state :corp server slot)})
+      (if name
+        (core/process-action "collect" state :corp {:card (pick-card state :corp server slot)})
+        (core/process-action "collect" state :corp {:card (get-in @state [:corp :identity])}))
       (is' (and (= (+ old-cr credits) (get-credits state :corp))
                 (= (+ old-ca cards)   (count (get-hand state :corp))))
-           (str name " should have collected " credits " credits, and " cards
+           (str (or name id) " should have collected " credits " credits, and " cards
                 " cards, but instead collected " (- (get-credits state :corp) old-cr)
                 " credits and "  (- (count (get-hand state :corp)) old-ca) " cards")))
     state))
