@@ -23,7 +23,7 @@
 (deftest auntie-ruth-collects
   (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
               :credits 1
-              :prompts ["Goldie Xin: Tinkering Technician"]}))
+              :prompts ["Goldie Xin: Junk Collector"]}))
 
 (deftest auntie-ruth-cipher-lose-one-action
   (do-game
@@ -97,17 +97,17 @@
 
 (deftest rory-and-bug-moves
   (do-game
-    (new-game {:corp {:hand ["Rory & Bug: “You Catch It, We Fetch It!”"]}})
-    (play-from-hand state :corp "Rory & Bug: “You Catch It, We Fetch It!”" :council :inner)
+    (new-game {:corp {:hand ["Rory & Bug: “We Fetch It, You Catch It!”"]}})
+    (play-from-hand state :corp "Rory & Bug: “We Fetch It, You Catch It!”" :council :inner)
     (forge state :corp (pick-card state :corp :council :inner))
     (card-ability state :corp (pick-card state :corp :council :inner) 1)
     (stage-select state :corp :council :middle)
-    (is (= "Rory & Bug: “You Catch It, We Fetch It!”"
+    (is (= "Rory & Bug: “We Fetch It, You Catch It!”"
            (:title (pick-card state :corp :council :middle)))
         "Shifted to middle")))
 
 (deftest rory-and-bug-collects
-  (collects? {:name "Rory & Bug: “You Catch It, We Fetch It!”"
+  (collects? {:name "Rory & Bug: “We Fetch It, You Catch It!”"
               :credits 1}))
 
 (deftest sergeant-cole-collects

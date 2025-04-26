@@ -68,7 +68,7 @@
                :async true
                :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}]}))
 
-(defcard "Rory & Bug: “You Catch It, We Fetch It!”"
+(defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect
     {:shards 1}
     {:abilities [{:fake-cost [(->c :exhaust-self) (->c :credit 2)]

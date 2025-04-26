@@ -43,7 +43,7 @@
                     :action true
                     :effect (req (gain state (other-side side) :heat 1))}]})))
 
-(defcard "Goldie Xin: Tinkering Technician"
+(defcard "Goldie Xin: Junk Collector"
   (collect
     {:shards 1}
     {:abilities [{:cost [(->c :exhaust-self) (->c :click 1)]

@@ -113,7 +113,7 @@
                                   "Corp")
         runner-identity (build-card (or (get-in runner [:deck :identity])
                                         {:type "Seeker"
-                                         :title "Goldie Xin: Tinkering Technician"})
+                                         :title "Goldie Xin: Junk Collector"})
                                     "Runner")
         corp-quote (quotes/make-quote corp-identity runner-identity)
         runner-quote (quotes/make-quote runner-identity corp-identity)

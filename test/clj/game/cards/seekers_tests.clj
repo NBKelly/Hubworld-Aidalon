@@ -34,11 +34,11 @@
           (card-ability state :corp (get-id state :corp) 1))
         "Applied 1 heat")))
 
-(deftest goldie-xin-tinkering-technician
-  (collects? {:id "Goldie Xin: Tinkering Technician"
+(deftest goldie-xin-junk-collector
+  (collects? {:id "Goldie Xin: Junk Collector"
               :credits 1})
   (do-game
-    (new-game {:corp {:id "Goldie Xin: Tinkering Technician"
+    (new-game {:corp {:id "Goldie Xin: Junk Collector"
                       :deck [(qty "Shardwinner" 10)]}
                :runner {:hand ["Capricious Informant"]}})
     (click-credit state :corp)
