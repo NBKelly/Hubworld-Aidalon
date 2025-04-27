@@ -47,3 +47,8 @@
     (is (changed? [(:credit (get-runner)) 0]
           (click-prompts state :corp "Exhaust 1 forged card" "Capricious Informant"))
         "Gained 0c")))
+
+;; TODO: Canal Network
+;; TODO: Eye Enforcers
+;; TODO: Transit Station
+;; TODO: Waterway Ferry
