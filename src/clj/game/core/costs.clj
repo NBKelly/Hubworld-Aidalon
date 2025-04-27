@@ -545,7 +545,7 @@
 
 ;; exhaust any number of FORGED cards - this may target the source card (itself)
 (defmethod value :exhaust-forged [cost] (:cost/amount cost))
-(defmethod label :exhaust-forged [cost] (str "exhaust " (quantify (value cost) " forged card")))
+(defmethod label :exhaust-forged [cost] (str "exhaust " (quantify (value cost) "forged card")))
 (defmethod payable? :exhaust-forged
   [cost state side eid card]
   (<= 0 (- (count (filter (every-pred (complement :exhausted) rezzed?)

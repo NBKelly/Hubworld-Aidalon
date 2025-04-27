@@ -658,6 +658,11 @@
   (delve-continue-impl state side)
   (core/process-action "delve-confront" state side nil))
 
+(defn delve-discover-impl
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-discover" state side nil))
+
 (defn delve-pass-empty-space
   [state side]
   (delve-continue-impl state side)
