@@ -21,7 +21,7 @@
                   :req (req (>= (count (get-in @state [side :deck])) 2))
                   :label "Look at the top 2 cards of your Commons"
                   :waiting-prompt true
-                  :prompt (msg "the top of your Commons is (top->bottom): " (enumerate-str (map :title (take 2 (get-in @state [side :deck])))) ". Choose one to add to your Commons.")
+                  :prompt (msg "the top of your Commons is (top->bottom): " (enumerate-str (map :title (take 2 (get-in @state [side :deck])))) ". Choose one to add to your Council.")
                   :choices (req (take 2 (get-in @state [side :deck])))
                   :msg (msg "add the " (if (= target (first (get-in @state [side :deck])))
                                          "first" "second")
