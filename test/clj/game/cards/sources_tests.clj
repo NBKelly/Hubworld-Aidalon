@@ -44,11 +44,11 @@
               :server :commons
               :credits 1})
   (presence? {:name "Shardwinner"
-              :presence-value 5
+              :presence-value 6
               :server :commons})
   (presence? {:name "Shardwinner"
               :presence-value 2
-              :server :commons}))
+              :server :council}))
 
 (deftest tele-mail-cluster-test
   (collects? {:name "Tele-Mail Cluster"
