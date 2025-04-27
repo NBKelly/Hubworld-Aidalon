@@ -8,6 +8,7 @@
    [game.core.board :refer [server-list]]
    [game.core.card :refer [active? get-card get-counters get-title installed?
                            rezzed?]]
+   [game.core.delving :as delve]
    [game.core.eid :as eid]
    [game.core.ice :refer [active-ice?]]
    [game.core.initializing :refer [make-card]]
@@ -31,13 +32,40 @@
          (map (juxt :title identity))
          (into {})
          (reset! all-cards))
-    (require '[game.cards.moments]
-             '[game.cards.obstacles]
-             '[game.cards.basic]
+    (require '[game.cards.agents]
+             '[game.cards.moments]
              '[game.cards.seekers]
              '[game.cards.sources]
-             '[game.cards.agents])))
+             '[game.cards.obstacles])))
 (load-all-cards)
+
+(defn get-id [state side] (get-in @state [side :identity]))
+
+(defn get-hand      [state side] (get-in @state [side :hand]))
+(defn get-council   [state side] (get-hand state side))
+
+(defn get-deck      [state side] (get-in @state [side :deck]))
+(defn get-council   [state side] (get-deck state side))
+
+(defn get-discard   [state side] (get-in @state [side :discard]))
+(defn get-archives  [state side] (get-discard state side))
+
+(defn get-rfg       [state side] (get-in @state [side :rfg]))
+(defn get-exile     [state side] (get-rfg state side))
+
+(defn get-credits   [state side] (get-in @state [side :credit]))
+(defn get-clicks    [state side] (get-in @state [side :click]))
+(defn has-priority? [state side] (= (:active-player @state) side))
+
+(defn get-heat [state side] (jutils/count-heat state side))
+
+(defn get-delve-event
+  ([state side] (get-in @state [side :play-area]))
+  ([state side pos] (get-in @state [side :play-area pos])))
+
+(defn pick-card
+  [state side server slot]
+  (get-in @state [side :paths server slot 0]))
 
 (defn is-zone-impl
   "Is the hand exactly equal to a given set of cards?"
@@ -255,25 +283,8 @@
   (is' (no-prompt? state :corp) "Corp has prompts open")
   (is' (no-prompt? state :runner) "Runner has prompts open"))
 
-(defn start-turn
-  [state side]
-  (core/process-action "start-turn" state side nil))
-
 (defn end-turn [state side]
   (core/process-action "end-turn" state side nil))
-
-;; (defmacro take-credits
-;;   "Take credits for n clicks, or if no n given, for all remaining clicks of a side.
-;;   If all clicks are used up, end turn and start the opponent's turn."
-;;   ([state side] `(take-credits ~state ~side nil))
-;;   ([state side n]
-;;    `(let [other# (if (= ~side :corp) :runner :corp)]
-;;       (error-wrapper (ensure-no-prompts ~state))
-;;       (dotimes [_# (or ~n (get-in @~state [~side :click]))]
-;;         (core/process-action "credit" ~state ~side nil))
-;;       (when (zero? (get-in @~state [~side :click]))
-;;         (end-turn ~state ~side)
-;;         (start-turn ~state other#)))))
 
 ;; Deck construction helpers
 (defn qty [card amt]
@@ -283,7 +294,7 @@
 (defn card-vec->card-map
   [side [card amt]]
   (let [loaded-card (assoc (if (string? card) (utils/server-card card) card)
-                           :side (str/capitalize (name side)))]
+                           :side side)]
     (when-not loaded-card
       (throw (Exception. (str card " not found in @all-cards"))))
     (when (not= side (:side loaded-card))
@@ -315,8 +326,8 @@
                     (flatten scored))
           :discard (when-let [discard (:discard corp)]
                      (flatten discard))
-          :identity (when-let [id (or (:id corp) (:identity corp) "Goldie Xin: Tinkering Technician")]
-                      (assoc (utils/server-card id) :side "Corp"))
+          :identity (when-let [id (or (:id corp) (:identity corp))]
+                      (utils/server-card id))
           :credits (:credits corp)}
    :runner {:deck (or (transform "Runner" (conj (:deck runner)
                                                 (:hand runner)
@@ -329,8 +340,8 @@
                     (flatten scored))
             :discard (when-let [discard (:discard runner)]
                        (flatten discard))
-            :identity (when-let [id (or (:id runner) (:identity runner) "Goldie Xin: Tinkering Technician")]
-                      (assoc (utils/server-card id) :side "Runner"))
+            :identity (when-let [id (or (:id runner) (:identity runner))]
+                        (utils/server-card id))
             :credits (:credits runner)}
    :mulligan (:mulligan options)
    :start-as (:start-as options)
@@ -374,8 +385,7 @@
                                     :cards (:deck runner)}}]})]
      (click-prompt state :corp "Keep")
      (click-prompt state :runner "Keep")
-     (swap! state assoc :active-player :corp)
-     ;; Gotta move cards where they need to go
+   ;; Gotta move cards where they need to go
      (starting-score-areas state (:score-area corp) (:score-area runner))
      (doseq [side [:corp :runner]]
        (let [side-map (if (= :corp side) corp runner)]
@@ -390,9 +400,12 @@
                             (when (empty? (:hand side-map))
                               (find-card ctitle (get-in @state [side :hand]))))
                         :discard)))
+         (when (:heat side-map)
+           (swap! state assoc-in [side :heat :base] (:heat side-map)))
          (when (:credits side-map)
            (swap! state assoc-in [side :credit] (:credits side-map))))
        (core/clear-win state side))
+     (swap! state assoc :active-player :corp)
      ;; These are side independent so they happen ouside the loop
      (core/fake-checkpoint state)
      state)))
@@ -467,9 +480,13 @@
   ([state side pos]
    (get-in @state [side :rfg pos])))
 
-(defn- stage-select-impl
+(defn stage-select-impl
   [state side server slot]
-  (core/process-action "stage-select" state side {:server (str/lower-case server) :slot (keyword (str/lower-case slot))}))
+  (core/process-action "stage-select" state side {:server server :slot slot}))
+
+(defmacro stage-select
+  [state side server slot]
+  `(error-wrapper (stage-select-impl ~state ~side ~server ~slot)))
 
 (defn play-from-hand-impl
   [state side title server slot]
@@ -481,13 +498,13 @@
         (when (some? (find-card title (get-in @state [other-side :hand])))
           (println title " was instead found in the opposing hand - was the wrong side used?"))))
     (when server
-      (is' (some #{server} ["Council" "Commons" "Archives"])
+      (is' (some #{server} [:council :commons :archives])
            (str server " is not a valid server.")))
     (when slot
-      (is' (some #{slot} ["Inner" "Middle" "Outer"])
-           (str slot " is not a valid slot.")))
+      (is' (some #{slot} [:inner :middle :outer])
+           (str slot " is not a valid smpt.")))
     (when (some? card)
-      (is' (core/process-action "play" state side {:card card}))
+      (is' (core/process-action "play" state side {:card card :server server}))
       (when (and server slot)
         (stage-select-impl state side server slot))
       true)))
@@ -519,101 +536,6 @@
   ([state side title & prompts]
    `(error-wrapper (play-from-hand-with-prompts-impl ~state ~side ~title ~(vec prompts)))))
 
-;;; Delve functions
-(defn delve-on-impl
-  [state side server]
-  (let [delve (:delve @state)]
-    (ensure-no-prompts state)
-    (is' (not delve) "There is no existing run")
-    (is' (and (pos? (get-in @state [side :click]))
-              (= side (:active-player @state))))
-    (when (and (not delve)
-               (pos? (get-in @state [side :click]))
-               (= side (:active-player @state)))
-      (core/process-action "delve" state side {:server server})
-      true)))
-
-(defmacro delve-on
-  "Start run on specified server."
-  [state side server]
-  `(error-wrapper (delve-on-impl ~state ~side ~server)))
-
-(defn delve-continue-impl
-  ([state] (delve-continue-impl state :any))
-  ([state phase]
-   (let [delve (:delve @state)]
-     (is' (some? delve) "There is a delve happening")
-     (ensure-no-prompts state)
-     (is' (not= :success (:phase delve))
-          "The run has not reached the server yet")
-     (when (and (some? delve)
-                (no-prompt? state :runner)
-                (no-prompt? state :corp)
-                (not= :success (:phase delve)))
-       (if (contains? #{:approach-slot :approach-district} phase)
-         (do
-           (core/process-action "delve-continue" state :corp nil)
-           (core/process-action "delve-continue" state :runner nil))
-         (is' (contains? #{:approach-slot :approach-district} phase)))
-       (when-not (= :any phase)
-         (is' (= phase (:phase (:delve @state))) "Delve is in the correct phase"))))))
-
-(defmacro delve-continue
-  "No action from corp and continue for runner to proceed in current run."
-  ([state] `(delve-continue ~state :any))
-  ([state phase] `(error-wrapper (delve-continue-impl ~state ~phase))))
-
-(defn delve-jack-out-impl
-  [state]
-  (let [delve (:delve @state)]
-    (is' (some? delve) "There is a delve happening")
-    (is' (= :post-encounter (:phase delve)) "Delver is allowed to jack out")
-    (when (and (some? delve) (= :post-encounter (:phase delve)))
-      (core/process-action "delve-end" state (:delver delve) nil)
-      true)))
-
-(defmacro delve-jack-out
-  "Jacks out in run."
-  [state]
-  `(error-wrapper (run-jack-out-impl ~state)))
-
-;; (defmacro run-empty-server-impl
-;;   [state server]
-;;   `(when (run-on ~state ~server)
-;;      (run-continue ~state)))
-
-;; (defmacro run-empty-server
-;;   "Make a successful run on specified server, assumes no ice in place."
-;;   [state server]
-;;   `(error-wrapper (run-empty-server-impl ~state ~server)))
-
-;; (defn run-continue-until-impl
-;;   [state phase ice]
-;;   (is' (some? (:run @state)) "There is a run happening")
-;;   (is' (#{:approach-ice :encounter-ice :movement :success} phase) "Valid phase")
-;;   (run-continue-impl state)
-;;   (while (and (:run @state)
-;;               (or (not= phase (:phase (:run @state)))
-;;                   (and ice
-;;                        (not (utils/same-card? ice (core/get-current-ice state)))))
-;;               (not (and (= :movement (:phase (:run @state)))
-;;                         (zero? (:position (:run @state)))))
-;;               (no-prompt? state :runner)
-;;               (no-prompt? state :corp)
-;;               (not= :success (:phase (:run @state))))
-;;     (run-continue-impl state))
-;;   (when (and (= :success phase)
-;;              (and (= :movement (:phase (:run @state)))
-;;                   (zero? (:position (:run @state)))))
-;;     (run-continue-impl state))
-;;   (when ice
-;;     (is' (utils/same-card? ice (core/get-current-ice state))) "Current ice reached"))
-
-;; (defmacro run-continue-until
-;;   ([state phase] `(error-wrapper (run-continue-until-impl ~state ~phase nil)))
-;;   ([state phase ice]
-;;    `(error-wrapper (run-continue-until-impl ~state ~phase ~ice))))
-
 (defn forge-impl
   ([state side card] (forge-impl state side card nil))
   ([state side card {:keys [expect-forge] :or {expect-forge true}}]
@@ -629,7 +551,7 @@
 
 (defmacro forge
   [state side card & opts]
-  `(error-wrapper (froge-impl ~state ~card ~@opts)))
+  `(error-wrapper (forge-impl ~state ~side ~card ~@opts)))
 
 (defn unforge-impl
   [state side card]
@@ -696,6 +618,98 @@
 (defmacro trash-card
   [state side card]
   `(error-wrapper (trash-card-impl ~state ~side ~card)))
+
+(defn delve-server-impl
+  [state side server]
+  (is' (and (has-priority? state side)
+            (pos? (get-clicks state side)))
+       "Cannot delve without either priority or available actions")
+  ;; the server is, in fact, empty
+  (let [delver side
+        defender (if (= side :runner) :corp :runner)]
+    (core/process-action "delve" state delver {:server (name server)})
+    (core/process-action "delve-toggle-auto-pass" state defender nil)
+    (is' (:delve @state) "delving")))
+
+(defmacro delve-server [state side server]
+  `(error-wrapper (delve-server-impl ~state ~side ~server)))
+
+(defn presence
+  ([card] (game.core.presence/get-presence card))
+  ([state side server slot]
+   (presence (pick-card state side server slot))))
+
+(defn barrier
+  ([card] (game.core.barrier/get-barrier card))
+  ([state side server slot]
+   (barrier (pick-card state side server slot))))
+
+(defn delve-continue-impl
+  [state side]
+  (core/process-action "delve-continue" state side nil))
+
+(defn delve-bypass-impl
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-bypass" state side nil))
+
+(defn delve-confront-impl
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-confront" state side nil))
+
+(defn delve-discover-impl
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-discover" state side nil))
+
+(defn delve-pass-empty-space
+  [state side]
+  (delve-continue-impl state side)
+  (core/process-action "delve-continue-post-encounter" state side nil))
+
+(defn delve-continue-to-approach-impl
+  [state side]
+  (is' (:delve @state) "Delving")
+  (is' (= side (-> @state :delve :delver)) "Correct side")
+  (dotimes [n 3]
+    (when (= (-> @state :delve :phase) :approach-slot)
+      (delve-pass-empty-space state side)))
+  (is' (= (->@ state :delve :phase) :approach-district) "Approaching district"))
+
+(defmacro delve-continue-to-approach
+  [state side]
+  `(error-wrapper (delve-continue-to-approach-impl ~state ~side)))
+
+(defn close-bluff-prompts
+  [state]
+  (doseq [s [:corp :runner :corp]]
+    (let [prompt (first (get-in @state [s :prompt]))]
+      (when (= (:prompt-type prompt) :bluff)
+        (core/process-action "bluff-done" state s nil)))))
+
+(defn delve-empty-server-impl
+  [state side server {:keys [give-heat?]}]
+  (let [delver side
+        defender (if (= side :runner) :corp :runner)]
+    (doseq [slot [:inner :middle :outer]]
+      (is' (empty? (get-in @state [defender :paths server slot])) "server is not empty"))
+    (delve-server-impl state delver server)
+    ;; we should be at the give-heat? step now, if we can afford it
+    (delve-continue-to-approach-impl state delver)
+    (is' (= (-> @state :delve :phase) :approach-district) "Approaching district")
+    (delve-continue-impl state delver)
+    (let [prompt (first (get-in @state [delver :prompt]))]
+      (if give-heat?
+        (do (is' (str/includes? (:msg prompt) "an additional [heat]?") "Prompt is for heat")
+            (click-prompt state delver "Yes"))
+        (when (str/includes? (:msg prompt) "an additional [heat]?")
+          (click-prompt state delver "No"))))
+    (close-bluff-prompts state)))
+
+(defmacro delve-empty-server
+  ([state side server]      `(error-wrapper (delve-empty-server-impl ~state ~side ~server nil)))
+  ([state side server args] `(error-wrapper (delve-empty-server-impl ~state ~side ~server ~args))))
 
 (defn accessing
   "Checks to see if the delve has a prompt accessing the given card title"
@@ -787,26 +801,6 @@
        (re-find (re-pattern (escape-log-string content)))
        some?))
 
-(defn- make-zone
-  [zone replacement]
-  (if (and zone (int? zone))
-    ;; note: (qty 0 X) evaluates to nil, so we should guard against that
-    (let [wrapped [(qty replacement zone)]]
-      (if (= wrapped [nil]) [] wrapped))
-    zone))
-
-(defn- update-zones
-  [players updates]
-  (if-not (seq updates)
-    players
-    (let [zone-replacement (first updates)
-          remainder (rest updates)
-          target-zone (first zone-replacement)
-          replacement (second zone-replacement)
-          updated-zone (make-zone (get-in players target-zone) replacement)
-          updated-players (assoc-in players target-zone updated-zone)]
-      (update-zones updated-players remainder))))
-
 (defn bad-usage [n]
   `(throw (new IllegalArgumentException (str ~n " should only be used inside 'is'"))))
 
@@ -820,3 +814,43 @@
   {:style/indent [1 [[:defn]] :form]}
   [bindings & body]
   (bad-usage "changed?"))
+
+(defn presence?-impl
+  [{:keys [name server slot presence-value prompts forged?] :or {server :council slot :inner forged? true} :as args}]
+  (is' (and name presence-value) (str "Presence? usage: {:name name, :presence-value [int], optional: server, slot, forged?}"))
+  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)]}})]
+    (play-from-hand state :corp name server slot)
+    (when forged? (forge state :corp (pick-card state :corp server slot)))
+    (is' (= (presence (pick-card state :corp server slot)) presence-value)
+         (str name "has correct presence value of " presence-value))
+    state))
+
+(defmacro presence?
+  "Is the hand exactly equal to a given set of cards?"
+  [args]
+  `(error-wrapper (presence?-impl ~args)))
+
+(defn collects?-impl
+  [{:keys [name id server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]
+  (is' (or name id) (str "Collects? usage: {:name name, optional: server, slot, credits, cards}"))
+  (let [state (new-game {:corp {:hand [name] :id id :deck [(qty "Fun Run" 10)]}})]
+    (when name
+      (play-from-hand state :corp name server slot)
+      (forge state :corp (pick-card state :corp server slot)))
+    (when prompts (click-prompts-impl state :corp prompts))
+    (let [old-cr (get-credits state :corp)
+          old-ca (count (get-hand state :corp))]
+      (if name
+        (core/process-action "collect" state :corp {:card (pick-card state :corp server slot)})
+        (core/process-action "collect" state :corp {:card (get-in @state [:corp :identity])}))
+      (is' (and (= (+ old-cr credits) (get-credits state :corp))
+                (= (+ old-ca cards)   (count (get-hand state :corp))))
+           (str (or name id) " should have collected " credits " credits, and " cards
+                " cards, but instead collected " (- (get-credits state :corp) old-cr)
+                " credits and "  (- (count (get-hand state :corp)) old-ca) " cards")))
+    state))
+
+(defmacro collects?
+  "Is the hand exactly equal to a given set of cards?"
+  [args]
+  `(error-wrapper (collects?-impl ~args)))

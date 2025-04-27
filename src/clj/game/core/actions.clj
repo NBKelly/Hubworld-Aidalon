@@ -8,6 +8,7 @@
     [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus]]
+    [game.core.delving :refer [reset-delve-continue!]]
     [game.core.effects :refer [any-effects is-disabled-reg?]]
     [game.core.eid :refer [effect-completed make-eid]]
     [game.core.engine :refer [ability-as-handler checkpoint register-once register-pending-event pay queue-event resolve-ability trigger-event-simult]]
@@ -92,6 +93,7 @@
        (toast state side (str "You cannot play abilities while other abilities are resolving.")
               "warning"))
      (when-not cannot-play
+       (reset-delve-continue! state (other-side side))
        (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))))
 
 (defn play-collect
@@ -115,6 +117,7 @@
            (toast state side (str "You cannot play abilities while other abilities are resolving.")
                   "warning"))
          (when-not cannot-play
+           (reset-delve-continue! state (other-side side))
            (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))
        (if eid (effect-completed state side eid) nil)))))
 

@@ -137,7 +137,13 @@
       (with-meta (persistent! ret) (meta m)))))
 
 (def command-info
-  [{:name "/bug"
+  [{:name "/bluff"
+    :usage "/bluff"
+    :help "Summons a bluff prompt"}
+   {:name "/clear-delve-state"
+    :usage "/clear-delve-state"
+    :help "Clears out the delve state. Only use this for debugging stuff."}
+   {:name "/bug"
     :usage "/bug"
     :help "Report a bug on GitHub"}
    {:name "/card-info"

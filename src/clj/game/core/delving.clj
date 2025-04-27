@@ -257,7 +257,6 @@
 (defn delve-encounter
   [state side eid]
   (set-phase state :encounter)
-  ;; big TODO on this - can I move these buttons to the frontend later?
   (let [approached-card (card-for-current-slot state)]
     (cond
       ;; if there is no card, the slot is immediately bypassed
@@ -410,6 +409,11 @@
         nil)
       (do (swap! state assoc-in [:delve :no-action side] true)
           (system-msg state side "has no further action")))))
+
+(defn reset-delve-continue!
+  [state side]
+  (when (get-in @state [:delve :no-action side])
+    (swap! state dissoc-in [:delve :no-action side])))
 
 (defn delve-toggle-pass-priority
   [state side eid]

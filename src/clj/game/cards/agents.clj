@@ -50,6 +50,7 @@
                   :label "Unexhaust your seeker"
                   :req (req (get-in @state [side :identity :exhausted]))
                   :msg (msg "ready " (get-in @state [side :identity :title]))
+                  :async true
                   :effect (req (unexhaust state side eid (get-in @state [side :identity]) {:no-msg true}))}]}))
 
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"
@@ -67,7 +68,7 @@
                :async true
                :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}]}))
 
-(defcard "Rory & Bug: “You Catch It, We Fetch It!”"
+(defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect
     {:shards 1}
     {:abilities [{:fake-cost [(->c :exhaust-self) (->c :credit 2)]
