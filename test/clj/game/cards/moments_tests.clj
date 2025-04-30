@@ -29,6 +29,29 @@
         "Gained 3c")
     (is (no-prompt? state :corp))))
 
+(deftest franchise-fees
+  (do-game
+    (new-game {:corp {:hand ["Franchise Fees" "Disagreeable Inspector"]}})
+    (play-from-hand state :corp "Disagreeable Inspector" :council :outer)
+    (click-credit state :runner)
+    (is (changed? [(:credit (get-corp)) 4]
+          (play-from-hand state :corp "Franchise Fees")
+          (click-card state :corp "Disagreeable Inspector"))
+        "Gained 4")
+    (is (:exhausted (pick-card state :corp :council :outer)) "exhausted him")))
+
+(deftest fun-run
+  (do-game
+    (new-game {:corp {:hand ["Fun Run"]}
+               :runner {:hand [(qty "Fun Run" 5)]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :commons)
+    (is (changed? [(:credit (get-corp)) 3]
+          (click-prompts state :corp "Yes"))
+        "Gained 3c")
+    (is (no-prompt? state :corp))))
+
 (deftest infiltrate
   (do-game
     (new-game {:corp {:hand ["Infiltrate"]}
@@ -51,15 +74,3 @@
       (is (zero? (get-heat state :corp)) "No heat"))))
 
 ;; TODO - likely a trap tests
-
-(deftest fun-run
-  (do-game
-    (new-game {:corp {:hand ["Fun Run"]}
-               :runner {:hand [(qty "Fun Run" 5)]}})
-    (click-credit state :corp)
-    (click-credit state :runner)
-    (delve-empty-server state :corp :commons)
-    (is (changed? [(:credit (get-corp)) 3]
-          (click-prompts state :corp "Yes"))
-        "Gained 3c")
-    (is (no-prompt? state :corp))))
