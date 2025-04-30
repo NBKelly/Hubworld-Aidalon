@@ -35,6 +35,7 @@
    (let [is-facedown? (and (not visible)
                            (or ((every-pred installed? (complement seeker?) (complement rezzed?)) card)
                                (and (not (:seen card))
+                                    (not (rezzed? card))
                                     (not (contains? #{:discard :hand :deck} (:zone card))))))
          ctitle (if is-facedown? "a facedown card" (or (:title card) (:printed-title card)))]
      (if not-verbose?
