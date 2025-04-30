@@ -22,6 +22,27 @@
              :effect (req (wait-for (gain-credits state side 4)
                                     (draw state side eid 1)))}})
 
+(defcard "Cooling Off"
+  {:on-play {:additional-cost [(->c :click 1)]
+             :action true
+             :prompt "Choose a player"
+             :waiting-prompt true
+             :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                                     (same-card? target (get-in @state [:runner :identity]))))
+                       :all true}
+             :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+                         (str
+                           (when-not (= target-side side)
+                             (str "force " (other-player-name state side) " to "))
+                           "draw 1 card"
+                           (when (pos? (count-heat state target-side))
+                             " and lose 1 [heat]"))))
+             :async true
+             :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+                            (when (pos? (count-heat state target-side))
+                              (lose state target-side :heat 1))
+                            (draw state target-side eid 1)))}})
+
 (defcard "Cornering the Market"
   {:events [{:event :end-breach-server
              :location :hand

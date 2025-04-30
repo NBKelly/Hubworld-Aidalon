@@ -17,6 +17,17 @@
           (play-from-hand state :corp "Calling in Favors"))
         "Gained a bunch of stuff")))
 
+(deftest cooling-off
+  (doseq [heat [0 1]]
+    (do-game
+      (new-game {:corp {:hand ["Cooling Off"]
+                        :heat heat
+                        :deck [(qty "Fun Run" 3)]}})
+      (play-from-hand state :corp "Cooling Off")
+      (click-card state :corp (get-id state :corp))
+      (is-hand? state :corp ["Fun Run"])
+      (is (zero? (get-heat state :corp)) "No heat"))))
+
 (deftest cornering-the-market-test
   (do-game
     (new-game {:corp {:hand ["Cornering the Market"]}
