@@ -38,6 +38,22 @@
                                       :async true
                                       :effect (req (gain-credits state side eid 3))}}}]})
 
+(defcard "Cornering the Market"
+  {:events [{:event :end-breach-server
+             :location :hand
+             :interactive (req true)
+             :optional {:hide-card? true
+                        :req (req (and (= (:breach-server context) :commons)
+                                       (in-hand? card)
+                                       (= (to-keyword (:side card)) side)
+                                       (= (:delver context) side)))
+                        :waiting-prompt true
+                        :prompt "Exile Cornering the Market to gain 3 [credits]?"
+                        :yes-ability {:cost [(->c :exile-reaction)]
+                                      :msg "gain 3 [credits]"
+                                      :async true
+                                      :effect (req (gain-credits state side eid 3))}}}]})
+
 (defcard "Infiltrate"
   {:events [{:event :breach-server
              :location :hand

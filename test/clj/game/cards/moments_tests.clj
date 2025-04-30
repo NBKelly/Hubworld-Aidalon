@@ -17,6 +17,18 @@
           (play-from-hand state :corp "Calling in Favors"))
         "Gained a bunch of stuff")))
 
+(deftest cornering-the-market-test
+  (do-game
+    (new-game {:corp {:hand ["Cornering the Market"]}
+               :runner {:hand [(qty "Cornering the Market" 5)]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :commons)
+    (is (changed? [(:credit (get-corp)) 3]
+          (click-prompts state :corp "Yes"))
+        "Gained 3c")
+    (is (no-prompt? state :corp))))
+
 (deftest infiltrate
   (do-game
     (new-game {:corp {:hand ["Infiltrate"]}

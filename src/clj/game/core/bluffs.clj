@@ -17,12 +17,14 @@
 (def bluffs
   {;; END BREACH SERVER:
    ;;   FUN RUN
+   ;;   CORNERING THE MARKET
    :end-breach-server (req (and (seq (get-in @state [side :hand]))
                                 (or
                                   (and ;; FUN RUN
                                     (= (:breach-server context) :commons)
                                     (= (:delver context) side)
-                                    (< (known-copies state side "Fun Run") 2)))))
+                                    (or (< (known-copies state side "Fun Run") 2)
+                                        (< (known-copies state side "Cornering the Market") 2))))))
 
    ;; BREACH SERVER
    ;;   INFILTRATE

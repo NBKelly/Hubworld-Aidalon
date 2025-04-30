@@ -51,8 +51,7 @@
                   :msg "Gain 3 [Credits]"
                   :async true
                   :action true
-                  :req (req (< (get-in @state [side :heat :total])
-                               (get-in @state [(other-side side) :heat :total])))
+                  :req (req (< (count-heat state side) (count-heat state (other-side side))))
                   :effect (req (gain-credits state side eid 3))}]}))
 
 (defcard "Jayko & Ace: Boisterous Troublemakers"
