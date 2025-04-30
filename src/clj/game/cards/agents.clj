@@ -1,7 +1,7 @@
 (ns game.cards.agents
   (:require
    [clojure.string :as str]
-   [game.core.card :refer [in-hand?]]
+   [game.core.card :refer [in-hand? installed? agent? obstacle?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
@@ -11,7 +11,7 @@
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
-   [game.utils :refer [same-card? to-keyword]]
+   [game.utils :refer [same-card? to-keyword same-side?]]
    [game.macros :refer [effect msg req wait-for]]
    [jinteki.utils :refer [other-player-name other-side]]))
 
@@ -67,6 +67,23 @@
                :choices {:req (req (in-hand? target))}
                :async true
                :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}]}))
+
+(defcard "Prime Treasurer Geel: Munificent Financier"
+  (collect
+    {:shards 1}
+    {:static-abilities [{:type :barrier-value
+                         :value 1
+                         :req (req (and (installed? target)
+                                        (not (same-card? card target))
+                                        (same-side? card target)
+                                        (or (agent? target) (obstacle? target))))}]
+     :discover-abilities [{:optional
+                           {:prompt "Gain 4 [Credits]?"
+                            :req (req (installed? card))
+                            :waiting-prompt true
+                            :yes-ability {:async true
+                                          :msg "gain 4 [Credits]"
+                                          :effect (req (gain-credits state side eid 4))}}}]}))
 
 (defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect

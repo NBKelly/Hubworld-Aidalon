@@ -95,6 +95,33 @@
   (collects? {:name "Kryzar the Rat: Navigator of the Cortex Maze"
               :credits 1}))
 
+(deftest prime-treasurer-geel-munificent-financier
+  (collects? {:name "Prime Treasurer Geel: Munificent Financier"
+              :credits 1})
+  ;; +1 barrier aura
+  (do-game
+    (new-game {:corp {:hand ["Prime Treasurer Geel: Munificent Financier" "Barbican Gate"]}})
+    (play-from-hand state :corp "Barbican Gate" :council :outer)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Prime Treasurer Geel: Munificent Financier" :council :middle)
+    (is (changed? [(barrier state :corp :council :outer) 1
+                   (barrier state :corp :council :middle) 0]
+          (forge state :corp (pick-card state :corp :council :middle))
+          (forge state :corp (pick-card state :corp :council :outer)))
+        "Only buffs other cards"))
+  ;; discover: +4 creds (while installed)
+  (doseq [[opt c q] [["Yes" 4 "gained 4"] ["No" 0 "gained 0"]]]
+    (do-game
+      (new-game {:runner {:hand ["Prime Treasurer Geel: Munificent Financier"]}
+                 :corp {:hand ["Capricious Informant"]}})
+      (play-from-hand state :corp "Capricious Informant" :council :inner)
+      (play-from-hand state :runner "Prime Treasurer Geel: Munificent Financier" :council :outer)
+      (delve-server state :corp :council)
+      (delve-discover-impl state :corp)
+      (is (changed? [(:credit (get-runner)) c]
+            (click-prompt state :runner opt))
+          q))))
+
 (deftest rory-and-bug-moves
   (do-game
     (new-game {:corp {:hand ["Rory & Bug: “We Fetch It, You Catch It!”"]}})
