@@ -1,6 +1,6 @@
 (ns game.core.heat
   (:require
-   [game.core.gaining :refer [gain]]
+   [game.core.gaining :refer [gain lose]]
    [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [checkpoint]]
    [game.core.effects :refer [sum-effects]]))
@@ -27,6 +27,16 @@
   ([state side eid qty {:keys [suppress-checkpoint]}]
    (gain state side :heat qty)
    ;; tODO - queue an event for heat gain!
+   (if suppress-checkpoint
+     (effect-completed state side eid)
+     (checkpoint state side eid))))
+
+(defn lose-heat
+  "Lose heat"
+  ([state side eid qty] (lose-heat state side eid qty nil))
+  ([state side eid qty {:keys [suppress-checkpoint]}]
+   (lose state side :heat qty)
+   ;; tODO - queue an event for heat loss!
    (if suppress-checkpoint
      (effect-completed state side eid)
      (checkpoint state side eid))))
