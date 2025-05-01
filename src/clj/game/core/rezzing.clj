@@ -12,6 +12,7 @@
     [game.core.initializing :refer [card-init deactivate]]
     [game.core.moving :refer [trash-cards]]
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs ->c]]
+    [game.core.reactions :refer [resolve-forge-reaction]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
     [game.core.toasts :refer [toast]]
     [game.core.to-string :refer [card-str]]
@@ -85,8 +86,10 @@
                       (trash-hosted-cards state side (make-eid state eid) (get-card state card))
                       (wait-for
                         (checkpoint state nil (make-eid state eid) {:duration :forge})
-                        (reset-delve-continue! state (other-side side))
-                        (complete-with-result state side eid {:card (get-card state card)})))))))))
+                        (wait-for
+                          (resolve-forge-reaction state side {:card (get-card state card)})
+                          (reset-delve-continue! state (other-side side))
+                          (complete-with-result state side eid {:card (get-card state card)}))))))))))
 
 (defn can-pay-to-rez?
   ([state side eid card] (can-pay-to-rez? state side eid card nil))
