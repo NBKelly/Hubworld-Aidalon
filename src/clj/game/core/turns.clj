@@ -75,7 +75,6 @@
            :active-player (-> @state :turn :first-player)
            :per-turn nil
            :end-turn false)
-    (swap! state update-in [:turn :first-player] other-side)
 
     (doseq [s (players state)]
       (swap! state assoc-in [s :register] nil))
@@ -182,6 +181,7 @@
     (do
       (system-msg state side "has no further actions")
       (swap! state assoc-in [:turn :ending :initiated] true)
+      (swap! state update-in [:turn :first-player] other-side)
       (hubworld-refresh-phase state side eid))
     ;; we're the first player to hit it
     (and (not (get-in @state [:turn :ending side]))
