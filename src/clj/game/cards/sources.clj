@@ -7,6 +7,7 @@
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits lose]]
+   [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [move trash]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.staging :refer [stage-a-card]]
@@ -50,6 +51,19 @@
                                                           :req (req (same-card? target-card target))
                                                           :duration :end-of-confrontation})
                                                        (update-card-barrier state side target-card)))}}}]}))
+
+(defcard "Lost Byway"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :forge
+                 :type :ability
+                 :prompt "Remove 1 [heat]?"
+                 :max-uses 1
+                 :ability {:async true
+                           :req (req (and (pos? (count-heat state side))
+                                          (same-card? card (:card context))))
+                           :msg "remove 1 [heat]"
+                           :effect (req (lose-heat state side eid 1))}}]}))
 
 (defcard "Shardwinner"
   (collect

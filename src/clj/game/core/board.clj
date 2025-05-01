@@ -1,7 +1,7 @@
 (ns game.core.board
   (:require
    [clojure.string :as string]
-   [game.core.card :refer [agenda? asset? corp? event? facedown? installed?
+   [game.core.card :refer [agenda? asset? corp? event? facedown? installed? seeker?
                            is-type? operation? rezzed? runner?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.eid :refer [make-eid]]
@@ -83,6 +83,11 @@
   [state side]
   ;; TODO - if hosting ever happens, deal with that
   (seq (concat (seq (get-cards-from-paths state side)) [(get-in @state [side :identity])])))
+
+(defn hubworld-all-active
+  "Returns a vector of active AND installed cards for the given side. This is all face-up installed cards."
+  [state side]
+  (filter #(or (rezzed? %) (seeker? %)) (hubworld-all-installed state side)))
 
 (defn all-installed
   "Returns a vector of all installed cards for the given side, including those hosted on other cards,

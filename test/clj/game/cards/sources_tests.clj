@@ -36,6 +36,18 @@
           (click-prompt state :corp "Yes"))
         "Reduced barrier by 2 on encounter")))
 
+(deftest lost-byway-test
+  (collects? {:name "Lost Byway"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Lost Byway"]}})
+    (play-from-hand state :corp "Lost Byway" :council :inner)
+    (game.core.heat/gain-heat state :corp (core/make-eid state) 1)
+    (is (= 1 (get-heat state :corp)) "1 heat")
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(get-heat state :corp)]
+          (click-prompt state :corp "Lost Byway")))))
+
 (deftest shardwinner-test
   (collects? {:name "Shardwinner"
               :server :council
