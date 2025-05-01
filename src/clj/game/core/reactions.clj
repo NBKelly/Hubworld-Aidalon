@@ -70,8 +70,8 @@
                                  not-used-too-many-times? (or (not (:max-uses %))
                                                               (not (get-in @state [:reaction key :uses (:cid card)]))
                                                               (< (get-in @state [:reaction key :uses (:cid card)]) (:max-uses %)))
-                                 ability-req? (or (not (get-in % [:ability :req]))
-                                                  ((get-in % [:ability :req]) state side eid card [(get-in @state [:reaction key])]))]
+                                 ability-req? (or (not (get-in % [:req]))
+                                                  ((get-in % [:req]) state side eid card [(get-in @state [:reaction key])]))]
                              (and (not cannot-play?) payable? not-used-too-many-times? ability-req?))
                           abs)]
     (seq (map #(assoc % :card card) playable?))))

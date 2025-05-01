@@ -48,6 +48,18 @@
     (is (changed? [(get-heat state :corp)]
           (click-prompt state :corp "Lost Byway")))))
 
+(deftest silkline-shuttle
+  (collects? {:name "Silkline Shuttle"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Silkline Shuttle" "Shardwinner"]}})
+    (play-from-hand state :corp "Shardwinner" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Silkline Shuttle" :commons :outer)
+    (forge state :corp (pick-card state :corp :commons :outer))
+    (click-prompts state :corp "Silkline Shuttle" "Yes" "Shardwinner")
+    (is (= "Shardwinner" (:title (pick-card state :corp :commons :outer))))))
+
 (deftest shardwinner-test
   (collects? {:name "Shardwinner"
               :server :council
@@ -69,7 +81,7 @@
     (new-game {:corp {:hand ["Tele-Mail Cluster" "Shardwinner"]}})
     (play-from-hand state :corp "Tele-Mail Cluster" :council :inner)
     (forge state :corp (pick-card state :corp :council :inner))
-    (click-card state :corp "Shardwinner")
+    (click-prompts state :corp "Tele-Mail Cluster" "Yes" "Shardwinner")
     (stage-select state :corp :council :outer)
     (is (= "Shardwinner" (:title (pick-card state :corp :council :outer))))))
 

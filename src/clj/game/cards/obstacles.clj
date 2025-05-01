@@ -89,5 +89,10 @@
    :presence-bonus (req (if (and (installed? card) (in-front-row?  card)) 4 0))})
 
 (defcard "Waterway Ferry"
-  {:on-forge {:async true
-              :effect (req (shift-a-card state side eid card card nil))}})
+  {:reaction [{:reaction :forge
+               :type :ability
+               :prompt "Shift Waterway Ferry?"
+               :max-uses 1
+               :req (req (same-card? card (:card context)))
+               :ability {:async true
+                         :effect (req (shift-a-card state side eid card card nil))}}]})

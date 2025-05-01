@@ -17,13 +17,14 @@
       (play-from-hand state :corp "Auntie Ruth: Proprietor of the Hidden Tea House" :council :inner)
       (forge state :corp (pick-card state :corp :council :inner))
       (is (changed? [(count (get-hand state s)) 3]
+            (click-prompt state :corp "Auntie Ruth: Proprietor of the Hidden Tea House")
             (click-card state :corp (get-id state s)))
           (str "side: " s " drew 3")))))
 
 (deftest auntie-ruth-collects
   (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
               :credits 1
-              :prompts ["Goldie Xin: Junk Collector"]}))
+              :prompts ["Auntie Ruth: Proprietor of the Hidden Tea House" "Goldie Xin: Junk Collector"]}))
 
 (deftest auntie-ruth-cipher-lose-one-action
   (do-game

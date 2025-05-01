@@ -18,19 +18,23 @@
 (defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
   (collect
     {:shards 1}
-    {:on-forge {:prompt "Choose a player"
-                :waiting-prompt true
-                :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
-                                        (same-card? target (get-in @state [:runner :identity]))))
-                          :all true}
-                :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
-                            (str
-                              (when-not (= target-side side)
-                                (str "force " (other-player-name state side) " to "))
-                              "draw 3 cards")))
-                :async true
-                :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
-                               (draw state target-side eid 3)))}
+    {:reaction [{:reaction :forge
+                 :type :ability
+                 :max-uses 1
+                 :req (req (same-card? card (:card context)))
+                 :ability {:prompt "Choose a player"
+                           :waiting-prompt true
+                           :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                                                   (same-card? target (get-in @state [:runner :identity]))))
+                                     :all true}
+                           :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+                                       (str
+                                         (when-not (= target-side side)
+                                           (str "force " (other-player-name state side) " to "))
+                                         "draw 3 cards")))
+                           :async true
+                           :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+                                          (draw state target-side eid 3)))}}]
      :cipher [(->c :lose-click 1)]}))
 
 (defcard "Doctor Twilight: Dream Surgeon"
