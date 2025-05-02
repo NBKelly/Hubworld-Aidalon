@@ -33,7 +33,7 @@
                                     (< (known-copies state side "Turn Up the Heat") 2))))))
    ;; BREACH SERVER
    ;;   INFILTRATE
-   :breach-server (req (and (seq (get-in @state [side :hand]))
+   :pre-discovery (req (and (seq (get-in @state [side :hand]))
                             (or
                               (and ;; INFILTRATE
                                 (= (:breach-server context) :council)

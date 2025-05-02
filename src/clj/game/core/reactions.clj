@@ -184,7 +184,7 @@
   "Resolves reaction effects for a given key, automatically passing priority back and forth while doing so"
   [state side eid key reaction-fn {:keys [prompt waiting] :as args}]
   (let [side (or side
-                 (and (:delve @state) (:active-player @state))
+                 (-> @state :delve :delver)
                  (-> @state :turn :first-player)
                  :corp)]
     (if (= 2 (get-in @state [:reaction key :priority-passes]))
@@ -193,9 +193,11 @@
                 (swap! state update-in [:reaction key :priority-passes] (fnil inc 0))
                 (resolve-reaction-effects-with-priority state (other-side side) eid key reaction-fn args)))))
 
-;; reaction types
+;; ====== REACTION TYPES ======
 
-(defn resolve-forge-reaction
+;; FORGING CARDS
+
+(defn forge-reaction
   [state side eid {:keys [card] :as args}]
   (push-reaction! state :forge
                   {:card card :source-player side :priority-passes 0})
@@ -205,7 +207,9 @@
                (other-side side) (str "Your opponent forged " (:title card))}
      :waiting "your opponent to resolve on-forge reactions"}))
 
-(defn resolve-complete-breach-reaction
+;; BREACHING SERVERS
+
+(defn complete-breach-reaction
   [state side eid {:keys [breach-server delver defender] :as args}]
   (push-reaction! state :complete-breach
                   {:breach-server breach-server
@@ -216,3 +220,28 @@
     {:prompt {delver   (str "You finished breaching " (name breach-server))
               defender (str "Your opponent finished breaching " (name breach-server))}
      :waiting "your opponent to resolve end-of-breach reactions"}))
+
+(defn pre-discovery-reaction
+  [state side eid {:keys [breach-server delver defender] :as args}]
+  (push-reaction! state :pre-discovery
+                  {:breach-server breach-server
+                   :delver delver
+                   :defender defender})
+  (resolve-reaction-effects-with-priority
+    state delver eid :pre-discovery resolve-reaction-for-side
+    {:prompt {delver   (str "You are breaching " (name breach-server))
+              defender (str "Your opponent is breaching " (name breach-server))}
+     :waiting "your opponent to resolve pre-discovery reactions"}))
+
+;; ENCOUNTERING CARDS
+
+(defn pre-confrontation-reaction
+  [state side eid {:keys [engaged-side card] :as args}]
+  (push-reaction! state :pre-confrontation
+                  {:engaged-side engaged-side
+                   :card card})
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-confrontation resolve-reaction-for-side
+    {:prompt {engaged-side              (str "You are confronting " (:title card))
+              (other-side engaged-side) (str "Your opponent is confronting " (:title card))}
+     :waiting "your opponent to resolve pre-confrontation reactions"}))

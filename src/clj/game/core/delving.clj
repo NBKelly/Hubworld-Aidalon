@@ -15,6 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
+   [game.core.reactions :refer [pre-confrontation-reaction]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -123,11 +124,11 @@
   [state side eid card]
   (if-not (and (get-card state card) (rezzed? card))
     (confrontation-cleanup state side eid card)
-    (do (queue-event state :confrontation {:card card
-                                           :engaged-side side})
-        (wait-for (checkpoint state side)
-                  (system-msg state side (str "confronts " (:title card)))
-                  (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))))))
+    (wait-for
+      (pre-confrontation-reaction state side {:card card
+                                              :engaged-side side})
+      (system-msg state side (str "confronts " (:title card)))
+      (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card))))))
 
 ;; UTILS FOR DELVES
 

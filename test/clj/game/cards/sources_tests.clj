@@ -33,7 +33,7 @@
     (delve-server state :corp :council)
     (delve-confront-impl state :corp)
     (is (changed? [(barrier (pick-card state :runner :council :outer)) -2]
-          (click-prompt state :corp "Yes"))
+          (click-prompts state :corp "Disagreeable Inspector" "Yes"))
         "Reduced barrier by 2 on encounter")))
 
 (deftest lost-byway-test

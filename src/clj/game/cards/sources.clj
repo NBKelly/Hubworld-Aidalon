@@ -36,23 +36,21 @@
 (defcard "Disagreeable Inspector"
   (collect
     {:shards 1}
-    {:events [{:event :confrontation
-               :skippable true
-               :optional {:req (req (and (= side (:engaged-side context))
-                                         (can-pay? state side eid card nil [(->c :exhaust-self)])
-                                         (pos? (get-barrier (get-card state (:card context))))))
-                          :prompt (msg "give " (:title (:card context)) " - 2 [barrier] until the end of the confrontation?")
-                          :waiting-prompt true
-                          :yes-ability {:cost [(->c :exhaust-self)]
-                                        :msg (msg "give " (:title (:card context)) " -2 [barrier] until the end of the confrontation")
-                                        :effect (req (let [target-card (:card context)]
-                                                       (register-lingering-effect
-                                                         state side card
-                                                         {:type :barrier-value
-                                                          :value -2
-                                                          :req (req (same-card? target-card target))
-                                                          :duration :end-of-confrontation})
-                                                       (update-card-barrier state side target-card)))}}}]}))
+    {:reaction [{:reaction :pre-confrontation
+                 :type :ability
+                 :prompt "Give encountered card -2 [barrier] this confrontation?"
+                 :req (req (and (= side (:engaged-side context))
+                                (pos? (get-barrier (get-card state (:card context))))))
+                 :ability {:cost [(->c :exhaust-self)]
+                           :msg (msg "give " (:title (:card context)) " - 2 [barrier] until the end of the confrontation")
+                           :effect (req (let [target-card (:card context)]
+                                          (register-lingering-effect
+                                            state side card
+                                            {:type :barrier-value
+                                             :value -2
+                                             :req (req (same-card? target-card target))
+                                             :duration :end-of-confrontation})
+                                          (update-card-barrier state side target-card)))}}]}))
 
 (defcard "Lost Byway"
   (collect

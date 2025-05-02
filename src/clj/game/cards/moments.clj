@@ -75,21 +75,15 @@
                          :effect (req (gain-credits state side eid 3))}}]})
 
 (defcard "Infiltrate"
-  {:events [{:event :breach-server
-             :location :hand
-             :interactive (req true)
-             :optional {:hide-card? true
-                        :req (req (and
-                                    (can-pay? state side eid card nil [(->c :credit 1)])
-                                    (= (:breach-server context) :council)
-                                    (in-hand? card)
-                                    (= (to-keyword (:side card)) side)
-                                    (= (:delver context) side)))
-                        :waiting-prompt true
-                        :prompt "Exile Infiltrate to Discover 2 additional cards?"
-                        :yes-ability {:cost [(->c :exile-reaction) (->c :credit 1)]
-                                      :msg "discover 2 additional cards"
-                                      :effect (req (access-bonus state side :council 2))}}}]})
+  {:reaction [{:location :hand
+               :reaction :pre-discovery
+               :prompt "Discover +2 cards?"
+               :type :moment
+               :req (req (and (= (:breach-server context) :council)
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg "discover 2 additional cards"
+                         :effect (req (access-bonus state side :council 2))}}]})
 
 (defcard "Likely a Trap"
   {:events [{:event :encounter-ended

@@ -70,7 +70,7 @@
     (click-credit state :corp)
     (click-credit state :runner)
     (delve-empty-server state :corp :council {:give-heat? true})
-    (click-prompts state :corp "Yes" "No Action" "No Action" "No Action")
+    (click-prompts state :corp "Infiltrate" "Yes" "No Action" "No Action" "No Action")
     (is (no-prompt? state :corp))))
 
 (deftest smooth-handoff

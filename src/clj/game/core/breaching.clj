@@ -12,7 +12,7 @@
    [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [resolve-complete-breach-reaction]]
+   [game.core.reactions :refer [complete-breach-reaction pre-discovery-reaction]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.set-aside :refer [add-to-set-aside get-set-aside]]
    [game.core.update :refer [update!]]
@@ -195,19 +195,22 @@
   ([state side eid server] (breach-server state side eid server nil))
   ([state side eid server args]
    (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) ", utilizing  " (count-heat state (other-side side)) " [heat]"))
-   (wait-for (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
-             (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
-             (let [args (clean-access-args args)
-                   access-amount (num-cards-to-access state side server nil)]
-               (when (:delve @state)
-                 (swap! state assoc-in [:delve :did-access] true))
-               (wait-for (resolve-access-server state side server access-amount)
-                         (swap! state dissoc-in [:breach :set-aside-eid])
-                         (wait-for
-                           (trigger-event-simult state side :end-breach-server nil (:breach @state))
-                           (wait-for
-                             (resolve-complete-breach-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
-                             (swap! state dissoc :breach)
-                             (unregister-lingering-effects state side :end-of-breach)
-                             (unregister-floating-events state side :end-of-breach)
-                             (effect-completed state side eid))))))))
+   (wait-for
+     (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
+     (wait-for
+       (pre-discovery-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
+       (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
+       (let [args (clean-access-args args)
+             access-amount (num-cards-to-access state side server nil)]
+         (when (:delve @state)
+           (swap! state assoc-in [:delve :did-access] true))
+         (wait-for (resolve-access-server state side server access-amount)
+                   (swap! state dissoc-in [:breach :set-aside-eid])
+                   (wait-for
+                     (trigger-event-simult state side :end-breach-server nil (:breach @state))
+                     (wait-for
+                       (complete-breach-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
+                       (swap! state dissoc :breach)
+                       (unregister-lingering-effects state side :end-of-breach)
+                       (unregister-floating-events state side :end-of-breach)
+                       (effect-completed state side eid)))))))))
