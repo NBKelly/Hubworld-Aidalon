@@ -15,7 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [pre-confrontation-reaction]]
+   [game.core.reactions :refer [approach-district-reaction pre-confrontation-reaction]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -226,8 +226,9 @@
   [state side eid]
   (when-not (delve-ended? state side eid)
     (set-phase state :approach-district)
-    (queue-event state :approach-district (delve-event state))
-    (checkpoint state side eid)))
+    (wait-for
+      (approach-district-reaction state side (delve-event state))
+      (checkpoint state side eid))))
 
 (defn delve-complete-encounter
   [state side eid]

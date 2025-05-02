@@ -4,19 +4,16 @@
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-active]]
    [game.core.bluffs :refer [bluffs]]
-   [game.core.card :refer [get-card installed? resource? rezzed? same-card? in-hand?]]
+   [game.core.card :refer [get-card installed? rezzed? seeker? same-card? in-hand?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.choose-one :refer [choose-one-helper]]
    [game.core.cost-fns :refer [card-ability-cost play-cost]]
    [game.core.eid :refer [complete-with-result effect-completed]]
-   [game.core.effects :refer [any-effects get-effects]]
-   [game.core.engine :refer [resolve-ability trigger-event-simult trigger-event-sync]]
-   [game.core.flags :refer [can-trash? untrashable-while-resources? untrashable-while-rezzed?]]
+   [game.core.effects :refer [any-effects]]
+   [game.core.engine :refer [resolve-ability]]
    [game.core.payment :refer [->c can-pay?]]
-   [game.core.prompts :refer [clear-wait-prompt show-bluff-prompt]]
-   [game.core.say :refer [enforce-msg]]
-   [game.core.to-string :refer [card-str]]
-   [game.utils :refer [dissoc-in enumerate-str quantify]]
+   [game.core.prompts :refer [show-bluff-prompt]]
+   [game.utils :refer [dissoc-in]]
    [game.macros :refer [msg req wait-for]]
    [jinteki.utils :refer [other-side]]))
 
@@ -81,7 +78,7 @@
   (let [abs (filter #(= (:reaction %) key) (:reaction (card-def card)))
         abs (filter #(case (:location %)
                        :hand (in-hand? card)
-                       (installed? card))
+                       (or (installed? card) (seeker? card)))
                     abs)
         abs (map #(tweak-ab-cost state side eid card %) abs)
         with-card (map #(assoc % :card card) abs)
@@ -199,47 +196,47 @@
 
 (defn forge-reaction
   [state side eid {:keys [card] :as args}]
-  (push-reaction! state :forge
-                  {:card card :source-player side :priority-passes 0})
+  (push-reaction! state :forge (assoc args :source-player side))
   (resolve-reaction-effects-with-priority
     state nil eid :forge resolve-reaction-for-side
     {:prompt  {side              (str "You forged " (:title card))
                (other-side side) (str "Your opponent forged " (:title card))}
      :waiting "your opponent to resolve on-forge reactions"}))
 
-;; BREACHING SERVERS
+;; DELVING SERVERS
+
+(defn approach-district-reaction
+  [state side eid {:keys [server delver defender] :as args}]
+  (push-reaction! state :approach-district args)
+  (resolve-reaction-effects-with-priority
+    state delver eid :approach-district resolve-reaction-for-side
+    {:prompt {delver   (str "You are approaching your opponent's " (str/capitalize (name server)))
+              defender (str "Your opponent is approaching your " (str/capitalize  (name server)))}
+     :waiting "your opponent to resolve approach-district reactions"}))
 
 (defn complete-breach-reaction
   [state side eid {:keys [breach-server delver defender] :as args}]
-  (push-reaction! state :complete-breach
-                  {:breach-server breach-server
-                   :delver delver
-                   :defender defender})
+  (push-reaction! state :complete-breach args)
   (resolve-reaction-effects-with-priority
     state delver eid :complete-breach resolve-reaction-for-side
-    {:prompt {delver   (str "You finished breaching " (name breach-server))
-              defender (str "Your opponent finished breaching " (name breach-server))}
+    {:prompt {delver   (str "You finished breaching your opponent's " (str/capitalize (name breach-server)))
+              defender (str "Your opponent finished breaching your " (str/capitalize (name breach-server)))}
      :waiting "your opponent to resolve end-of-breach reactions"}))
 
 (defn pre-discovery-reaction
   [state side eid {:keys [breach-server delver defender] :as args}]
-  (push-reaction! state :pre-discovery
-                  {:breach-server breach-server
-                   :delver delver
-                   :defender defender})
+  (push-reaction! state :pre-discovery args)
   (resolve-reaction-effects-with-priority
     state delver eid :pre-discovery resolve-reaction-for-side
-    {:prompt {delver   (str "You are breaching " (name breach-server))
-              defender (str "Your opponent is breaching " (name breach-server))}
+    {:prompt {delver   (str "You are breaching your opponent's " (str/capitalize (name breach-server)))
+              defender (str "Your opponent is breaching your " (str/capitalize (name breach-server)))}
      :waiting "your opponent to resolve pre-discovery reactions"}))
 
 ;; ENCOUNTERING CARDS
 
 (defn pre-confrontation-reaction
   [state side eid {:keys [engaged-side card] :as args}]
-  (push-reaction! state :pre-confrontation
-                  {:engaged-side engaged-side
-                   :card card})
+  (push-reaction! state :pre-confrontation args)
   (resolve-reaction-effects-with-priority
     state nil eid :pre-confrontation resolve-reaction-for-side
     {:prompt {engaged-side              (str "You are confronting " (:title card))

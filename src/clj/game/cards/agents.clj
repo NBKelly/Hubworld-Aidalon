@@ -60,17 +60,16 @@
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"
   (collect
     {:shards 1}
-    {:events [{:event :approach-district
-               :skippable true
-               :interactive (req true)
-               :req (req (and (can-pay? state side eid card nil [(->c :exhaust-self)])
-                              (seq (get-in @state [(:delver context) :hand]))
-                              (= side (:delver context))))
-               :prompt "Stage a card?"
-               :waiting-prompt true
-               :choices {:req (req (in-hand? target))}
-               :async true
-               :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}]}))
+    {:reaction [{:reaction :approach-district
+                 :type :ability
+                 :req (req (and (seq (get-in @state [side :hand]))
+                                (= side (:delver context))
+                                (can-pay? state side eid card nil [(->c :exhaust-self)])))
+                 :prompt "Stage a card?"
+                 :ability {:choices {:req (req (and (in-hand? target)
+                                                    (same-side? card target)))}
+                           :async true
+                           :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}}]}))
 
 (defcard "Prime Treasurer Geel: Munificent Financier"
   (collect
@@ -102,15 +101,13 @@
   (collect
     {:shards 1}
     {:cipher [(->c :exhaust-archives 1)]
-     :events [{:event :end-breach-server
-               :skippable true
-               :interactive (req true)
-               :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self)])
-                                         (= (:breach-server context) :archives)
-                                         (= (:delver context) side)))
-                          :prompt (msg "Archive the top 2 cards of " (other-player-name state side) "'s Commons?")
-                          :waiting-prompt true
-                          :yes-ability {:cost [(->c :exhaust-self)]
-                                        :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
-                                        :async true
-                                        :effect (req (mill state side eid (other-side side) 2))}}}]}))
+     :reaction [{:reaction :complete-breach
+                 :type :ability
+                 :prompt "Archive the top 2 cards of your opponent's Commons?"
+                 :req (req (and (= (:breach-server context) :archives)
+                                (seq (get-in @state [(other-side side) :deck]))
+                                (= (:delver context) side)))
+                 :ability {:cost [(->c :exhaust-self)]
+                           :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
+                           :async true
+                           :effect (req (mill state side eid (other-side side) 2))}}]}))
