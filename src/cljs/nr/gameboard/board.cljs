@@ -1798,6 +1798,11 @@
                                                 (done)))
                                           (reset! progress new-progress)))
                                  250))) ;; Update every 25ms second
+       :component-will-unmount (fn [this]
+                                 ;; Cleanup on component removal
+                                 (when @interval-id
+                                   (js/clearInterval @interval-id)
+                                   (reset! interval-id nil)))
        :reagent-render
        (fn []
          [:div
@@ -1862,8 +1867,7 @@
 
        (= prompt-type "bluff")
        [:div
-        [progress-bar start-time end-time #(when (= @prompt-type "bluff")
-                                             (send-command "bluff-done" {}))]
+        [progress-bar start-time end-time (fn [] (send-command "bluff-done" {}))]
         [:button#bluff-done {:on-click #(do (when @interval-id
                                               (js/clearInterval @interval-id)
                                               (reset! interval-id nil))
