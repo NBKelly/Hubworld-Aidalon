@@ -36,7 +36,7 @@
     (click-credit state :runner)
     (delve-empty-server state :corp :commons)
     (is (changed? [(:credit (get-corp)) 3]
-          (click-prompts state :corp "Yes"))
+          (click-prompts state :corp "Cornering the Market" "Yes"))
         "Gained 3c")
     (is (no-prompt? state :corp))))
 
@@ -59,7 +59,7 @@
     (click-credit state :runner)
     (delve-empty-server state :corp :commons)
     (is (changed? [(:credit (get-corp)) 3]
-          (click-prompts state :corp "Yes"))
+          (click-prompts state :corp "Fun Run" "Yes"))
         "Gained 3c")
     (is (no-prompt? state :corp))))
 

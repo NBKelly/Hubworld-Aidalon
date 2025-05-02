@@ -6,7 +6,6 @@
     [cond-plus.core :refer [cond+]]
     [game.core.board :refer [clear-empty-remotes get-all-cards all-installed all-installed-runner
                              all-installed-runner-type all-active-installed]]
-    [game.core.bluffs :refer [bluffs]]
     [game.core.card :refer [active? facedown? faceup? get-card get-cid get-title ice? in-discard? in-hand? installed? rezzed? program? console? unique?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [get-effect-maps unregister-lingering-effects is-disabled? is-disabled-reg? update-disabled-cards]]
@@ -883,14 +882,9 @@
 
 (defn maybe-bluff-instead
   [state side eid events cancel-fn targets event]
-  (if-not (not-empty events)
-    (if-let [bluff-fn (event bluffs)]
-      (if (bluff-fn state side eid nil targets)
-        (wait-for (show-bluff-prompt state side  nil)
-                  (effect-completed state side eid))
-        (effect-completed state side eid))
-      (effect-completed state side eid))
-    (trigger-event-simult-player state side eid events cancel-fn targets)))
+  (if (empty? events)
+    (effect-completed state side eid))
+    (trigger-event-simult-player state side eid events cancel-fn targets))
 
 (defn trigger-event-simult
   "Triggers the given event by showing a prompt of all handlers for the event, allowing manual resolution of

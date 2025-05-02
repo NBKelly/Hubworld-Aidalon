@@ -44,20 +44,16 @@
                             (draw state target-side eid 1)))}})
 
 (defcard "Cornering the Market"
-  {:events [{:event :end-breach-server
-             :location :hand
-             :interactive (req true)
-             :optional {:hide-card? true
-                        :req (req (and (= (:breach-server context) :commons)
-                                       (in-hand? card)
-                                       (= (to-keyword (:side card)) side)
-                                       (= (:delver context) side)))
-                        :waiting-prompt true
-                        :prompt "Exile Cornering the Market to gain 3 [credits]?"
-                        :yes-ability {:cost [(->c :exile-reaction)]
-                                      :msg "gain 3 [credits]"
-                                      :async true
-                                      :effect (req (gain-credits state side eid 3))}}}]})
+    {:reaction [{:location :hand
+               :reaction :complete-breach
+               :prompt "Gain 3 [Credits]?"
+               :type :moment
+               :req (req (and (= (:breach-server context) :commons)
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg "gain 3 [Credits]"
+                         :async true
+                         :effect (req (gain-credits state side eid 3))}}]})
 
 (defcard "Franchise Fees"
   {:on-play {:additional-cost [(->c :click 1) (->c :exhaust-front-row 1)]
@@ -67,20 +63,16 @@
              :effect (req (gain-credits state side eid 4))}})
 
 (defcard "Fun Run"
-  {:events [{:event :end-breach-server
-             :location :hand
-             :interactive (req true)
-             :optional {:hide-card? true
-                        :req (req (and (= (:breach-server context) :commons)
-                                       (in-hand? card)
-                                       (= (to-keyword (:side card)) side)
-                                       (= (:delver context) side)))
-                        :waiting-prompt true
-                        :prompt "Exile Fun Run to gain 3 [credits]?"
-                        :yes-ability {:cost [(->c :exile-reaction)]
-                                      :msg "gain 3 [credits]"
-                                      :async true
-                                      :effect (req (gain-credits state side eid 3))}}}]})
+  {:reaction [{:location :hand
+               :reaction :complete-breach
+               :prompt "Gain 3 [Credits]?"
+               :type :moment
+               :req (req (and (= (:breach-server context) :commons)
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg "gain 3 [Credits]"
+                         :async true
+                         :effect (req (gain-credits state side eid 3))}}]})
 
 (defcard "Infiltrate"
   {:events [{:event :breach-server

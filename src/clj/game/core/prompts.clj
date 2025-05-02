@@ -109,7 +109,9 @@
        state (if (= :corp side) :runner :corp)
        {:eid (select-keys eid [:eid])
         :prompt-type :waiting
-        :msg (str "Waiting for " (str (side-str side) " to make a decision"))})
+        :msg (str "Waiting for "
+                  (or (:msg args)
+                      (str (side-str side) " to make a decision")))})
      (add-to-prompt-queue state side newitem))))
 
 (defn cancel-bluff

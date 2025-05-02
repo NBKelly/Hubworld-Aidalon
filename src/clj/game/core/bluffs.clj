@@ -18,13 +18,14 @@
   {;; END BREACH SERVER:
    ;;   FUN RUN
    ;;   CORNERING THE MARKET
-   :end-breach-server (req (and (seq (get-in @state [side :hand]))
-                                (or
-                                  (and ;; FUN RUN
-                                    (= (:breach-server context) :commons)
-                                    (= (:delver context) side)
-                                    (or (< (known-copies state side "Fun Run") 2)
-                                        (< (known-copies state side "Cornering the Market") 2))))))
+   :complete-breach (req (and (seq (get-in @state [side :hand]))
+                              (or
+                                (and ;; FUN RUN
+                                     ;; CORNERING THE MARKET
+                                  (= (:delver context) side)
+                                  (= (:breach-server context) :commons)
+                                  (or (< (known-copies state side "Fun Run") 2)
+                                      (< (known-copies state side "Cornering the Market") 2))))))
 
    ;; BREACH SERVER
    ;;   INFILTRATE
