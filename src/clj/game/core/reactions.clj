@@ -3,16 +3,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-active]]
-   [game.core.card :refer [get-card installed? resource? rezzed? same-card?]]
+   [game.core.bluffs :refer [bluffs]]
+   [game.core.card :refer [get-card installed? resource? rezzed? same-card? in-hand?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.choose-one :refer [choose-one-helper]]
-   [game.core.cost-fns :refer [card-ability-cost]]
+   [game.core.cost-fns :refer [card-ability-cost play-cost]]
    [game.core.eid :refer [complete-with-result effect-completed]]
    [game.core.effects :refer [any-effects get-effects]]
    [game.core.engine :refer [resolve-ability trigger-event-simult trigger-event-sync]]
    [game.core.flags :refer [can-trash? untrashable-while-resources? untrashable-while-rezzed?]]
    [game.core.payment :refer [->c can-pay?]]
-   [game.core.prompts :refer [clear-wait-prompt]]
+   [game.core.prompts :refer [clear-wait-prompt show-bluff-prompt]]
    [game.core.say :refer [enforce-msg]]
    [game.core.to-string :refer [card-str]]
    [game.utils :refer [dissoc-in enumerate-str quantify]]
@@ -43,6 +44,9 @@
 ;;                name of the card (ie "Decoy"). I recommend only using this for handlers that
 ;;                have ambiguity (ie feedback filter, dummy box, caldera, zaibatsu loyalty) as a way
 ;;                of adding additional contextual information for the user.
+;;    :location - if this requires being installed, do not fill.
+;;                  Otherwise, do one of:
+;;                    :hand (if it triggers while in hand)
 ;;    :max-uses - int - optional - is there a maximum number of times this ability can trigger in one
 ;;                instance? See: prana, muresh, cleaners, etc. If blank,
 ;;                then this ability can be used any number of times so long as the req fn allows it
@@ -62,10 +66,19 @@
    4) haven't been used too many times"
   [state side eid key card]
   (let [abs (filter #(= (:reaction %) key) (:reaction (card-def card)))
+        abs (filter #(case (:location %)
+                       :hand (in-hand? card)
+                       (installed? card))
+                    abs)
         with-card (map #(assoc % :card card) abs)
+        moment-cost? (fn [ab] (when (= :moment (:type ab))
+                                [(->c :credit (play-cost state side card nil))]))
         playable? (filter #(let [cannot-play? (and (= (:type %) :ability)
                                                    (any-effects state side :prevent-paid-ability true? card [(:ability %) 0]))
-                                 payable? (can-pay? state side eid card nil (seq (card-ability-cost state side (:ability %) card [])))
+                                 payable? (can-pay?
+                                            state side eid card nil
+                                            (seq (concat (card-ability-cost state side (:ability %) card [])
+                                                         (moment-cost? %))))
                                  ;; todo - account for card being disabled
                                  not-used-too-many-times? (or (not (:max-uses %))
                                                               (not (get-in @state [:reaction key :uses (:cid card)]))
@@ -80,7 +93,9 @@
 
 (defn- gather-reaction-abilities
   [state side eid key]
-  (mapcat #(relevant-reaction-abilities state side eid key %) (hubworld-all-active state side)))
+  (mapcat #(relevant-reaction-abilities state side eid key %)
+          (concat (hubworld-all-active state side)
+                  (get-in @state [side :hand]))))
 
 (defn- fetch-and-clear!
   "get the reaction map for a key and also dissoc it from the state"
@@ -94,9 +109,10 @@
 
 (defn- push-reaction!
   [state key map]
-  (when (:reaction @state)
-    (swap! state assoc :reaction-stack (concat [(:reaction @state)] (:reaction-stack @state))))
-  (swap! state assoc-in [:reaction key] map))
+  (let [map (update map :uses #(or % {}))]
+    (when (:reaction @state)
+      (swap! state assoc :reaction-stack (concat [(:reaction @state)] (:reaction-stack @state))))
+    (swap! state assoc-in [:reaction key] map)))
 
 (defn- trigger-reaction
   "Triggers an ability as having fired something"
@@ -126,42 +142,44 @@
    :ability {:async true
              :effect (req (trigger-reaction state side eid key reaction))}})
 
-
 ;;; ALL THE STUFF ABOVE HERE IS S O L I D
 
 (defn- resolve-reaction-for-side
-  [state side eid key {:keys [prompt waiting option] :as args}]
+  [state side eid key {:keys [prompt waiting] :as args}]
   (if (get-in @state [:reaction key :passed])
     (do (swap! state dissoc-in [:reaction key :passed])
         (effect-completed state side eid))
-
     (let [reactions (gather-reaction-abilities state side eid key)]
       (if (empty? reactions)
-        ;; TODO - bluff prompt
-        (effect-completed state side eid)
+        (if-let [bluff-fn (key bluffs)]
+          (if (bluff-fn state side eid nil [(get-in @state [:reaction key])])
+            (wait-for (show-bluff-prompt state side {:msg waiting})
+                      (effect-completed state side eid))
+            (effect-completed state side eid))
+          (effect-completed state side eid))
         (wait-for (resolve-ability
                     state side
                     (choose-one-helper
-                      {:prompt prompt
+                      {:prompt (str (side prompt) " - perform a reaction?")
                        :waiting-prompt waiting}
                       (concat (mapv #(build-reaction-option % key) reactions)
                               [(when-not (some :mandatory reactions)
-                                 {:option option
+                                 {:option "Pass priority"
                                   :ability {:effect (req (swap! state assoc-in [:reaction key :passed] true))}})]))
                     nil nil)
                   (resolve-reaction-for-side state side eid key args))))))
 
 (defn resolve-reaction-effects-with-priority
   "Resolves reaction effects for a given key, automatically passing priority back and forth while doing so"
-  [state side eid key reaction-fn {:keys [prompt waiting option] :as args}]
+  [state side eid key reaction-fn {:keys [prompt waiting] :as args}]
   (let [side (or side
                  (and (:delve @state) (:active-player @state))
                  (-> @state :turn :first-player)
                  :corp)]
     (if (= 2 (get-in @state [:reaction key :priority-passes]))
       (complete-with-result state side eid (fetch-and-clear! state key))
-      (wait-for (reaction-fn state side :forge args)
-                (swap! state update-in [:reaction key :priority-passes] (fnil inc 1))
+      (wait-for (reaction-fn state side key args)
+                (swap! state update-in [:reaction key :priority-passes] (fnil inc 0))
                 (resolve-reaction-effects-with-priority state (other-side side) eid key reaction-fn args)))))
 
 ;; reaction types
@@ -169,5 +187,21 @@
 (defn resolve-forge-reaction
   [state side eid {:keys [card] :as args}]
   (push-reaction! state :forge
-                  {:card card :source-player side :priority-passes 0 :uses {}})
-  (resolve-reaction-effects-with-priority state nil eid :forge resolve-reaction-for-side {:prompt (str (:title card) " was forged - perform a reaction?") :waiting "your opponent to resolve on-forge reactions" :option "Pass priority"}))
+                  {:card card :source-player side :priority-passes 0})
+  (resolve-reaction-effects-with-priority
+    state nil eid :forge resolve-reaction-for-side
+    {:prompt  {side              (str "You forged " (:title card))
+               (other-side side) (str "Your opponent forged " (:title card))}
+     :waiting "your opponent to resolve on-forge reactions"}))
+
+(defn resolve-complete-breach-reaction
+  [state side eid {:keys [breach-server delver defender] :as args}]
+  (push-reaction! state :complete-breach
+                  {:breach-server breach-server
+                   :delver delver
+                   :defender defender})
+  (resolve-reaction-effects-with-priority
+    state delver eid :complete-breach resolve-reaction-for-side
+    {:prompt {delver   (str "You finished breaching " (name breach-server))
+              defender (str "Your opponent finished breaching " (name breach-server))}
+     :waiting "your opponent to resolve end-of-breach reactions"}))
