@@ -7,7 +7,7 @@
                            rezzed?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.drawing :refer [draw]]
-   [game.core.gaining :refer [gain-credits lose]]
+   [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill]]
    [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
@@ -44,7 +44,7 @@
                             (draw state target-side eid 1)))}})
 
 (defcard "Cornering the Market"
-    {:reaction [{:location :hand
+  {:reaction [{:location :hand
                :reaction :complete-breach
                :prompt "Gain 3 [Credits]?"
                :type :moment
@@ -144,3 +144,13 @@
                             (when (pos? (count-heat state target-side))
                               (lose state target-side :heat 1))
                             (draw state target-side eid 1)))}})
+
+(defcard "Turn Up the Heat"
+  {:reaction [{:location :hand
+               :reaction :complete-breach
+               :prompt "Apply 1 [heat]?"
+               :type :moment
+               :req (req (= (:delver context) side))
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg "apply 1 [heat]"
+                         :effect (req (gain state (other-side side) :heat 1))}}]})

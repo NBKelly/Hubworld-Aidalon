@@ -58,6 +58,19 @@
 ;;  Note: The `:req` fn of the given :ability is used for computing if the button should
 ;;        show up, as well as wether or not you can pay the cost.
 
+(defn- tweak-ab-cost
+  [state side eid card ab]
+  (if (= (:type ab) :moment)
+    (let [pc (play-cost state side card nil)
+          ac (get-in ab [:ability :cost])]
+      (cond
+        (and pc ab (pos? pc))
+        (assoc-in ab [:ability :cost] (concat ac [(->c :credit pc)]))
+        (and pc (pos? pc))
+        (assoc-in ab [:ability :cost] [(->c :credit pc)])
+        :else ab))
+    ab))
+
 (defn- relevant-reaction-abilities
   "selects all reaction abilities which are:
    1) relevant to the context
@@ -70,15 +83,13 @@
                        :hand (in-hand? card)
                        (installed? card))
                     abs)
+        abs (map #(tweak-ab-cost state side eid card %) abs)
         with-card (map #(assoc % :card card) abs)
-        moment-cost? (fn [ab] (when (= :moment (:type ab))
-                                [(->c :credit (play-cost state side card nil))]))
         playable? (filter #(let [cannot-play? (and (= (:type %) :ability)
                                                    (any-effects state side :prevent-paid-ability true? card [(:ability %) 0]))
                                  payable? (can-pay?
                                             state side eid card nil
-                                            (seq (concat (card-ability-cost state side (:ability %) card [])
-                                                         (moment-cost? %))))
+                                            (seq (card-ability-cost state side (:ability %) card [])))
                                  ;; todo - account for card being disabled
                                  not-used-too-many-times? (or (not (:max-uses %))
                                                               (not (get-in @state [:reaction key :uses (:cid card)]))

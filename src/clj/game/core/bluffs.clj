@@ -20,13 +20,17 @@
    ;;   CORNERING THE MARKET
    :complete-breach (req (and (seq (get-in @state [side :hand]))
                               (or
-                                (and ;; FUN RUN
-                                     ;; CORNERING THE MARKET
+                                (and
+                                  ;; WHEN I DELVE
                                   (= (:delver context) side)
-                                  (= (:breach-server context) :commons)
-                                  (or (< (known-copies state side "Fun Run") 2)
-                                      (< (known-copies state side "Cornering the Market") 2))))))
-
+                                  (or
+                                    ;; FUN RUN
+                                    ;; CORNERING THE MARKET
+                                    (and (= (:breach-server context) :commons)
+                                         (or (< (known-copies state side "Fun Run") 2)
+                                             (< (known-copies state side "Cornering the Market") 2)))
+                                    ;; TURN UP THE HEAT
+                                    (< (known-copies state side "Turn Up the Heat") 2))))))
    ;; BREACH SERVER
    ;;   INFILTRATE
    :breach-server (req (and (seq (get-in @state [side :hand]))

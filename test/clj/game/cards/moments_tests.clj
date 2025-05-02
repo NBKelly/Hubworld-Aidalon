@@ -84,4 +84,16 @@
       (is-hand? state :corp ["Fun Run"])
       (is (zero? (get-heat state :corp)) "No heat"))))
 
+(deftest turn-up-the-heat
+  (doseq [s [:archives :council :commons]]
+    (do-game
+      (new-game {:corp {:hand ["Turn Up the Heat"]}})
+      (click-credit state :corp)
+      (click-credit state :runner)
+      (delve-empty-server state :corp :council {:give-heat? nil})
+      (is (changed? [(:credit (get-corp)) -1
+                     (get-heat state :runner) 1]
+            (click-prompts state :corp "Turn Up the Heat" "Yes"))
+          "Turned up the heat"))))
+
 ;; TODO - likely a trap tests
