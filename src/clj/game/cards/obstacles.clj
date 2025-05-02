@@ -15,7 +15,7 @@
    [game.core.shifting :refer [shift-a-card]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [same-card? to-keyword]]
-   [jinteki.utils :refer [other-side other-player-name]]))
+   [jinteki.utils :refer [adjacent? other-side other-player-name]]))
 
 (defcard "Barbican Gate"
   {:confront-abilities [{:async true
@@ -83,6 +83,12 @@
                                         :async true
                                         :msg (msg "archive two random cards from " (other-player-name state side) "'s council")
                                         :effect (req (trash-cards state (other-side side) eid (take 2 (shuffle (get-in @state [(other-side side) :hand])))))}}}]})
+
+(defcard "Salvage Rats"
+  {:rush true
+   :barrier-bonus (req (count (filter #(and (not (rezzed? %))
+                                            (adjacent? card %))
+                                      (hubworld-all-installed state side))))})
 
 (defcard "Transit Station"
   {:barrier-bonus  (req (if (in-middle-row? card) 2 0))

@@ -113,7 +113,6 @@
     (swap! card-menu dissoc :keep-menu-open)
 
     (cond
-
       ;; Toggle abilities panel
       (or (< 1 c)
           (pos? (+ (count corp-abilities)
@@ -166,6 +165,22 @@
         ;; A selectable card is clicked outside of a select prompt (ie it's a button on a choices prompt)
         (contains? (into #{} (get-in @game-state [side :prompt-state :selectable])) (:cid card))
         (send-command "choice" {:choice {:uuid (prompt-button-from-card? card (get-in @game-state [side :prompt-state]))}})
+
+        ;; we're trying to rush a card out
+        (and (= side (keyword (lower-case (:side card))))
+             (not (any-prompt-open? side))
+             (contains? #{"hand"} (first zone))
+             (:rushable card)
+             shift-key-held)
+        (send-command "rush" {:card (card-for-click card)})
+
+        ;; we're trying to play a card at instant speed
+        (and (= side (keyword (lower-case (:side card))))
+             (not (any-prompt-open? side))
+             (contains? #{"hand"} (first zone))
+             (:instant card)
+             shift-key-held)
+        (send-command "instant" {:card (card-for-click card)})
 
         ;; player clicking on their own playable card
         (and (or (and (= side :runner) (= "Runner" (:side card)))
@@ -2365,7 +2380,7 @@
 
                 (if (:replay @game-state)
                   [content-pane :log :settings :notes :notes-shared]
-                  [content-pane :log :settings])]
+                  [content-pane :log :settings :help])]
 
                [:div.centralpane
                 (if (= op-side :corp)

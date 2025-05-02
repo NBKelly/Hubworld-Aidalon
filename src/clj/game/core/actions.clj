@@ -5,9 +5,9 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
-    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker?]]
+    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment?]]
     [game.core.card-defs :refer [card-def]]
-    [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus]]
+    [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus rez-cost]]
     [game.core.delving :refer [reset-delve-continue!]]
     [game.core.effects :refer [any-effects is-disabled-reg?]]
     [game.core.eid :refer [effect-completed make-eid]]
@@ -22,11 +22,12 @@
     [game.core.prompts :refer [cancel-bluff cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
+    [game.core.staging :refer [stage]]
     [game.core.servers :refer [name-zone zones->sorted-names]]
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
     [game.core.update :refer [update!]]
-    [game.macros :refer [continue-ability req wait-for]]
+    [game.macros :refer [continue-ability req wait-for msg]]
     [game.utils :refer [dissoc-in quantify remove-once same-card? same-side? server-cards to-keyword]]
     [jinteki.utils :refer [adjacent-zones card-side other-side]]))
 
@@ -131,6 +132,50 @@
       (resolve-ability state side eid expend-ab card nil))
     (toast state side (str "You cannot play abilities while other abilities are resolving.")
               "warning")))
+
+(defn play-rush
+  "Called when the player plays a card from hand as a rush"
+  [state side {:keys [card] :as context}]
+  (when-let [card (get-card state card)]
+    (let [context (assoc context :card card)
+          card-to-stage card
+          rush-abi {:msg (msg (println context) "rush itself to the " (name (:slot context)) " row of [their] " (string/capitalize (name (:server context))))
+                    :async true
+                    :cost [(->c :credit (rez-cost state side card-to-stage nil))]
+                    :effect (req (let [c (:card context) server (:server context) slot (:slot context)]
+                                   (if-let [old-card (get-in @state [side :paths server slot 0])]
+                                     (do
+                                       (system-msg state side
+                                                   (str (if (rezzed? old-card)
+                                                          (str "exiles " (:title old-card))
+                                                          (str "archives a facedown card"))
+                                                        " in the " (name slot) " row of [their] " (string/capitalize (name server))))
+                                       (wait-for
+                                         (archive-or-exile state side old-card {:unpreventable true})
+                                         (stage state side eid c server slot {:rushed true})))
+                                     (stage state side eid c server slot {:rushed true}))))}]
+      (assert (not (moment? card)))
+      (show-stage-prompt
+        state side nil
+        (str "Rush " (:title card-to-stage) " where?")
+        {:async true
+         :effect (req (let [server (:server context)
+                            slot (:slot context)
+                            old-card (get-in @state [side :paths server slot 0])
+                            ctx {:card card-to-stage
+                                 :ability rush-abi
+                                 :ability-idx nil
+                                 :targets [(assoc context :card card-to-stage)]}]
+                              (if old-card
+                                (resolve-ability
+                                  state side eid
+                                  {:optional
+                                   {:prompt (str (if (rezzed? old-card) "Exile " "Archive ") (:title old-card) " in the " (name slot) " row of your " (string/capitalize (name server)) "?")
+                                    :yes-ability {:async true
+                                                  :effect (req (do-play-ability state side eid ctx))}}}
+                                  nil nil)
+                                (do-play-ability state side eid ctx))))}
+          {:waiting-prompt true}))))
 
 (defn play
   "Called when the player clicks a card from hand."

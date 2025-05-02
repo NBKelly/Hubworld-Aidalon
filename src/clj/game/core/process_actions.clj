@@ -3,9 +3,10 @@
    [clojure.string :as str]
    [game.core.actions :refer [click-advance click-credit click-draw click-delve
                               close-deck do-purge generate-install-list cmd-shift
-                               move-card expend-ability
+                              move-card expend-ability
                               pass play play-ability play-corp-ability play-collect
                               play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
+                              play-rush
                               resolve-prompt score select stage-done bluff-done stage-select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
    [game.core.change-vals :refer [change]]
@@ -65,6 +66,7 @@
    "delve-toggle-auto-pass"           (fn [state side _]        (delve-toggle-pass-priority state side (make-eid state)))
    "exile"                            #(exile %1 %2 (make-eid %1) (get-card %1 (:card %3)) (dissoc %3 :card))
    "collect" #'play-collect
+   "rush" #'play-rush
 
    "draw" #'click-draw
 
