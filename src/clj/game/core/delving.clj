@@ -15,7 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [approach-district-reaction pre-confrontation-reaction]]
+   [game.core.reactions :refer [approach-district-reaction encounter-ended-reaction pre-confrontation-reaction ]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -234,7 +234,8 @@
   [state side eid]
   (swap! state dissoc-in [:delve :encounter-select])
   (wait-for
-    (trigger-event-simult state side :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+    ;;(trigger-event-simult state side :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+    (encounter-ended-reaction state side (assoc (delve-event state) :encounter-card (card-for-current-slot state)))
     (wait-for
       (checkpoint state side)
       (when-not (delve-ended? state side eid)

@@ -96,4 +96,19 @@
             (click-prompts state :corp "Turn Up the Heat" "Yes"))
           "Turned up the heat"))))
 
-;; TODO - likely a trap tests
+(deftest likely-a-trap
+  (doseq [opt ["Yes" "No"]]
+    (do-game
+      (new-game {:corp {:hand ["Likely a Trap" "Capricious Informant"]}
+                 :runner {:deck [(qty "Fun Run" 10)]}})
+      (play-from-hand state :corp "Capricious Informant" :council :outer)
+      (click-credit state :runner)
+      (click-credit state :corp)
+      (delve-server state :runner :council)
+      (delve-bypass-impl state :runner)
+      (click-prompt state :corp "Likely a Trap")
+      (click-prompt state :corp "Yes")
+      (click-prompt state :runner opt)
+      (if (= opt "No")
+        (is (= 2 (count (get-discard state :runner))))
+        (click-prompt state :runner "No Action")))))

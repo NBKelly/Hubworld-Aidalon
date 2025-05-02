@@ -13,6 +13,7 @@
    [game.core.engine :refer [resolve-ability]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.prompts :refer [show-bluff-prompt]]
+   [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [dissoc-in]]
    [game.macros :refer [msg req wait-for]]
    [jinteki.utils :refer [other-side]]))
@@ -242,3 +243,15 @@
     {:prompt {engaged-side              (str "You are confronting " (:title card))
               (other-side engaged-side) (str "Your opponent is confronting " (:title card))}
      :waiting "your opponent to resolve pre-confrontation reactions"}))
+
+(defn encounter-ended-reaction
+  [state side eid {:keys [delver encounter-card] :as args}]
+  (if encounter-card
+    (do
+      (push-reaction! state :encounter-ended args)
+      (resolve-reaction-effects-with-priority
+        state nil eid :encounter-ended resolve-reaction-for-side
+        {:prompt {delver              (str "You finished an encounter with " (hubworld-card-str state encounter-card))
+                  (other-side delver) (str "Your opponent finished an encounter with " (:title encounter-card))}
+         :waiting "your opponent to resolve post-encounter reactions"}))
+    (effect-completed state side eid)))

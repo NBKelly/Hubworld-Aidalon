@@ -14,11 +14,19 @@
   [state side name]
   (count (filter #(= (:title %) name) (get-in @state [side :rfg]))))
 
+(defn bluffs-enabled?
+  "check bluff settings for each player"
+  [state]
+  ;; TODO - this
+  ;; for now this is just for testing
+  (not (get-in @state [:bluffs-disabled-for-testing])))
+
 (def bluffs
   {;; END BREACH SERVER:
    ;;   FUN RUN
    ;;   CORNERING THE MARKET
    :complete-breach (req (and (seq (get-in @state [side :hand]))
+                              (bluffs-enabled? state)
                               (or
                                 (and
                                   ;; WHEN I DELVE
@@ -34,6 +42,7 @@
    ;; BREACH SERVER
    ;;   INFILTRATE
    :pre-discovery (req (and (seq (get-in @state [side :hand]))
+                            (bluffs-enabled? state)
                             (or
                               (and ;; INFILTRATE
                                 (= (:breach-server context) :council)
@@ -44,9 +53,10 @@
    ;; ENCOUNTER ENDED
    ;;   LIKELY A TRAP
    :encounter-ended (req (and (seq (get-in @state [side :hand]))
+                              (bluffs-enabled? state)
                               (or
                                 (and ;; LIKELY A TRAP
                                   (= (:defender context) side)
-                                  (let [c (get-card state (:approached-card context))]
+                                  (let [c (get-card state (:encounter-card context))]
                                     (and c (not (rezzed? c))))
                                   (< (known-copies state side "Likely a Trap") 2)))))})

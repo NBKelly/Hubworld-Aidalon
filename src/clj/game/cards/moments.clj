@@ -86,37 +86,35 @@
                          :effect (req (access-bonus state side :council 2))}}]})
 
 (defcard "Likely a Trap"
-  {:events [{:event :encounter-ended
-             :location :hand
-             :optional {:req (req
-                               (and
-                                 (= (:defender context) side)
-                                 (in-hand? card)
-                                 (let [c (get-card state (:approached-card context))]
-                                   (and c (not (rezzed? c))))))
-                        :waiting-prompt true
-                        :prompt (msg "Exile Likely a Trap to Ask your opponent to discover " (:title (:approached-card context)) "?")
-                        :hide-card? true
-                        :yes-ability {:cost [(->c :exile-reaction)]
-                                      :msg "lay some bait"
-                                      :async true
-                                      :effect (req (let [op (other-side side)
-                                                         me side
-                                                         enc-card (:approached-card context)]
-                                                     (continue-ability
-                                                       state op
-                                                       {:optional {:prompt "Discover the facedown card? (If you do not, the top 2 cards of your Commons will be Archived)"
-                                                                   :waiting-prompt "Your opponent to step through the door"
-                                                                   :yes-ability {:msg (msg "discover " (:title enc-card))
-                                                                                 :async true
-                                                                                 :display-side op
-                                                                                 :effect (req (discover-card state side eid enc-card))}
-                                                                   :no-ability {:player me
-                                                                                :display-side me
-                                                                                :async true
-                                                                                :msg (msg "archive the top 2 cards of " (other-player-name state me) "'s commons")
-                                                                                :effect (req (mill state me eid op 2))}}}
-                                                       card nil)))}}}]})
+  {:reaction [{:reaction :encounter-ended
+               :location :hand
+               :type :moment
+               :req (req
+                      (and
+                        (= (:defender context) side)
+                        (let [c (get-card state (:encounter-card context))]
+                          (and c (not (rezzed? c))))))
+               :prompt (msg "Ask your opponent to discover " (:title (:encounter-card context)) "?")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg "lay some bait"
+                         :async true
+                         :effect (req (let [op (other-side side)
+                                            me side
+                                            enc-card (:encounter-card context)]
+                                        (continue-ability
+                                          state op
+                                          {:optional {:prompt "Discover the facedown card? (If you do not, the top 2 cards of your Commons will be Archived)"
+                                                      :waiting-prompt "Your opponent to step through the door"
+                                                      :yes-ability {:msg (msg "discover " (:title enc-card))
+                                                                    :async true
+                                                                    :display-side op
+                                                                    :effect (req (discover-card state side eid enc-card))}
+                                                      :no-ability {:player me
+                                                                   :display-side me
+                                                                   :async true
+                                                                   :msg (msg "archive the top 2 cards of " (other-player-name state me) "'s commons")
+                                                                   :effect (req (mill state me eid op 2))}}}
+                                          card nil)))}}]})
 
 (defcard "Smooth Handoff"
   {:on-play {:additional-cost [(->c :click 1)]

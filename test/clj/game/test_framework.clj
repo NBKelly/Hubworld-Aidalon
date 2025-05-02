@@ -406,6 +406,7 @@
            (swap! state assoc-in [side :credit] (:credits side-map))))
        (core/clear-win state side))
      (swap! state assoc :active-player :corp)
+     (swap! state assoc :bluffs-disabled-for-testing true)
      ;; These are side independent so they happen ouside the loop
      (core/fake-checkpoint state)
      state)))
