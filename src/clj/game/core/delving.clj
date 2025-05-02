@@ -1,6 +1,6 @@
 (ns game.core.delving
   (:require
-   [game.core.breaching :refer [breach-server discover-card]]
+   [game.core.breaching :refer [breach-server discover-card maybe-refund]]
    [game.core.card :refer [agent? moment?
                            exhausted? rezzed? in-discard?
                            get-card]]
@@ -73,7 +73,7 @@
                                                                   (str cost-msg " to exile ")
                                                                   "exiles ")
                                                                 (:title confronted-card))))
-                                             (exile state side eid confronted-card))}}
+                                             (maybe-refund state side eid confronted-card exile))}}
                      {:option "Secure"
                       :req (req (and should-secure? can-interact?))
                       :cost (when (seq interact-cost?) interact-cost?)
@@ -84,7 +84,7 @@
                                                                   (str cost-msg " to secure ")
                                                                   "secures ")
                                                                 (:title confronted-card))))
-                                             (secure-agent state side eid confronted-card))}}
+                                             (maybe-refund state side eid confronted-card secure-agent))}}
                      {:option "No Action"}])
                   nil nil)
                 (confrontation-cleanup state side eid confronted-card)))))

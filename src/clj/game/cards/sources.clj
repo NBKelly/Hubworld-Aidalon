@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [game.core.barrier :refer [get-barrier update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker?]]
+   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle?]]
    [game.core.def-helpers :refer [collect defcard]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
@@ -17,21 +17,31 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [adjacent? count-heat other-player-name card-side]]))
 
+;; (defcard "Capricious Informant"
+;;   (collect
+;;     {:shards 1}
+;;     {:abilities [{:cost [(->c :exhaust-self)]
+;;                   :req (req (>= (count (get-in @state [side :deck])) 2))
+;;                   :label "Look at the top 2 cards of your Commons"
+;;                   :waiting-prompt true
+;;                   :prompt (msg "the top of your Commons is (top->bottom): " (enumerate-str (map :title (take 2 (get-in @state [side :deck])))) ". Choose one to add to your Council.")
+;;                   :choices (req (take 2 (get-in @state [side :deck])))
+;;                   :msg (msg "add the " (if (= target (first (get-in @state [side :deck])))
+;;                                          "first" "second")
+;;                             " card of [their] Commons to [their] Council, and Archive the other one")
+;;                   :async true
+;;                   :effect (req (move state side target :hand)
+;;                                (trash state side eid (first (get-in @state [side :deck]))))}]}))
+
 (defcard "Capricious Informant"
   (collect
     {:shards 1}
-    {:abilities [{:cost [(->c :exhaust-self)]
-                  :req (req (>= (count (get-in @state [side :deck])) 2))
-                  :label "Look at the top 2 cards of your Commons"
-                  :waiting-prompt true
-                  :prompt (msg "the top of your Commons is (top->bottom): " (enumerate-str (map :title (take 2 (get-in @state [side :deck])))) ". Choose one to add to your Council.")
-                  :choices (req (take 2 (get-in @state [side :deck])))
-                  :msg (msg "add the " (if (= target (first (get-in @state [side :deck])))
-                                         "first" "second")
-                            " card of [their] Commons to [their] Council, and Archive the other one")
-                  :async true
-                  :effect (req (move state side target :hand)
-                               (trash state side eid (first (get-in @state [side :deck]))))}]}))
+    {:refund 1
+     :static-abilities [{:type :barrier-value
+                         :value -1
+                         :req (req (and (in-front-row? target)
+                                        (not= (:side target) (:side card))
+                                        (or (agent? target) (obstacle? target))))}]}))
 
 (defcard "Disagreeable Inspector"
   (collect

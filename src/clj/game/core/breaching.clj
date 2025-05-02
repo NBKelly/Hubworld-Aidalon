@@ -9,6 +9,7 @@
    [game.core.engine :refer [checkpoint register-default-events register-pending-event resolve-ability trigger-event trigger-event-simult trigger-event-sync unregister-floating-events queue-event]]
    [game.core.effects :refer [register-static-abilities sum-effects register-lingering-effect unregister-lingering-effects gather-effects]]
    [game.core.flags :refer [card-flag?]]
+   [game.core.gaining :refer [gain-credits]]
    [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
@@ -32,6 +33,15 @@
   (when-let [c (get-card state discovered-card)]
     (update! state side (dissoc c :seen)))
   (checkpoint state side eid {:durations [:end-of-discovery]}))
+
+(defn maybe-refund
+  "Either does does the function, or refunds the opposing player first"
+  [state side eid target-card f]
+  (if-let [refund (:refund (card-def target-card))]
+    (do (system-msg state (other-side side) (str "gains " refund " [Credits]"))
+        (wait-for (gain-credits state (other-side side) refund {:suppress-checkpoint true})
+                  (f state side eid target-card)))
+    (f state side eid target-card)))
 
 (defn discover-continue
   [state side eid discovered-card]
@@ -57,7 +67,8 @@
                                                           (str cost-msg " to exile ")
                                                           "exiles ")
                                                         (:title discovered-card))))
-                                     (exile state side eid discovered-card))}}
+                                     ;; if refund
+                                     (maybe-refund state side eid discovered-card exile))}}
              {:option "Secure"
               :req (req (and should-secure? can-interact?))
               :cost (when (seq interact-cost?) interact-cost?)
@@ -68,7 +79,7 @@
                                                           (str cost-msg " to secure ")
                                                           "secures ")
                                                         (:title discovered-card))))
-                                     (secure-agent state side eid discovered-card))}}
+                                     (maybe-refund state side eid discovered-card secure-agent))}}
              {:option "No Action"}])
           nil nil)
         (discover-cleanup state side eid discovered-card)))))

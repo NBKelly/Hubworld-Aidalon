@@ -8,17 +8,41 @@
    [game.test-framework :refer :all]
    [game.core.payment :refer [->c]]))
 
+;; (deftest capricious-informant-test
+;;   (collects? {:name "Capricious Informant"
+;;               :credits 1})
+;;   (do-game
+;;     (new-game {:corp {:hand ["Capricious Informant"] :deck ["Fun Run" "Shardwinner"]}})
+;;     (play-from-hand state :corp "Capricious Informant" :council :inner)
+;;     (forge state :corp (pick-card state :corp :council :inner))
+;;     (card-ability state :corp (pick-card state :corp :council :inner) 1)
+;;     (click-prompt state :corp "Fun Run")
+;;     (is-hand? state :corp ["Fun Run"])
+;;     (is-discard? state :corp ["Shardwinner"])))
+
 (deftest capricious-informant-test
   (collects? {:name "Capricious Informant"
               :credits 1})
   (do-game
-    (new-game {:corp {:hand ["Capricious Informant"] :deck ["Fun Run" "Shardwinner"]}})
+    (new-game {:corp {:hand ["Capricious Informant"]}
+               :runner {:hand ["Canal Network"]}})
     (play-from-hand state :corp "Capricious Informant" :council :inner)
+    (play-from-hand state :runner "Canal Network" :council :outer)
+    (forge state :runner (pick-card state :runner :council :outer))
     (forge state :corp (pick-card state :corp :council :inner))
-    (card-ability state :corp (pick-card state :corp :council :inner) 1)
-    (click-prompt state :corp "Fun Run")
-    (is-hand? state :corp ["Fun Run"])
-    (is-discard? state :corp ["Shardwinner"])))
+    (core/fake-checkpoint state)
+    (is (= 1 (barrier (pick-card state :runner :council :outer))) "Lost 1 barrier"))
+  (do-game
+    (new-game {:corp {:hand ["Capricious Informant"]}})
+    (play-from-hand state :corp "Capricious Informant" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (delve-confront-impl state :runner)
+    (is (changed? [(:credit (get-corp)) 1]
+          (click-prompt state :runner "Pay 2 [Credits]: Exile"))
+        "Refunded 1")))
 
 (deftest disagreeable-inspector-test
   (collects? {:name "Disagreeable Inspector"
