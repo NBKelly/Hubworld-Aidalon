@@ -8,6 +8,20 @@
    [game.test-framework :refer :all]
    [game.core.payment :refer [->c]]))
 
+(deftest bubblemap-kiosk-test
+  (collects? {:name "Bubblemap Kiosk"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Bubblemap Kiosk"]}
+               :runner {:hand [] :deck ["Fun Run" "Shardwinner"]}})
+    (stack-deck state :runner ["Fun Run" "Shardwinner"])
+    (play-from-hand state :corp "Bubblemap Kiosk" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (delve-empty-server state :corp :commons {:give-heat? true})
+    (click-prompts state :corp "Bubblemap Kiosk" "Yes")
+    (click-prompt state :corp "Pay 2 [Credits]: Exile")))
+
 ;; (deftest capricious-informant-test
 ;;   (collects? {:name "Capricious Informant"
 ;;               :credits 1})
@@ -44,6 +58,25 @@
           (click-prompt state :runner "Pay 2 [Credits]: Exile"))
         "Refunded 1")))
 
+(deftest crispy-crawler-test
+  (collects? {:name "Crispy Crawler"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Crispy Crawler"]}
+               :runner {:hand ["Fun Run"]}})
+    (play-from-hand state :corp "Crispy Crawler" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (end-turn state :corp)
+    (end-turn state :runner)
+    (is (changed? [(:credit (get-corp)) 1]
+          (click-prompt state :corp "Crispy Crawler"))
+        "Took 1")))
+
 (deftest disagreeable-inspector-test
   (collects? {:name "Disagreeable Inspector"
               :credits 1})
@@ -60,14 +93,26 @@
           (click-prompts state :corp "Disagreeable Inspector" "Yes"))
         "Reduced barrier by 2 on encounter")))
 
+(deftest echopomp-revoker-test
+  (collects? {:name "Echopomp Revoker"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Echopomp Revoker"] :credits 6 :discard ["Shardwinner" "Capricious Informant"]}})
+    (play-from-hand state :corp "Echopomp Revoker" :council :inner)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :commons)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (card-ability state :corp (pick-card state :corp :council :inner) 1)
+    (click-prompts state :corp "Shardwinner" "Capricious Informant")
+    (is (not (:delve @state)) "Delve over")))
+
 (deftest lost-byway-test
   (collects? {:name "Lost Byway"
               :credits 1})
   (do-game
-    (new-game {:corp {:hand ["Lost Byway"]}})
+    (new-game {:corp {:hand ["Lost Byway"] :heat 1}})
     (play-from-hand state :corp "Lost Byway" :council :inner)
-    (game.core.heat/gain-heat state :corp (core/make-eid state) 1)
-    (is (= 1 (get-heat state :corp)) "1 heat")
     (forge state :corp (pick-card state :corp :council :inner))
     (is (changed? [(get-heat state :corp)]
           (click-prompt state :corp "Lost Byway")))))

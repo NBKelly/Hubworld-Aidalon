@@ -13,7 +13,7 @@
     [game.core.hand-size :refer [hand-size]]
     [game.core.ice :refer [update-all-ice update-breaker-strength]]
     [game.core.moving :refer [move]]
-    [game.core.reactions :refer [refresh-actions-reaction]]
+    [game.core.reactions :refer [refresh-actions-reaction round-begins-reaction]]
     [game.core.say :refer [system-msg unsafe-say]]
     [game.core.set-aside :refer [clean-set-aside!]]
     [game.core.toasts :refer [toast]]
@@ -94,8 +94,10 @@
               (gain state s :click clicks-to-gain))))
         (wait-for
           (refresh-actions-reaction state nil)
-          (hubworld-start-turn-message state)
-          (effect-completed state (:active-player @state) eid))))))
+          (wait-for
+            (round-begins-reaction state nil)
+            (hubworld-start-turn-message state)
+            (effect-completed state (:active-player @state) eid)))))))
 
 (defn- clamp-credits
   [state side eid]

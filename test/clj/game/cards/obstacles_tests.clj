@@ -49,8 +49,19 @@
         "Gained 0c")))
 
 ;; TODO: Canal Network
+;; TODO: Emperor Drejj
 ;; TODO: Eye Enforcers
-;; TODO: Transit Station
+
+(deftest flooding-thoroughfare-test
+  (do-game
+    (new-game {:corp {:hand ["Flooding Thoroughfare"]}})
+    (play-from-hand state :corp "Flooding Thoroughfare" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :commons)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (click-prompt state :corp "Flooding Thoroughfare")
+    (is (= 3 (barrier (pick-card state :corp :council :outer))) "Got +2 barrier")))
 
 (deftest oroba-plaza-test
   (doseq [opt [:confront :discover]]
@@ -68,6 +79,8 @@
                      (:credit (get-runner)) -1]
             (click-prompt state :corp "Yes"))
           "Drained 1c"))))
+
+;; TODO: Transit Station
 
 (deftest tunnel-runners-test
   (do-game

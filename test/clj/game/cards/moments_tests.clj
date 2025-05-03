@@ -40,6 +40,17 @@
         "Gained 3c")
     (is (no-prompt? state :corp))))
 
+(deftest forced-liquidation-test
+  (do-game
+    (new-game {:corp {:hand ["Ulin Marr: Eccentric Architect" "Forced Liquidation"] :credits 15}
+               :runner {:hand ["Shardwinner"]}})
+    (play-from-hand state :corp "Ulin Marr: Eccentric Architect" :council :inner)
+    (play-from-hand state :runner "Shardwinner" :council :outer)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (forge state :runner (pick-card state :runner :council :outer))
+    (delve-server state :corp :council)
+    (click-prompts state :corp "Forced Liquidation" "Yes" "Ulin Marr: Eccentric Architect")))
+
 (deftest franchise-fees
   (do-game
     (new-game {:corp {:hand ["Franchise Fees" "Disagreeable Inspector"]}})

@@ -12,7 +12,7 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
-   [game.core.moving :refer [mill]]
+   [game.core.moving :refer [mill archive]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.revealing :refer [reveal-loud]]
    [game.core.say :refer [system-msg]]
@@ -63,6 +63,18 @@
                          :msg "gain 3 [Credits]"
                          :async true
                          :effect (req (gain-credits state side eid 3))}}]})
+
+(defcard "Forced Liquidation"
+  {:reaction [{:location :hand
+               :type :moment
+               :reaction :approach-slot
+               :req (req (and (= (:delver context) side)
+                              (rezzed? (get-card state (:approached-card context)))))
+               :prompt (msg "Archive " (:title (:approached-card context)))
+               :ability {:cost [(->c :exile-reaction) (->c :exhaust-forged-with-4-barrier 1)]
+                         :msg (msg "archive " (:title (:approached-card context)))
+                         :async true
+                         :effect (req (archive state side eid (:approached-card context) nil))}}]})
 
 (defcard "Franchise Fees"
   {:on-play {:additional-cost [(->c :click 1) (->c :exhaust-front-row 1)]

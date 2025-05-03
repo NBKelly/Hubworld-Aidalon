@@ -15,7 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [approach-district-reaction encounter-ended-reaction pre-confrontation-reaction ]]
+   [game.core.reactions :refer [approach-district-reaction approach-slot-reaction encounter-ended-reaction pre-confrontation-reaction ]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -173,6 +173,9 @@
     (do ;; first, clean up those two lingering eids
       (when-let [e (-> @state :delve :delve-id)] (effect-completed state side e))
       (when-let [e (-> @state :delve :eid)] (effect-completed state side e))
+      ;; unregister lingering effects
+      (unregister-lingering-effects state side :end-of-delve)
+      (unregister-lingering-effects state (other-side side) :end-of-delve)
       ;; next, construct the delve ended event
       (let [ev (select-keys (:delve @state) [:server :position :delver :defender :successful])]
         (swap! state dissoc :delve)
@@ -218,8 +221,9 @@
   [state side eid]
   (when-not (delve-ended? state side eid)
     (set-phase state :approach-slot)
-    (queue-event state :approach-slot (assoc (delve-event state) :approached-card (card-for-current-slot state)))
-    (checkpoint state side eid)))
+    (wait-for (approach-slot-reaction state side (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+              (queue-event state :approach-slot (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+              (checkpoint state side eid))))
 
 ;; APPROACH DISTRICT -> PAW
 (defn delve-approach-district

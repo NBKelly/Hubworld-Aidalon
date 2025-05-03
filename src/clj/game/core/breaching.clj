@@ -176,12 +176,14 @@
 (defn resolve-access-commons
   "randomly access from commons"
   [state side eid remaining]
-  (if (and (pos? remaining) (seq (get-in @state [(other-side side) :deck])))
-    (let [next-access (first (get-in @state [(other-side side) :deck]))]
-      (resolve-breach-discovery-for-card state side eid next-access remaining resolve-access-commons))
-    (do (doseq [c (reverse (get-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid])))]
-          (move state (other-side side) c :deck {:front true}))
-        (effect-completed state side eid))))
+  (let [front? (not (get-in @state [:breach :discover-from-bottom-of-commons]))
+        sel (if front? first last)]
+    (if (and (pos? remaining) (seq (get-in @state [(other-side side) :deck])))
+      (let [next-access (sel (get-in @state [(other-side side) :deck]))]
+        (resolve-breach-discovery-for-card state side eid next-access remaining resolve-access-commons))
+      (do (doseq [c (reverse (get-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid])))]
+            (move state (other-side side) c :deck {:front front?}))
+          (effect-completed state side eid)))))
 
 (defn resolve-access-archives
   "randomly access from archives"
@@ -213,7 +215,8 @@
      (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
      (wait-for
        (pre-discovery-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
-       (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
+       (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)
+                                   :discover-from-bottom-of-commons (:discover-from-bottom-of-commons async-result)})
        (let [args (clean-access-args args)
              access-amount (num-cards-to-access state side server nil)]
          (when (:delve @state)

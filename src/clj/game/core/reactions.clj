@@ -255,7 +255,7 @@
 
 (defn encounter-ended-reaction
   [state side eid {:keys [delver encounter-card] :as args}]
-  (if encounter-card
+  (if (get-card state encounter-card)
     (do
       (push-reaction! state :encounter-ended args)
       (resolve-reaction-effects-with-priority
@@ -265,8 +265,19 @@
          :waiting "your opponent to resolve post-encounter reactions"}))
     (effect-completed state side eid)))
 
+(defn approach-slot-reaction
+  [state side eid {:keys [defender approached-card] :as args}]
+  (if-not (get-card state approached-card)
+    (effect-completed state side eid)
+    (do
+      (push-reaction! state :approach-slot args)
+      (resolve-reaction-effects-with-priority
+        state nil eid :approach-slot resolve-reaction-for-side
+        {:prompt {defender              (str "Your opponent is approaching " (:title approached-card))
+                  (other-side defender) (str "You are approaching " (hubworld-card-str state approached-card))}
+         :waiting "your opponent to resolve approach-slot reactions"}))))
 
-;; REFRESH PHASE
+;; REFRESH PHASE / TURN
 
 (defn refresh-actions-reaction
   [state side eid]
@@ -276,3 +287,12 @@
     {:prompt {:corp   "Refresh phase - refill actions"
               :runner "Refresh phase - refill actions"}
      :waiting "your opponent to resolve refresh-actions reactions"}))
+
+(defn round-begins-reaction
+  [state side eid]
+  (push-reaction! state :round-begins {})
+  (resolve-reaction-effects-with-priority
+    state nil eid :round-begins resolve-reaction-for-side
+    {:prompt {:corp   "The round is beginning"
+              :runner "The round is beginning"}
+     :waiting "your opponent to resolve round-begins reactions"}))

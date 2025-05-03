@@ -1,6 +1,7 @@
 (ns game.cards.obstacles
   (:require
    [clojure.set :as set]
+   [game.core.barrier :refer [update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [in-front-row? in-middle-row?
                            seeker?
@@ -9,6 +10,7 @@
    [game.core.choose-one :refer [choose-one-helper cost-option]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits lose-credits]]
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [archive trash-cards]]
@@ -67,6 +69,26 @@
                                                   (not= "Seeker" (:type target))))}
                          :effect (req (shift-a-card state side eid card target {:other-side? true :cost [(->c :exhaust-seeker)] :no-wait-prompt? true}))}]})
 
+(defcard "Emperor Drejj"
+  {:reaction [{:reaction :forge
+               :type :ability
+               :prompt "Shift Emperor Drejj?"
+               :max-uses 1
+               :req (req (= (:side card) (:side (:card context))))
+               :ability {:async true
+                         :effect (req (shift-a-card state side eid card card nil))}}]
+   :discover-abilities [{:async true
+                         :label "Shift a card on your opponent's grid"
+                         :prompt "Shift a card on your opponent's grid"
+                         :waiting-prompt true
+                         :req (req (seq (filter #(and (installed? %)
+                                                      (not (seeker? %)))
+                                                (hubworld-all-installed state (other-side side)))))
+                         :choices {:req (req (and (installed? target)
+                                                  (not= side (to-keyword (:side target)))
+                                                  (not= "Seeker" (:type target))))}
+                         :effect (req (shift-a-card state side eid card target {:other-side? true :no-wait-prompt? true}))}]})
+
 (defcard "Eye Enforcers"
   {:confront-abilities [{:optional
                          {:prompt "Pay 1 [Credits] to archive a card at random your opponents Council?"
@@ -87,6 +109,21 @@
                                         :async true
                                         :msg (msg "archive two random cards from " (other-player-name state side) "'s council")
                                         :effect (req (trash-cards state (other-side side) eid (take 2 (shuffle (get-in @state [(other-side side) :hand])))))}}}]})
+
+(defcard "Flooding Thoroughfare"
+  {:reaction [{:reaction :forge
+               :type :ability
+               :max-uses 1
+               :req (req (and (same-card? card (:card context))
+                              (:delve @state)))
+               :ability {:msg "gain +2 [Barrier] this delve"
+                         :effect (req (register-lingering-effect
+                                        state side card
+                                        {:type :barrier-value
+                                         :value 2
+                                         :req (req (same-card? card target))
+                                         :duration :end-of-delve})
+                                      (update-card-barrier state side card))}}]})
 
 (defcard "Salvage Rats"
   {:rush true

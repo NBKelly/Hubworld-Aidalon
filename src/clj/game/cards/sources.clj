@@ -3,19 +3,34 @@
    [clojure.string :as str]
    [game.core.barrier :refer [get-barrier update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle?]]
-   [game.core.def-helpers :refer [collect defcard shift-self-abi]]
+   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle? get-counters]]
+   [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
+   [game.core.delving :refer [end-the-delve!]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits gain-clicks lose]]
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [move trash swap-installed]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.props :refer [add-counter]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? same-side? enumerate-str]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [adjacent? count-heat other-side other-player-name card-side]]))
+
+(defcard "Bubblemap Kiosk"
+  (collect
+    {:cards 1}
+    {:refund 1
+     :reaction [{:reaction :pre-discovery
+                 :prompt "Discover from the bottom of Commons?"
+                 :req (req (and (= (:breach-server context) :commons)
+                                (= side (:delver context))
+                                (not (:discover-from-bottom-of-commons context))))
+                 :ability {:cost [(->c :exhaust-self)]
+                           :msg (msg "discover cards from the bottom of Commons")
+                           :effect (req (swap! state assoc-in [:reaction :pre-discovery :discover-from-bottom-of-commons] true))}}]}))
 
 ;; (defcard "Capricious Informant"
 ;;   (collect
@@ -43,6 +58,20 @@
                                         (not= (:side target) (:side card))
                                         (or (agent? target) (obstacle? target))))}]}))
 
+(defcard "Crispy Crawler"
+  (collect
+    {:shards 1}
+    {:on-forge {:async true
+                :silent (req true)
+                :effect (req (add-counter state side eid card :credit 2))}
+     :reaction [{:reaction :round-begins
+                 :max-uses 1
+                 :req (req (pos? (get-counters card :credit)))
+                 :type :ability
+                 :ability {:msg "take 1 [Credit]"
+                           :async true
+                           :effect (req (take-credits state side eid card :credit 1))}}]}))
+
 (defcard "Disagreeable Inspector"
   (collect
     {:shards 1}
@@ -61,6 +90,15 @@
                                              :req (req (same-card? target-card target))
                                              :duration :end-of-confrontation})
                                           (update-card-barrier state side target-card)))}}]}))
+
+(defcard "Echopomp Revoker"
+  (collect
+    {:cards 1}
+    {:abilities [{:label "End the delve"
+                  :cost [(->c :exhaust-self) (->c :exile-from-archives 2)]
+                  :msg "end the delve"
+                  :async true
+                  :effect (req (end-the-delve! state side eid nil))}]}))
 
 (defcard "Lost Byway"
   (collect

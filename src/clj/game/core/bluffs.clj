@@ -68,6 +68,14 @@
                                                (or (not r)
                                                    (r state side eid card targets))))))))
 
+   :approach-slot (req (and (seq (get-in @state [side :hand]))
+                            (bluffs-enabled? state)
+                            (or
+                              (and ;; FORCED LIQUIDATION
+                                (= (:delver context) side)
+                                (rezzed? (get-card state (:approached-card context)))
+                                (can-pay? state side eid card nil [(->c :exhaust-forged-with-4-barrier 1)])))))
+
    ;; ENCOUNTER ENDED
    ;;   LIKELY A TRAP
    :encounter-ended (req (and (seq (get-in @state [side :hand]))
