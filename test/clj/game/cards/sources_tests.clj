@@ -76,7 +76,8 @@
   (collects? {:name "Pax Observatory"
               :cards 1})
   (do-game
-    (new-game {:corp {:hand ["Pax Observatory"] :credit 6}})
+    (new-game {:corp {:hand ["Pax Observatory"] :credit 6}
+               :runner {:hand ["Fun Run"]}})
     (play-from-hand state :corp "Pax Observatory" :council :inner)
     (dotimes [_ 3]
       (click-credit state :corp)

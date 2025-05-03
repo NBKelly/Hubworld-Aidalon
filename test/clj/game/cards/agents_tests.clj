@@ -78,6 +78,19 @@
         "Secured gargala larga")
     (is (= 1 (count (get-scored state :corp))) "Gargala Larga is in the score area")))
 
+(deftest guildmaster-yanos-affable-gaffer
+  (collects? {:name "Guildmaster Yanos: Affable Gaffer"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Guildmaster Yanos: Affable Gaffer" "Shardwinner"]}})
+    (play-from-hand state :corp "Guildmaster Yanos: Affable Gaffer" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Shardwinner" :council :outer)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-corp)) -2]
+          (forge state :corp (pick-card state :corp :council :outer)))
+        "1c discount")))
+
 (deftest kryzar-free-stage
   (do-game
     (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"

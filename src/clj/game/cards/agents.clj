@@ -57,6 +57,16 @@
                   :async true
                   :effect (req (unexhaust state side eid (get-in @state [side :identity]) {:no-msg true}))}]}))
 
+(defcard "Guildmaster Yanos: Affable Gaffer"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :exhaust-council 1)]
+     :static-abilities [{:type :rez-cost
+                         :req (req (and (installed? target)
+                                        (= (:side target) (:side card))
+                                        (not (same-card? card target))))
+                         :value -1}]}))
+
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"
   (collect
     {:shards 1}

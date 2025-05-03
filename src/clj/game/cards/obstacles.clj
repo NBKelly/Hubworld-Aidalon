@@ -9,7 +9,7 @@
    [game.core.choose-one :refer [choose-one-helper cost-option]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
-   [game.core.gaining :refer [gain-credits]]
+   [game.core.gaining :refer [gain-credits lose-credits]]
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [archive trash-cards]]
    [game.core.payment :refer [->c can-pay?]]
@@ -123,6 +123,19 @@
                                         :async true
                                         :msg (msg "lose 1 heat ")
                                         :effect (req (lose-heat state side eid 1))}}}]})
+
+(defcard "Oroba Plaza"
+  (let [abs [{:optional
+              {:prompt "Steal 1 [Shard]"
+               :waiting-prompt true
+               :req (req (and (>= (count-heat state side) 2)
+                              (pos? (get-in @state [(other-side side) :credit]))))
+               :yes-ability {:msg "Steal 1 [Credit]"
+                             :async true
+                             :effect (req (wait-for (lose-credits state (other-side side) 1 {:suppress-checkpoint true})
+                                                    (gain-credits state side eid 1)))}}}]]
+    {:confront-abilities abs
+     :discover-abilities abs}))
 
 (defcard "Waterway Ferry"
   {:reaction [{:reaction :forge

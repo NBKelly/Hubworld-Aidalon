@@ -52,6 +52,23 @@
 ;; TODO: Eye Enforcers
 ;; TODO: Transit Station
 
+(deftest oroba-plaza-test
+  (doseq [opt [:confront :discover]]
+    (do-game
+      (new-game {:corp {:hand ["Oroba Plaza"] :heat 2}})
+      (play-from-hand state :corp "Oroba Plaza" :council :outer)
+      (click-credit state :runner)
+      (click-credit state :corp)
+      (delve-server state :runner :council)
+      (if (= opt :confront)
+        (do (forge state :corp (pick-card state :corp :council :outer))
+            (delve-confront-impl state :runner))
+        (delve-discover-impl state :runner))
+      (is (changed? [(:credit (get-corp)) 1
+                     (:credit (get-runner)) -1]
+            (click-prompt state :corp "Yes"))
+          "Drained 1c"))))
+
 (deftest tunnel-runners-test
   (do-game
     (new-game {:corp {:hand ["Tunnel Runners"]
