@@ -38,6 +38,10 @@
         "Secured auntie ruth")
     (is (= 1 (count (get-scored state :corp))) "Ruth is in the score area")))
 
+;; TODO: Big Varna Gorvis: Friends in Every District
+
+;; TODO: Boss Bresloo: The Deal-Maker
+
 (deftest doctor-twilight-dream-surgeon-gain-3
   (do-game
     (new-game {:corp {:hand ["Doctor Twilight: Dream Surgeon"]
@@ -178,6 +182,21 @@
     (delve-empty-server state :corp :archives {:give-heat? true})
     (click-prompts state :corp "Sergeant Cole: Precinct 204, 3rd Level" "Yes")
     (is (= 2 (count (get-discard state :runner))) "Milled 2")))
+
+(deftest spider-rebbek-dragons-hoard-pitboss
+  (collects? {:name "“Spider” Rebbek: Dragon’s Hoard Pitboss"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["“Spider” Rebbek: Dragon’s Hoard Pitboss"]}
+               :runner {:hand ["Capricious Informant"]}})
+    (play-from-hand state :corp "“Spider” Rebbek: Dragon’s Hoard Pitboss" :council :outer)
+    (play-from-hand state :runner "Capricious Informant" :council :outer)
+    (forge state :runner (pick-card state :runner :council :outer))
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-discover-impl state :runner)
+    (click-card state :corp "Capricious Informant")
+    (is (:exhausted (pick-card state :runner :council :outer)) "Exhausted it")))
 
 (deftest ulin-marr-eccentric-architect
   (collects? {:name "Ulin Marr: Eccentric Architect"

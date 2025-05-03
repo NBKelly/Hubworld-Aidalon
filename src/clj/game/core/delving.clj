@@ -301,7 +301,8 @@
     (let [approached-card (card-for-current-slot state)]
       (if (and approached-card (not (rezzed? approached-card)))
         (do (swap! state assoc-in [:delve :encounter-select] :discover)
-            (system-msg state side (str "discovers " (:title approached-card)))
+            ;; this printout is on discover itself :)
+            ;;(system-msg state side (str "discovers " (:title approached-card)))
             (wait-for (discover-card state side approached-card)
                       (when-not (delve-ended? state side eid)
                         (delve-complete-encounter state side eid))))

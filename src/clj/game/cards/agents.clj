@@ -1,16 +1,20 @@
 (ns game.cards.agents
   (:require
    [clojure.string :as str]
-   [game.core.card :refer [in-hand? installed? agent? obstacle?]]
+   [game.core.board :refer [hubworld-all-installed]]
+   [game.core.card :refer [in-hand? installed? agent? obstacle? rezzed? seeker?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard stage-n-cards shift-self-abi]]
-   [game.core.exhausting :refer [unexhaust]]
+   [game.core.eid :refer [effect-completed]]
+   [game.core.exhausting :refer [unexhaust exhaust]]
    [game.core.gaining :refer [gain-credits]]
-   [game.core.moving :refer [mill]]
+   [game.core.moving :refer [mill archive]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.rezzing :refer [derez]]
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
+   [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? to-keyword same-side?]]
    [game.macros :refer [effect msg req wait-for]]
    [jinteki.utils :refer [other-player-name other-side]]))
@@ -36,6 +40,64 @@
                            :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
                                           (draw state target-side eid 3)))}}]
      :cipher [(->c :lose-click 1)]}))
+
+(defcard "Big Varna Gorvis: Friends in Every District"
+  (collect
+    {:cards 1}
+    {:discover-abilities [{:optional
+                           {:label "Archive 1 card from your opponent's council"
+                            :waiting-prompt true
+                            :prompt "Archive 1 card from your opponent's council?"
+                            :req (req (and (> (count (get-in @state [side :hand]))
+                                              (count (get-in @state [(other-side side) :hand])))
+                                           (seq (get-in @state [(other-side side) :hand]))))
+                            :yes-ability {:msg (msg "archive 1 card at random from " (other-player-name state side) "'s Council")
+                                          :async true
+                                          :effect (req (archive state side eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}}]
+     :abilities [{:action true
+                  :cost [(->c :click 1) (->c :exhaust-self)]
+                  :label "Gain 3 [Credits]"
+                  :msg "Gain 3 [Credits]"
+                  :req (req (> (count (get-in @state [side :hand]))
+                               (count (get-in @state [(other-side side) :hand]))))
+                  :async true
+                  :effect (req (gain-credits state side eid 3))}]}))
+
+(defcard "Boss Bresloo: The Deal-Maker"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :forge
+                 :type :ability
+                 :max-uses 1
+                 :prompt "Unforge a card with cost 3 or less?"
+                 :req (req (and (same-card? card (:card context))
+                                (some #(and (rezzed? %)
+                                            (not (seeker? %))
+                                            (< (:cost %) 4))
+                                      (concat (hubworld-all-installed state :corp)
+                                              (hubworld-all-installed state :runner)))))
+                 :ability {:prompt "Choose a card to unforge"
+                           :choices {:req (req (and (installed? target)
+                                                    (not (seeker? target))
+                                                    (< (:cost target) 4)
+                                                    (rezzed? target)))}
+                           :msg (msg "unforge " (:title target))
+                           :effect (req (derez state side target))}}]
+     :discover-abilities [{:req (req (some #(and (rezzed? %)
+                                                 (not (seeker? %)))
+                                           (hubworld-all-installed state (other-side side))))
+                           :prompt "Choose a card to unforge and exhaust"
+                           :choices {:req (req (and (not= (:side card) (:side target))
+                                                    (rezzed? target)
+                                                    (installed? target)
+                                                    (not (seeker? target))))}
+                           :waiting-prompt true
+                           :msg (msg "unforge and exhaust " (:title target))
+                           :async true
+                           :effect (req (derez state side target)
+                                        (if (:exhausted target)
+                                          (effect-completed state side eid)
+                                          (exhaust state side eid card target)))}]}))
 
 (defcard "Doctor Twilight: Dream Surgeon"
   (collect
@@ -118,6 +180,30 @@
                            :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
                            :async true
                            :effect (req (mill state side eid (other-side side) 2))}}]}))
+
+(defcard "“Spider” Rebbek: Dragon’s Hoard Pitboss"
+  (collect
+    {:cards 1}
+    {:discover-abilities [{:label "Exhaust a forged card"
+                           :req (req (and (installed? card)
+                                          (some #(and (rezzed? %)
+                                                      (installed? %)
+                                                      (not (seeker? %)))
+                                                (hubworld-all-installed state (other-side side)))))
+                           :choices {:req (req (and (installed? target)
+                                                    (not= (:side card) (:side target))
+                                                    (not (seeker? target))
+                                                    (rezzed? target)))}
+                           :async true
+                           :waiting-prompt true
+                           :msg (msg "exhaust " (:title target))
+                           :effect (req (exhaust state side eid target))}]
+     :static-abilities [{:type :presence-value
+                         :value 1
+                         :req (req (and (not (same-card? card target))
+                                        (not (seeker? target))
+                                        (installed? target)
+                                        (= (:side card) (:side target))))}]}))
 
 (defcard "Ulin Marr: Eccentric Architect"
   (collect

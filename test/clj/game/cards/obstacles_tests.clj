@@ -7,6 +7,18 @@
    [game.test-framework :refer :all]
    [game.core.payment :refer [->c]]))
 
+(deftest asset-protection-hub
+  (do-game
+    (new-game {:corp {:hand ["Asset Protection Hub" "Barbican Gate"]}})
+    (play-from-hand state :corp "Asset Protection Hub" :council :inner)
+    (click-credit state :corp)
+    (play-from-hand state :corp "Barbican Gate" :council :middle)
+    (forge state :corp (pick-card state :corp :council :middle))
+    (is (changed? [(barrier (pick-card state :corp :council :middle)) 1]
+          (forge state :corp (pick-card state :corp :council :inner))
+          (core/fake-checkpoint state))
+        "Gained 1 barrier")))
+
 (deftest barbican-gate-discover-to-gain-1
   (doseq [[opt c q] [["Yes" 1 "gained 1"] ["No" 0 "gained 0"]]]
     (do-game

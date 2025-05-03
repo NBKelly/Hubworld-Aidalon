@@ -4,7 +4,7 @@
    [game.core.barrier :refer [update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [in-front-row? in-middle-row?
-                           seeker?
+                           agent? seeker? obstacle?
                            rezzed? installed?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.choose-one :refer [choose-one-helper cost-option]]
@@ -19,6 +19,14 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [same-card? to-keyword]]
    [jinteki.utils :refer [adjacent? other-side other-player-name count-heat]]))
+
+(defcard "Asset Protection Hub"
+  {:refund 1
+   :static-abilities [{:type :barrier-value
+                       :req (req (and (adjacent? card target)
+                                      (= (:side target) (:side card))
+                                      (or (agent? target) (obstacle? target))))
+                       :value 1}]})
 
 (defcard "Barbican Gate"
   {:confront-abilities [{:async true

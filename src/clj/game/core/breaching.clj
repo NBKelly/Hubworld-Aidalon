@@ -91,7 +91,10 @@
   (if (or (not (get-card state card)))
     (discover-cleanup state side eid card)
     (if (seq abs)
-      (let [ab (first abs)]
+      (let [ab (first abs)
+            ab (if (:optional ab)
+                 (assoc-in ab [:optional :waiting-prompt] true)
+                 (assoc ab :waiting-prompt true))]
         (wait-for
           (resolve-ability state (other-side side) ab card nil)
           (wait-for
