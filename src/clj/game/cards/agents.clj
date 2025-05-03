@@ -80,7 +80,8 @@
                                         (not (same-card? card target))
                                         (same-side? card target)
                                         (or (agent? target) (obstacle? target))))}]
-     :discover-abilities [{:optional
+     :discover-abilities [{:label "Gain 4 [Credits] if installed"
+                           :optional
                            {:prompt "Gain 4 [Credits]?"
                             :req (req (installed? card))
                             :waiting-prompt true

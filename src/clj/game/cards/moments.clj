@@ -7,6 +7,7 @@
                            rezzed?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.drawing :refer [draw]]
+   [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill]]
    [game.core.payment :refer [->c can-pay?]]
@@ -146,3 +147,23 @@
                :ability {:cost [(->c :exile-reaction)]
                          :msg "apply 1 [heat]"
                          :effect (req (gain state (other-side side) :heat 1))}}]})
+
+(defcard "Twice as Bad"
+  {:reaction [{:location :hand
+               :reaction :post-discover-ability
+               :prompt (msg "Repeat '" (:label (:ability context)) "'")
+               :type :moment
+               :req (req (and (= side (:defender context))
+                              (:ability context)
+                              (get-card state (:discovered-card context))
+                              (let [r (or (-> context :ability :req)
+                                          (-> context :ability :optional :req))]
+                                (or (not r)
+                                    (r state side eid card targets)))))
+               :ability {:async true
+                         :cost [(->c :exile-reaction)]
+                         :msg (msg "resolve '" (:label (:ability context)) "' again")
+                         :effect (req (resolve-ability state side eid
+                                                       (or (-> context :ability :optional :yes-ability)
+                                                           (-> context :ability))
+                                                       (:discovered-card context) nil))}}]})

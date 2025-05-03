@@ -141,7 +141,7 @@
         {:optional {:prompt (:prompt reaction)
                     :yes-ability abi}}
         abi)
-      (:card reaction) nil)))
+      (:card reaction) [(get-in @state [:reaction key])])))
 
 (defn- build-reaction-option
   "Builds a menu item for firing a reaction ability"
@@ -243,6 +243,15 @@
     {:prompt {engaged-side              (str "You are confronting " (:title card))
               (other-side engaged-side) (str "Your opponent is confronting " (:title card))}
      :waiting "your opponent to resolve pre-confrontation reactions"}))
+
+(defn post-discover-ability-reaction
+  [state side eid {:keys [defender discovered-card] :as args}]
+  (push-reaction! state :post-discover-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :post-discover-ability resolve-reaction-for-side
+    {:prompt {defender              (str "You have resolved a discover ability")
+              (other-side defender) (str "your opponent has resolved a discover ability")}
+     :waiting "your opponent to resolve post-discover-ability reactions"}))
 
 (defn encounter-ended-reaction
   [state side eid {:keys [delver encounter-card] :as args}]

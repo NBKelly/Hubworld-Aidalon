@@ -112,3 +112,19 @@
       (if (= opt "No")
         (is (= 2 (count (get-discard state :runner))))
         (click-prompt state :runner "No Action")))))
+
+(deftest twice-as-bad-test
+  (do-game
+    (new-game {:corp {:hand ["Likely a Trap" "Twice as Bad" "Barbican Gate"]}
+               :runner {:deck [(qty "Fun Run" 10)]}})
+    (play-from-hand state :corp "Barbican Gate" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-bypass-impl state :runner)
+    (click-prompt state :corp "Likely a Trap")
+    (click-prompt state :corp "Yes")
+    (click-prompt state :runner "Yes")
+    (is (changed? [(:credit (get-corp)) 1] ;; we spent 1 on twice as bad...
+          (click-prompts state :corp "Yes" "Twice as Bad" "Yes" "Yes"))
+        "Gained 2 for 2 encounters")))

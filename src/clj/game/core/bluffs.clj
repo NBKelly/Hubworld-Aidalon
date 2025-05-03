@@ -21,6 +21,9 @@
   ;; for now this is just for testing
   (not (get-in @state [:bluffs-disabled-for-testing])))
 
+;; TODO - also adjust the known-copies thing to take into account known/possible influence,
+;;   and rule out the cards which cannot possible be in the deck because of influence reasons
+
 (def bluffs
   {;; END BREACH SERVER:
    ;;   FUN RUN
@@ -49,6 +52,21 @@
                                 (= (:delver context) side)
                                 (can-pay? state side eid card nil [(->c :credit 1)])
                                 (< (known-copies state side "Infiltrate") 2)))))
+
+   ;; POST DISCOVER ABILITY
+   ;;   TWICE AS BAD
+   :post-discover-ability (req (and (seq (get-in @state [side :hand]))
+                                    (bluffs-enabled? state)
+                                    (or
+                                      (and ;; TWICE AS BAD
+                                        (and (= side (:defender context))
+                                             (< (known-copies state side "Twice as Bad") 2)
+                                             (:ability context)
+                                             (get-card state (:discovered-card context))
+                                             (let [r (or (-> context :ability :req)
+                                                         (-> context :ability :optional :req))]
+                                               (or (not r)
+                                                   (r state side eid card targets))))))))
 
    ;; ENCOUNTER ENDED
    ;;   LIKELY A TRAP

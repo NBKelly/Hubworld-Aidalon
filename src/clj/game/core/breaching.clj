@@ -13,7 +13,7 @@
    [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [complete-breach-reaction pre-discovery-reaction]]
+   [game.core.reactions :refer [complete-breach-reaction pre-discovery-reaction post-discover-ability-reaction]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.set-aside :refer [add-to-set-aside get-set-aside]]
    [game.core.update :refer [update!]]
@@ -92,8 +92,11 @@
     (discover-cleanup state side eid card)
     (if (seq abs)
       (let [ab (first abs)]
-        (wait-for (resolve-ability state (other-side side) ab card nil)
-                  (resolve-discover-abilities state side eid card (rest abs))))
+        (wait-for
+          (resolve-ability state (other-side side) ab card nil)
+          (wait-for
+            (post-discover-ability-reaction state side {:defender (other-side side) :discoverer side :ability ab :discovered-card card})
+            (resolve-discover-abilities state side eid card (rest abs)))))
       (discover-continue state side eid card))))
 
 (defn discover-card

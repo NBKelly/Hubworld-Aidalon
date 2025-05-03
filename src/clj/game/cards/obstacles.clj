@@ -31,7 +31,8 @@
                                                         :async true
                                                         :effect (req (gain-credits state me eid 2))}}])
                                           card nil)))}]
-   :discover-abilities [{:optional
+   :discover-abilities [{:label "Gain 1 [Credits] if installed"
+                         :optional
                          {:prompt "Gain 1 [Credits]?"
                           :waiting-prompt true
                           :yes-ability {:async true
@@ -53,6 +54,7 @@
                                                   (not (rezzed? target))))}
                          :effect (req (shift-a-card state side eid card target {:other-side? true :no-wait-prompt? true}))}]
    :discover-abilities [{:async true
+                         :label "Shift a card on your opponent's grid"
                          :prompt "Exhaust your Seeker: Shift a card on your opponent's grid"
                          :waiting-prompt true
                          :req (req (and (can-pay? state side eid card nil [(->c :exhaust-seeker)])
@@ -74,7 +76,8 @@
                                         :async true
                                         :msg (msg "archive a random card from " (other-player-name state side) "'s council")
                                         :effect (req (archive state (other-side side) eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}}]
-   :discover-abilities [{:optional
+   :discover-abilities [{:label "Archive this card to archive two cards at random from your opponent's Council"
+                         :optional
                          {:prompt "Archive this card to archive two cards at random from your opponents Council?"
                           :waiting-prompt true
                           :req (req (and (installed? card)
