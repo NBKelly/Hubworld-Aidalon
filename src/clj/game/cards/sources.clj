@@ -4,7 +4,7 @@
    [game.core.barrier :refer [get-barrier update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle?]]
-   [game.core.def-helpers :refer [collect defcard]]
+   [game.core.def-helpers :refer [collect defcard shift-self-abi]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits lose]]
@@ -15,7 +15,7 @@
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? same-side? enumerate-str]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
-   [jinteki.utils :refer [adjacent? count-heat other-player-name card-side]]))
+   [jinteki.utils :refer [adjacent? count-heat other-side other-player-name card-side]]))
 
 ;; (defcard "Capricious Informant"
 ;;   (collect
@@ -126,3 +126,13 @@
     {:static-abilities [{:type :presence-value
                          :value 1
                          :req (req (adjacent? card target))}]}))
+
+(defcard "Waterfront Soakhouse"
+  (collect
+    {:shards 1}
+    {:presence-bonus (req (if (< (count-heat state side) (count-heat state (other-side side)))
+                            4 0))}))
+
+(defcard "Wirecrawler"
+  {:refund 1
+   :abilities [(shift-self-abi [(->c :exhaust-self)])]})

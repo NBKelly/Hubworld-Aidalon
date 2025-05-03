@@ -120,3 +120,23 @@
     (is (changed? [(get-presence (pick-card state :corp :council :middle)) 1]
           (forge state :corp (pick-card state :corp :council :inner)))
         "+1 presence")))
+
+(deftest waterfront-soakhouse
+  (collects? {:name "Waterfront Soakhouse"
+              :credits 1})
+  (presence? {:name "Waterfront Soakhouse"
+              :presence-value 2})
+  (presence? {:name "Waterfront Soakhouse"
+              :presence-value 6
+              :opponent-heat 1}))
+
+(deftest wirecrawler-moves
+  (do-game
+    (new-game {:corp {:hand ["Wirecrawler"]}})
+    (play-from-hand state :corp "Wirecrawler" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (card-ability state :corp (pick-card state :corp :council :inner) 0)
+    (stage-select state :corp :council :middle)
+    (is (= "Wirecrawler"
+           (:title (pick-card state :corp :council :middle)))
+        "Shifted to middle")))

@@ -4,7 +4,7 @@
    [game.core.card :refer [in-hand? installed? agent? obstacle?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
-   [game.core.def-helpers :refer [defcard]]
+   [game.core.def-helpers :refer [defcard shift-self-abi]]
    [game.core.exhausting :refer [unexhaust]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.moving :refer [mill]]
@@ -91,11 +91,7 @@
 (defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect
     {:shards 1}
-    {:abilities [{:fake-cost [(->c :exhaust-self) (->c :credit 2)]
-                  :req (req (can-pay? state side eid card nil [(->c :exhaust-self) (->c :credit 2)]))
-                  :label "Shift this card"
-                  :async true
-                  :effect (req (shift-a-card state side eid card card {:cost [(->c :exhaust-self) (->c :credit 2)]}))}]}))
+    {:abilities [(shift-self-abi [(->c :exhaust-self) (->c :credit 2)])]}))
 
 (defcard "Sergeant Cole: Precinct 204, 3rd Level"
   (collect

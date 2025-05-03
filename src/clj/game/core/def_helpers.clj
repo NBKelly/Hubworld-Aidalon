@@ -18,6 +18,7 @@
     [game.core.props :refer [add-counter]]
     [game.core.revealing :refer [conceal-hand reveal-hand reveal-loud]]
     [game.core.say :refer [system-msg system-say]]
+    [game.core.shifting :refer [shift-a-card]]
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
     [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -303,6 +304,14 @@
   "Makes a card which collects n shards and n cards"
   [{:keys [shards cards]} cdef]
   (assoc cdef :abilities (concat [(collect-ability (or shards 0) (or cards 0))] (:abilities cdef))))
+
+(defn shift-self-abi
+  [cost]
+  {:fake-cost cost
+   :req (req (can-pay? state side eid card nil cost))
+   :label "Shift this card"
+   :async true
+   :effect (req (shift-a-card state side eid card card {:cost cost}))})
 
 (def card-defs-cache (atom {}))
 
