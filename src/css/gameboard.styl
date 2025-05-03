@@ -71,6 +71,10 @@
         outline: none
         display-flex()
         transition: transform 0.3s ease;
+        user-select: none;
+        -webkit-user-select: none; /* Safari */
+        -moz-user-select: none;    /* Firefox */
+        -ms-user-select: none;     /* Internet Explorer/Edge */
 
         .cardname
             float: left
@@ -354,6 +358,10 @@
         left: 0
         bottom: 100%
         margin: 6px -1px
+        user-select: none;
+        -webkit-user-select: none; /* Safari */
+        -moz-user-select: none;    /* Firefox */
+        -ms-user-select: none;     /* Internet Explorer/Edge */
 
     .abilities, .servers-menu, .menu, .runner-abilities, .corp-abilities, .encounter-info
         display: none
