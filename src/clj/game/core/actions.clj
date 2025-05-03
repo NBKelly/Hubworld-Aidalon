@@ -5,7 +5,7 @@
     [clojure.string :as string]
     [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
-    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment?]]
+    [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment? in-hand?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus rez-cost]]
     [game.core.delving :refer [reset-delve-continue!]]
@@ -18,6 +18,7 @@
     [game.core.moving :refer [move archive-or-exile trash]]
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
     [game.core.expend :refer [expend expendable?]]
+    [game.core.play-instants :refer [play-instant can-play-instant?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
     [game.core.prompts :refer [cancel-bluff cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift]]
     [game.core.props :refer [add-counter add-prop set-prop]]
@@ -176,6 +177,23 @@
                                   nil nil)
                                 (do-play-ability state side eid ctx))))}
           {:waiting-prompt true}))))
+
+(defn flash
+  "Called when the player flashes a card from hand."
+  ([state side context] (flash state side (make-eid state) context))
+  ([state side eid {:keys [card] :as context}]
+   (if-let [card (and (not (get-in @state [side :prompt :prompt-type])) (get-card state card))]
+     (let [ctx {:card card
+                :ability-idx nil
+                :targets [(assoc context :card card)]
+                :ability {:async true
+                          :req (req (let [target-card (:card context)]
+                                      (and (in-hand? target-card)
+                                           (moment? target-card)
+                                           (can-play-instant? state side eid target-card {:flash true}))))
+                          :effect (req (play-instant state side eid (:card context) {:flash true}))}}]
+       (do-play-ability state side eid ctx))
+     (effect-completed state side eid))))
 
 (defn play
   "Called when the player clicks a card from hand."

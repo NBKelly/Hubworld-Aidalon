@@ -1,16 +1,18 @@
 (ns game.cards.moments
   (:require
    [clojure.string :as str]
+   [game.core.board :refer [hubworld-all-installed]]
    [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
-                           in-hand?
-                           rezzed?]]
+                           seeker?
+                           in-hand? rezzed? installed?]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.drawing :refer [draw]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.shifting :refer [shift-a-card]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
@@ -147,6 +149,17 @@
                :ability {:cost [(->c :exile-reaction)]
                          :msg "apply 1 [heat]"
                          :effect (req (gain state (other-side side) :heat 1))}}]})
+
+(defcard "Threading Through"
+  {:flash {:prompt "Choose a card in your grid to shift"
+           :req (req (>= (count (hubworld-all-installed state side)) 2))
+           :waiting-prompt true
+           :choices {:req (req (and (installed? target)
+                                    (= (:side target) (:side card))
+                                    (not (seeker? target))))}
+           :cost [(->c :exile-reaction)]
+           :async true
+           :effect (req (shift-a-card state side eid card target))}})
 
 (defcard "Twice as Bad"
   {:reaction [{:location :hand

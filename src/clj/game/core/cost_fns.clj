@@ -12,19 +12,23 @@
   ([state side card] (play-cost state side card nil))
   ([state side {:keys [cost] :as card} {:keys [cost-bonus]}]
    (when-not (nil? cost)
-     (->> [cost
+     (let [cdef (card-def card)
+           op (or (:on-play cdef) (:flash cdef))]
+       (->> [cost
            (or cost-bonus 0)
-           (when-let [playfun (get-in (card-def card) [:on-play :play-cost-bonus])]
+           (when-let [playfun (get-in cdef [:play-cost-bonus])]
              (playfun state side (make-eid state) card nil))
            (sum-effects state side :play-cost card)]
           (reduce (fnil + 0 0))
-          (max 0)))))
+          (max 0))))))
 
 (defn play-additional-cost-bonus
   [state side card]
-  (merge-costs
-    (concat (get-in (card-def card) [:on-play :additional-cost])
-            (get-effects state side :play-additional-cost card))))
+  (let [cdef (card-def card)
+        op (or (:on-play cdef) (:flash cdef))]
+    (merge-costs
+      (concat (get-in op [:additional-cost])
+              (get-effects state side :play-additional-cost card)))))
 
 (defn rez-cost
   "Combines all rez effects and costs into a single number, not a cost vector"

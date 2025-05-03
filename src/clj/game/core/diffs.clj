@@ -55,6 +55,14 @@
     (assoc card :rushable true)
     card))
 
+(defn flashable [card state side]
+  (if (and (in-hand? card)
+           (moment? card)
+           (:flash (card-def card))
+           (can-play-instant? state side {:source card :source-type :play} card {:flash true}))
+    (assoc card :flashable true)
+    card))
+
 (defn ability-playable? [ability ability-idx state side card]
   (let [cost (card-ability-cost state side ability card)
         eid {:source card
@@ -142,6 +150,7 @@
    :faces
    :facedown
    :forgeable
+   :flashable
    :host
    :hosted
    :icon
@@ -199,6 +208,7 @@
         (card-abilities-summary state side)
         (forgeable state side)
         (rushable state side)
+        (flashable state side)
         (select-non-nil-keys card-keys))
     (-> (cond-> card
           (:host card) (-> (dissoc-in [:host :hosted])

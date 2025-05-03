@@ -10,12 +10,13 @@
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard]]
    [game.core.gaining :refer [gain-credits]]
+   [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [archive trash-cards]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [same-card? to-keyword]]
-   [jinteki.utils :refer [adjacent? other-side other-player-name]]))
+   [jinteki.utils :refer [adjacent? other-side other-player-name count-heat]]))
 
 (defcard "Barbican Gate"
   {:confront-abilities [{:async true
@@ -96,6 +97,18 @@
 (defcard "Transit Station"
   {:barrier-bonus  (req (if (in-middle-row? card) 2 0))
    :presence-bonus (req (if (and (installed? card) (in-front-row?  card)) 4 0))})
+
+(defcard "Tunnel Runners"
+  {:refund 1
+   :confront-abilities [{:optional
+                         {:prompt "Pay 1 [Credits] to lose 1 [heat]?"
+                          :waiting-prompt true
+                          :req (req (and (can-pay? state side eid card nil [(->c :credit 1)])
+                                         (pos? (count-heat state side))))
+                          :yes-ability {:cost [(->c :credit 1)]
+                                        :async true
+                                        :msg (msg "lose 1 heat ")
+                                        :effect (req (lose-heat state side eid 1))}}}]})
 
 (defcard "Waterway Ferry"
   {:reaction [{:reaction :forge

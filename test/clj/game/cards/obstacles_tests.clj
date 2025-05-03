@@ -51,4 +51,20 @@
 ;; TODO: Canal Network
 ;; TODO: Eye Enforcers
 ;; TODO: Transit Station
+
+(deftest tunnel-runners-test
+  (do-game
+    (new-game {:corp {:hand ["Tunnel Runners"]
+                      :heat 1}})
+    (play-from-hand state :corp "Tunnel Runners" :council :outer)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-confront-impl state :runner)
+    (is (changed? [(:credit (get-corp)) -1
+                   (get-heat state :corp) -1]
+          (click-prompt state :corp "Yes"))
+        "Lost 1 heat")))
+
 ;; TODO: Waterway Ferry

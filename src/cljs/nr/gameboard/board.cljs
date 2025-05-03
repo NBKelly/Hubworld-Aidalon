@@ -178,9 +178,8 @@
         (and (= side (keyword (lower-case (:side card))))
              (not (any-prompt-open? side))
              (contains? #{"hand"} (first zone))
-             (:instant card)
-             shift-key-held)
-        (send-command "instant" {:card (card-for-click card)})
+             (:flashable card))
+        (send-command "flash" {:card (card-for-click card)})
 
         ;; player clicking on their own playable card
         (and (or (and (= side :runner) (= "Runner" (:side card)))
@@ -636,6 +635,7 @@
                                                 (same-card? card (:button @app-state)) "hovered"
                                                 (same-card? card (-> @game-state :encounters :ice)) "encountered"
                                                 (and (not (any-prompt-open? side)) (playable? card)) "playable"
+                                                (and (not (any-prompt-open? side)) (:flashable card)) "playable"
                                                 ghost "ghost"
                                                 new "new")
                                           (when exhausted " exhausted"))

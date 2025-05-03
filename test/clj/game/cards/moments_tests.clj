@@ -126,5 +126,5 @@
     (click-prompt state :corp "Yes")
     (click-prompt state :runner "Yes")
     (is (changed? [(:credit (get-corp)) 1] ;; we spent 1 on twice as bad...
-          (click-prompts state :corp "Yes" "Twice as Bad" "Yes" "Yes"))
+          (click-prompts state :corp "Yes" "Twice as Bad" "Yes"))
         "Gained 2 for 2 encounters")))
