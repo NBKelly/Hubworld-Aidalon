@@ -328,6 +328,7 @@
                      (flatten discard))
           :identity (when-let [id (or (:id corp) (:identity corp))]
                       (utils/server-card id))
+          :heat (:heat corp)
           :credits (:credits corp)}
    :runner {:deck (or (transform "Runner" (conj (:deck runner)
                                                 (:hand runner)
@@ -342,6 +343,7 @@
                        (flatten discard))
             :identity (when-let [id (or (:id runner) (:identity runner))]
                         (utils/server-card id))
+            :heat (:heat runner)
             :credits (:credits runner)}
    :mulligan (:mulligan options)
    :start-as (:start-as options)
@@ -372,6 +374,7 @@
   ([] (new-game nil))
   ([players]
    (let [{:keys [corp runner mulligan start-as dont-start-turn dont-start-game format]} (make-decks players)
+
          state (core/init-game
                  {:gameid 1
                   :format format
@@ -406,6 +409,7 @@
            (swap! state assoc-in [side :credit] (:credits side-map))))
        (core/clear-win state side))
      (swap! state assoc :active-player :corp)
+     (swap! state assoc :bluffs-disabled-for-testing true)
      ;; These are side independent so they happen ouside the loop
      (core/fake-checkpoint state)
      state)))
@@ -816,13 +820,15 @@
   (bad-usage "changed?"))
 
 (defn presence?-impl
-  [{:keys [name server slot presence-value prompts forged?] :or {server :council slot :inner forged? true} :as args}]
+  [{:keys [name server slot presence-value prompts forged? opponent-heat player-heat]
+    :or {server :council slot :inner forged? true opponent-heat 0 player-heat 0} :as args}]
   (is' (and name presence-value) (str "Presence? usage: {:name name, :presence-value [int], optional: server, slot, forged?}"))
-  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)]}})]
+  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)] :heat player-heat}
+                         :runner {:heat opponent-heat}})]
     (play-from-hand state :corp name server slot)
     (when forged? (forge state :corp (pick-card state :corp server slot)))
     (is' (= (presence (pick-card state :corp server slot)) presence-value)
-         (str name "has correct presence value of " presence-value))
+         (str name " has correct presence value of " presence-value))
     state))
 
 (defmacro presence?
@@ -833,7 +839,8 @@
 (defn collects?-impl
   [{:keys [name id server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]
   (is' (or name id) (str "Collects? usage: {:name name, optional: server, slot, credits, cards}"))
-  (let [state (new-game {:corp {:hand [name] :id id :deck [(qty "Fun Run" 10)]}})]
+  (let [state (new-game {:corp {:hand [name] :id id :deck [(qty "Fun Run" 10)] :credits 10}
+                         :runner {:hand ["Fun Run"]}})]
     (when name
       (play-from-hand state :corp name server slot)
       (forge state :corp (pick-card state :corp server slot)))

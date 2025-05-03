@@ -17,13 +17,14 @@
       (play-from-hand state :corp "Auntie Ruth: Proprietor of the Hidden Tea House" :council :inner)
       (forge state :corp (pick-card state :corp :council :inner))
       (is (changed? [(count (get-hand state s)) 3]
+            (click-prompt state :corp "Auntie Ruth: Proprietor of the Hidden Tea House")
             (click-card state :corp (get-id state s)))
           (str "side: " s " drew 3")))))
 
 (deftest auntie-ruth-collects
   (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
               :credits 1
-              :prompts ["Goldie Xin: Junk Collector"]}))
+              :prompts ["Auntie Ruth: Proprietor of the Hidden Tea House" "Goldie Xin: Junk Collector"]}))
 
 (deftest auntie-ruth-cipher-lose-one-action
   (do-game
@@ -36,6 +37,10 @@
           (click-prompt state :corp "Spend Lose [Click] and pay 2 [Credits]: Secure"))
         "Secured auntie ruth")
     (is (= 1 (count (get-scored state :corp))) "Ruth is in the score area")))
+
+;; TODO: Big Varna Gorvis: Friends in Every District
+
+;; TODO: Boss Bresloo: The Deal-Maker
 
 (deftest doctor-twilight-dream-surgeon-gain-3
   (do-game
@@ -77,6 +82,19 @@
         "Secured gargala larga")
     (is (= 1 (count (get-scored state :corp))) "Gargala Larga is in the score area")))
 
+(deftest guildmaster-yanos-affable-gaffer
+  (collects? {:name "Guildmaster Yanos: Affable Gaffer"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Guildmaster Yanos: Affable Gaffer" "Shardwinner"]}})
+    (play-from-hand state :corp "Guildmaster Yanos: Affable Gaffer" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Shardwinner" :council :outer)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-corp)) -2]
+          (forge state :corp (pick-card state :corp :council :outer)))
+        "1c discount")))
+
 (deftest kryzar-free-stage
   (do-game
     (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
@@ -86,7 +104,7 @@
     (forge state :corp (pick-card state :corp :council :inner))
     (delve-server state :corp :council)
     (delve-continue-to-approach state :corp)
-    (click-card state :corp "Eye Enforcers")
+    (click-prompts state :corp "Kryzar the Rat: Navigator of the Cortex Maze" "Yes" "Eye Enforcers")
     (stage-select state :corp :council :outer)
     (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted kryzar")
     (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
@@ -94,6 +112,33 @@
 (deftest kryzar-the-rat-collects
   (collects? {:name "Kryzar the Rat: Navigator of the Cortex Maze"
               :credits 1}))
+
+(deftest prime-treasurer-geel-munificent-financier
+  (collects? {:name "Prime Treasurer Geel: Munificent Financier"
+              :credits 1})
+  ;; +1 barrier aura
+  (do-game
+    (new-game {:corp {:hand ["Prime Treasurer Geel: Munificent Financier" "Barbican Gate"]}})
+    (play-from-hand state :corp "Barbican Gate" :council :outer)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Prime Treasurer Geel: Munificent Financier" :council :middle)
+    (is (changed? [(barrier state :corp :council :outer) 1
+                   (barrier state :corp :council :middle) 0]
+          (forge state :corp (pick-card state :corp :council :middle))
+          (forge state :corp (pick-card state :corp :council :outer)))
+        "Only buffs other cards"))
+  ;; discover: +4 creds (while installed)
+  (doseq [[opt c q] [["Yes" 4 "gained 4"] ["No" 0 "gained 0"]]]
+    (do-game
+      (new-game {:runner {:hand ["Prime Treasurer Geel: Munificent Financier"]}
+                 :corp {:hand ["Capricious Informant"]}})
+      (play-from-hand state :corp "Capricious Informant" :council :inner)
+      (play-from-hand state :runner "Prime Treasurer Geel: Munificent Financier" :council :outer)
+      (delve-server state :corp :council)
+      (delve-discover-impl state :corp)
+      (is (changed? [(:credit (get-runner)) c]
+            (click-prompt state :runner opt))
+          q))))
 
 (deftest rory-and-bug-moves
   (do-game
@@ -135,5 +180,35 @@
     (forge state :corp (pick-card state :corp :archives :inner))
     (click-credit state :runner)
     (delve-empty-server state :corp :archives {:give-heat? true})
-    (click-prompt state :corp "Yes")
+    (click-prompts state :corp "Sergeant Cole: Precinct 204, 3rd Level" "Yes")
     (is (= 2 (count (get-discard state :runner))) "Milled 2")))
+
+(deftest spider-rebbek-dragons-hoard-pitboss
+  (collects? {:name "“Spider” Rebbek: Dragon’s Hoard Pitboss"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["“Spider” Rebbek: Dragon’s Hoard Pitboss"]}
+               :runner {:hand ["Capricious Informant"]}})
+    (play-from-hand state :corp "“Spider” Rebbek: Dragon’s Hoard Pitboss" :council :outer)
+    (play-from-hand state :runner "Capricious Informant" :council :outer)
+    (forge state :runner (pick-card state :runner :council :outer))
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-discover-impl state :runner)
+    (click-card state :corp "Capricious Informant")
+    (is (:exhausted (pick-card state :runner :council :outer)) "Exhausted it")))
+
+(deftest ulin-marr-eccentric-architect
+  (collects? {:name "Ulin Marr: Eccentric Architect"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Ulin Marr: Eccentric Architect" "Capricious Informant" "Shardwinner" "Fun Run"]}})
+    (play-from-hand state :corp "Ulin Marr: Eccentric Architect" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (card-ability state :corp (pick-card state :corp :council :inner) 1)
+    (click-card state :corp "Shardwinner")
+    (stage-select state :corp :council :outer)
+    (click-card state :corp "Capricious Informant")
+    (stage-select state :corp :council :middle)
+    (is (no-prompt? state :corp))))

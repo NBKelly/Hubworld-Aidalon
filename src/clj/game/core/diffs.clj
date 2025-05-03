@@ -48,6 +48,21 @@
     (assoc card :forgeable true)
     card))
 
+(defn rushable [card state side]
+  (if (and (in-hand? card)
+           (:rush (card-def card))
+           (can-pay? state side (make-eid state) card nil (or (get-rez-cost state side card nil) 0)))
+    (assoc card :rushable true)
+    card))
+
+(defn flashable [card state side]
+  (if (and (in-hand? card)
+           (moment? card)
+           (:flash (card-def card))
+           (can-play-instant? state side {:source card :source-type :play} card {:flash true}))
+    (assoc card :flashable true)
+    card))
+
 (defn ability-playable? [ability ability-idx state side card]
   (let [cost (card-ability-cost state side ability card)
         eid {:source card
@@ -135,6 +150,7 @@
    :faces
    :facedown
    :forgeable
+   :flashable
    :host
    :hosted
    :icon
@@ -147,6 +163,7 @@
    :printed-title
    :rezzed
    :runner-abilities
+   :rushable
    :seen
    :selected
    :side
@@ -190,6 +207,8 @@
         (hubworld-playable? state side)
         (card-abilities-summary state side)
         (forgeable state side)
+        (rushable state side)
+        (flashable state side)
         (select-non-nil-keys card-keys))
     (-> (cond-> card
           (:host card) (-> (dissoc-in [:host :hosted])

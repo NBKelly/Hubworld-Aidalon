@@ -17,19 +17,16 @@
 (defcard "Abnus Orzo: Tireless Investigator"
   (collect
     {:shards 1}
-    {:events [{:event :end-breach-server
-               :skippable true
-               :interactive (req true)
-               :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self) (->c :trash-from-deck 1)])
-                                         (= (:breach-server context) :archives)
-                                         (seq (get-in @state [(other-side side) :hand]))
-                                         (= (:delver context) side)))
-                          :prompt (msg "Archive 1 card at random from " (other-player-name state side) "'s Council?")
-                          :waiting-prompt true
-                          :yes-ability {:cost [(->c :exhaust-self) (->c :trash-from-deck 1)]
-                                        :msg (msg "Archive 1 card at random from " (other-player-name state side) "'s Council")
-                                        :async true
-                                        :effect (req (archive state side eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}}]}))
+    {:reaction [{:reaction :complete-breach
+                 :type :ability
+                 :req (req (and (= (:breach-server context) :archives)
+                                (seq (get-in @state [(other-side side) :hand]))
+                                (= (:delver context) side)))
+                 :prompt "Archive 1 card at random from your oppponent's Council"
+                 :ability {:cost [(->c :exhaust-self) (->c :trash-from-deck 1)]
+                           :msg (msg "Archive 1 card at random from " (other-player-name state side) "'s Council")
+                           :async true
+                           :effect (req (archive state side eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}]}))
 
 (defcard "Chairman Bo Pax: Heir to Pax Industries"
   (collect
@@ -51,21 +48,18 @@
                   :msg "Gain 3 [Credits]"
                   :async true
                   :action true
-                  :req (req (< (get-in @state [side :heat :total])
-                               (get-in @state [(other-side side) :heat :total])))
+                  :req (req (< (count-heat state side) (count-heat state (other-side side))))
                   :effect (req (gain-credits state side eid 3))}]}))
 
 (defcard "Jayko & Ace: Boisterous Troublemakers"
   (collect
     {:cards 1}
-    {:events [{:event :approach-district
-               :interactive (req true)
-               :optional {:req (req (and (can-pay? state side eid card nil [(->c :exhaust-self) (->c :gain-heat 1)])
-                                         (= side (:delver context))))
-                          :prompt "Gain 2 [Credits] and draw 1 card"
-                          :waiting-prompt true
-                          :yes-ability {:async true
-                                        :cost [(->c :exhaust-self) (->c :gain-heat 1)]
-                                        :msg "gain 2 [Credits] and draw 1 card"
-                                        :effect (req (wait-for (gain-credits state side 2 {:suppress-checkpoint true})
-                                                               (draw state side eid 1)))}}}]}))
+    {:reaction [{:reaction :approach-district
+                 :type :ability
+                 :prompt "Take 1 [heat] to gain 2 [Credits] and draw 1 card?"
+                 :req (req (= side (:delver context)))
+                 :ability {:cost [(->c :exhaust-self) (->c :gain-heat 1)]
+                           :async true
+                           :msg "gain 2 [Credits] and draw 1 card"
+                           :effect (req (wait-for (gain-credits state side 2 {:suppress-checkpoint true})
+                                                               (draw state side eid 1)))}}]}))

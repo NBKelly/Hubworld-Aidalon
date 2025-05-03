@@ -3,6 +3,7 @@
             [nr.appstate :refer [app-state]]
             [nr.gameboard.card-preview :refer [zoom-channel]]
             [nr.gameboard.log :refer [log-pane]]
+            [nr.gameboard.help :refer [help-pane]]
             [nr.gameboard.replay :refer [notes-pane notes-shared-pane]]
             [nr.gameboard.state :refer [game-state]]
             [nr.gameboard.settings :refer [settings-pane]]
@@ -25,7 +26,11 @@
 
    :settings
    {:hiccup [settings-pane]
-    :label (tr [:log.settings "Settings"])}})
+    :label (tr [:log.settings "Settings"])}
+
+   :help
+   {:hiccup [help-pane]
+    :label (tr [:log.help "Help"])}})
 
 (defn- resize-card-zoom
   "Resizes the card zoom based on the values in the app-state"

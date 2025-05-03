@@ -19,7 +19,7 @@
     (delve-empty-server state :corp :archives {:give-heat? true})
     (is (changed? [(count (get-discard state :corp)) 1
                    (count (get-discard state :runner)) 1]
-          (click-prompt state :corp "Yes"))
+          (click-prompts state :corp "Abnus Orzo: Tireless Investigator" "Yes"))
         "Milled and shredded a card")))
 
 (deftest chairman-bo-pax
@@ -63,5 +63,5 @@
     (is (changed? [(:credit (get-corp)) 2
                    (get-heat state :corp) 1
                    (count (:hand (get-corp))) 1]
-          (click-prompt state :corp "Yes")
+          (click-prompts state :corp "Jayko & Ace: Boisterous Troublemakers" "Yes")
         "Gained 2, 1 heat, 1 card"))))

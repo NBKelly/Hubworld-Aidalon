@@ -1,6 +1,6 @@
 (ns game.core.delving
   (:require
-   [game.core.breaching :refer [breach-server discover-card]]
+   [game.core.breaching :refer [breach-server discover-card maybe-refund]]
    [game.core.card :refer [agent? moment?
                            exhausted? rezzed? in-discard?
                            get-card]]
@@ -15,6 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
+   [game.core.reactions :refer [approach-district-reaction approach-slot-reaction encounter-ended-reaction pre-confrontation-reaction ]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -72,7 +73,7 @@
                                                                   (str cost-msg " to exile ")
                                                                   "exiles ")
                                                                 (:title confronted-card))))
-                                             (exile state side eid confronted-card))}}
+                                             (maybe-refund state side eid confronted-card exile))}}
                      {:option "Secure"
                       :req (req (and should-secure? can-interact?))
                       :cost (when (seq interact-cost?) interact-cost?)
@@ -83,7 +84,7 @@
                                                                   (str cost-msg " to secure ")
                                                                   "secures ")
                                                                 (:title confronted-card))))
-                                             (secure-agent state side eid confronted-card))}}
+                                             (maybe-refund state side eid confronted-card secure-agent))}}
                      {:option "No Action"}])
                   nil nil)
                 (confrontation-cleanup state side eid confronted-card)))))
@@ -123,11 +124,11 @@
   [state side eid card]
   (if-not (and (get-card state card) (rezzed? card))
     (confrontation-cleanup state side eid card)
-    (do (queue-event state :confrontation {:card card
-                                           :engaged-side side})
-        (wait-for (checkpoint state side)
-                  (system-msg state side (str "confronts " (:title card)))
-                  (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))))))
+    (wait-for
+      (pre-confrontation-reaction state side {:card card
+                                              :engaged-side side})
+      (system-msg state side (str "confronts " (:title card)))
+      (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card))))))
 
 ;; UTILS FOR DELVES
 
@@ -172,6 +173,9 @@
     (do ;; first, clean up those two lingering eids
       (when-let [e (-> @state :delve :delve-id)] (effect-completed state side e))
       (when-let [e (-> @state :delve :eid)] (effect-completed state side e))
+      ;; unregister lingering effects
+      (unregister-lingering-effects state side :end-of-delve)
+      (unregister-lingering-effects state (other-side side) :end-of-delve)
       ;; next, construct the delve ended event
       (let [ev (select-keys (:delve @state) [:server :position :delver :defender :successful])]
         (swap! state dissoc :delve)
@@ -217,22 +221,25 @@
   [state side eid]
   (when-not (delve-ended? state side eid)
     (set-phase state :approach-slot)
-    (queue-event state :approach-slot (assoc (delve-event state) :approached-card (card-for-current-slot state)))
-    (checkpoint state side eid)))
+    (wait-for (approach-slot-reaction state side (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+              (queue-event state :approach-slot (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+              (checkpoint state side eid))))
 
 ;; APPROACH DISTRICT -> PAW
 (defn delve-approach-district
   [state side eid]
   (when-not (delve-ended? state side eid)
     (set-phase state :approach-district)
-    (queue-event state :approach-district (delve-event state))
-    (checkpoint state side eid)))
+    (wait-for
+      (approach-district-reaction state side (delve-event state))
+      (checkpoint state side eid))))
 
 (defn delve-complete-encounter
   [state side eid]
   (swap! state dissoc-in [:delve :encounter-select])
   (wait-for
-    (trigger-event-simult state side :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+    ;;(trigger-event-simult state side :encounter-ended nil (assoc (delve-event state) :approached-card (card-for-current-slot state)))
+    (encounter-ended-reaction state side (assoc (delve-event state) :encounter-card (card-for-current-slot state)))
     (wait-for
       (checkpoint state side)
       (when-not (delve-ended? state side eid)
@@ -294,7 +301,8 @@
     (let [approached-card (card-for-current-slot state)]
       (if (and approached-card (not (rezzed? approached-card)))
         (do (swap! state assoc-in [:delve :encounter-select] :discover)
-            (system-msg state side (str "discovers " (:title approached-card)))
+            ;; this printout is on discover itself :)
+            ;;(system-msg state side (str "discovers " (:title approached-card)))
             (wait-for (discover-card state side approached-card)
                       (when-not (delve-ended? state side eid)
                         (delve-complete-encounter state side eid))))

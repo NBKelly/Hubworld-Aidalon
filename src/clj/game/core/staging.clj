@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.card :refer [get-card rezzed?]]
-   [game.core.eid :refer [effect-completed make-eid]]
+   [game.core.eid :refer [effect-completed make-eid complete-with-result]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.moving :refer [archive-or-exile move]]
    [game.core.prompts :refer [show-stage-prompt]]
@@ -12,13 +12,16 @@
 
 (defn stage-continue
   "the slot is empty, we can install now"
-  ([state side eid card server slot args]
+  ([state side eid card server slot {:keys [rushed] :as args}]
    ;; ->> paths server slot
    (let [moved-card (move state side
-                          (assoc card :new true :installed :this-turn)
+                          (assoc card
+                                 :new true
+                                 :installed :this-turn
+                                 :rezzed rushed)
                           [:paths server slot])
          moved-card (get-card state moved-card)]
-     (effect-completed state side eid))))
+     (complete-with-result state side eid {:staged-card moved-card}))))
 
 (defn stage
   ([state side eid card server slot] (stage state side eid card server slot nil))

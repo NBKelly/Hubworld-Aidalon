@@ -558,7 +558,6 @@
 (defn swap-installed
   "Swaps two installed corp cards"
   [state side a b]
-  (println "swapping?")
   (let [pred? (every-pred installed?)]
     (when (and (pred? a)
                (pred? b)

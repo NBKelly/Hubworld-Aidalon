@@ -1,10 +1,12 @@
 (ns game.core.costs
   (:require
    [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
+   [game.core.barrier :refer [get-barrier]]
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
                            rezzed? in-discard? installed?
                            seeker?
-                           in-archives-path?]]
+                           in-front-row?
+                           in-archives-path? in-council-path?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
    [game.core.eid :refer [complete-with-result make-eid]]
@@ -577,6 +579,75 @@
                                :paid/targets targets})))}
     card nil))
 
+(defmethod value :exhaust-forged-with-4-barrier [cost] (:cost/amount cost))
+(defmethod label :exhaust-forged-with-4-barrier [cost] (str "exhaust " (quantify (value cost) "forged card")))
+(defmethod payable? :exhaust-forged-with-4-barrier
+  [cost state side eid card]
+  (<= 0 (- (count (filter #(and (rezzed? %)
+                                (not (:exhausted %))
+                                (>= (get-barrier %) 4))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-forged-with-4-barrier
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "forged card") " to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (rezzed? %)
+                           (not= "Seeker" (:type %))
+                           (>= (get-barrier %) 4)
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " forged card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust-forged-with-4-barrier
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :exhaust-council [cost] (:cost/amount cost))
+(defmethod label :exhaust-council [cost] (str "exhaust " (quantify (value cost) "card") " protecting your Council"))
+(defmethod payable? :exhaust-council
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) in-council-path?)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-council
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your Council path to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (in-council-path? %)
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust-council
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
 ;; exhaust any number of cards protected archives - this may target the source card (itself)
 (defmethod value :exhaust-archives [cost] (:cost/amount cost))
 (defmethod label :exhaust-archives [cost] (str "exhaust " (quantify (value cost) "card") " protecting Archives"))
@@ -607,6 +678,40 @@
                               {:paid/msg (str "exhausts " (quantify (count async-result) " card")
                                               " (" (enumerate-str (map :title targets)) ")")
                                :paid/type :exhaust-archives
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+;; exhaust any number of cards protecting your front row - this may target the source card (itself)
+(defmethod value :exhaust-front-row [cost] (:cost/amount cost))
+(defmethod label :exhaust-front-row [cost] (str "exhaust " (quantify (value cost) "card") " protecting your front row"))
+(defmethod payable? :exhaust-front-row
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) in-front-row?)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-front-row
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your front row to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (in-front-row? %)
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust-front-row
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))

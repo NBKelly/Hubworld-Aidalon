@@ -44,7 +44,7 @@
 (defn command-bug-report [state side]
   (swap! state update :bug-reported (fnil inc -1))
   (let [title "[EDITME] Please give a short description of your bug here"
-        body (str "Link to bug replay: https://jinteki.net/bug-report/" (:gameid @state)
+        body (str "Link to bug replay: https://hubteki.com/bug-report/" (:gameid @state)
                   "?b=" (:bug-reported @state) "\n\n"
                   "Description:\n\n"
                   "[EDITME] Please describe the steps to reproduce your bug and the resulting effect here.")]
@@ -52,7 +52,7 @@
                        "Thanks for helping us make the game better! The replay was saved. "
                        "Please report a bug following "
                        [:a {:target "_blank"
-                            :href (str "https://github.com/mtgred/netrunner/issues/new?title="
+                            :href (str "https://github.com/nbkelly/hubworld-aidalon/issues/new?title="
                                        (string/replace title #" " "%20")
                                        "&body="
                                        (string/replace (string/replace body #" " "%20") #"\n" "%0A"))}

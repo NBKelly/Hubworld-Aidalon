@@ -13,6 +13,7 @@
     [game.core.hand-size :refer [hand-size]]
     [game.core.ice :refer [update-all-ice update-breaker-strength]]
     [game.core.moving :refer [move]]
+    [game.core.reactions :refer [refresh-actions-reaction round-begins-reaction]]
     [game.core.say :refer [system-msg unsafe-say]]
     [game.core.set-aside :refer [clean-set-aside!]]
     [game.core.toasts :refer [toast]]
@@ -75,7 +76,6 @@
            :active-player (-> @state :turn :first-player)
            :per-turn nil
            :end-turn false)
-    (swap! state update-in [:turn :first-player] other-side)
 
     (doseq [s (players state)]
       (swap! state assoc-in [s :register] nil))
@@ -92,8 +92,12 @@
           (doseq [s (players state)]
             (let [clicks-to-gain (get-in @state [s :identity :action-limit] 3)]
               (gain state s :click clicks-to-gain))))
-        (hubworld-start-turn-message state)
-        (effect-completed state (:active-player @state) eid)))))
+        (wait-for
+          (refresh-actions-reaction state nil)
+          (wait-for
+            (round-begins-reaction state nil)
+            (hubworld-start-turn-message state)
+            (effect-completed state (:active-player @state) eid)))))))
 
 (defn- clamp-credits
   [state side eid]
@@ -182,6 +186,7 @@
     (do
       (system-msg state side "has no further actions")
       (swap! state assoc-in [:turn :ending :initiated] true)
+      (swap! state update-in [:turn :first-player] other-side)
       (hubworld-refresh-phase state side eid))
     ;; we're the first player to hit it
     (and (not (get-in @state [:turn :ending side]))

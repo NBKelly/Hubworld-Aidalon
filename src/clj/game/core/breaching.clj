@@ -9,9 +9,11 @@
    [game.core.engine :refer [checkpoint register-default-events register-pending-event resolve-ability trigger-event trigger-event-simult trigger-event-sync unregister-floating-events queue-event]]
    [game.core.effects :refer [register-static-abilities sum-effects register-lingering-effect unregister-lingering-effects gather-effects]]
    [game.core.flags :refer [card-flag?]]
+   [game.core.gaining :refer [gain-credits]]
    [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
+   [game.core.reactions :refer [complete-breach-reaction pre-discovery-reaction post-discover-ability-reaction]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.set-aside :refer [add-to-set-aside get-set-aside]]
    [game.core.update :refer [update!]]
@@ -31,6 +33,15 @@
   (when-let [c (get-card state discovered-card)]
     (update! state side (dissoc c :seen)))
   (checkpoint state side eid {:durations [:end-of-discovery]}))
+
+(defn maybe-refund
+  "Either does does the function, or refunds the opposing player first"
+  [state side eid target-card f]
+  (if-let [refund (:refund (card-def target-card))]
+    (do (system-msg state (other-side side) (str "gains " refund " [Credits]"))
+        (wait-for (gain-credits state (other-side side) refund {:suppress-checkpoint true})
+                  (f state side eid target-card)))
+    (f state side eid target-card)))
 
 (defn discover-continue
   [state side eid discovered-card]
@@ -56,7 +67,8 @@
                                                           (str cost-msg " to exile ")
                                                           "exiles ")
                                                         (:title discovered-card))))
-                                     (exile state side eid discovered-card))}}
+                                     ;; if refund
+                                     (maybe-refund state side eid discovered-card exile))}}
              {:option "Secure"
               :req (req (and should-secure? can-interact?))
               :cost (when (seq interact-cost?) interact-cost?)
@@ -67,7 +79,7 @@
                                                           (str cost-msg " to secure ")
                                                           "secures ")
                                                         (:title discovered-card))))
-                                     (secure-agent state side eid discovered-card))}}
+                                     (maybe-refund state side eid discovered-card secure-agent))}}
              {:option "No Action"}])
           nil nil)
         (discover-cleanup state side eid discovered-card)))))
@@ -79,9 +91,15 @@
   (if (or (not (get-card state card)))
     (discover-cleanup state side eid card)
     (if (seq abs)
-      (let [ab (first abs)]
-        (wait-for (resolve-ability state (other-side side) ab card nil)
-                  (resolve-discover-abilities state side eid card (rest abs))))
+      (let [ab (first abs)
+            ab (if (:optional ab)
+                 (assoc-in ab [:optional :waiting-prompt] true)
+                 (assoc ab :waiting-prompt true))]
+        (wait-for
+          (resolve-ability state (other-side side) ab card nil)
+          (wait-for
+            (post-discover-ability-reaction state side {:defender (other-side side) :discoverer side :ability ab :discovered-card card})
+            (resolve-discover-abilities state side eid card (rest abs)))))
       (discover-continue state side eid card))))
 
 (defn discover-card
@@ -161,12 +179,14 @@
 (defn resolve-access-commons
   "randomly access from commons"
   [state side eid remaining]
-  (if (and (pos? remaining) (seq (get-in @state [(other-side side) :deck])))
-    (let [next-access (first (get-in @state [(other-side side) :deck]))]
-      (resolve-breach-discovery-for-card state side eid next-access remaining resolve-access-commons))
-    (do (doseq [c (reverse (get-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid])))]
-          (move state (other-side side) c :deck {:front true}))
-        (effect-completed state side eid))))
+  (let [front? (not (get-in @state [:breach :discover-from-bottom-of-commons]))
+        sel (if front? first last)]
+    (if (and (pos? remaining) (seq (get-in @state [(other-side side) :deck])))
+      (let [next-access (sel (get-in @state [(other-side side) :deck]))]
+        (resolve-breach-discovery-for-card state side eid next-access remaining resolve-access-commons))
+      (do (doseq [c (reverse (get-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid])))]
+            (move state (other-side side) c :deck {:front front?}))
+          (effect-completed state side eid)))))
 
 (defn resolve-access-archives
   "randomly access from archives"
@@ -194,16 +214,23 @@
   ([state side eid server] (breach-server state side eid server nil))
   ([state side eid server args]
    (system-msg state side (str "breaches " (other-player-name state side) "'s " (str/capitalize (name server)) ", utilizing  " (count-heat state (other-side side)) " [heat]"))
-   (wait-for (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
-             (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)})
-             (let [args (clean-access-args args)
-                   access-amount (num-cards-to-access state side server nil)]
-               (when (:delve @state)
-                 (swap! state assoc-in [:delve :did-access] true))
-               (wait-for (resolve-access-server state side server access-amount)
-                         (swap! state dissoc-in [:breach :set-aside-eid])
-                         (wait-for (trigger-event-simult state side :end-breach-server nil (:breach @state))
-                                   (swap! state dissoc :breach)
-                                   (unregister-lingering-effects state side :end-of-breach)
-                                   (unregister-floating-events state side :end-of-breach)
-                                   (effect-completed state side eid)))))))
+   (wait-for
+     (trigger-event-simult state side :breach-server nil {:breach-server server :delver side :defender (other-side side)})
+     (wait-for
+       (pre-discovery-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
+       (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)
+                                   :discover-from-bottom-of-commons (:discover-from-bottom-of-commons async-result)})
+       (let [args (clean-access-args args)
+             access-amount (num-cards-to-access state side server nil)]
+         (when (:delve @state)
+           (swap! state assoc-in [:delve :did-access] true))
+         (wait-for (resolve-access-server state side server access-amount)
+                   (swap! state dissoc-in [:breach :set-aside-eid])
+                   (wait-for
+                     (trigger-event-simult state side :end-breach-server nil (:breach @state))
+                     (wait-for
+                       (complete-breach-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
+                       (swap! state dissoc :breach)
+                       (unregister-lingering-effects state side :end-of-breach)
+                       (unregister-floating-events state side :end-of-breach)
+                       (effect-completed state side eid)))))))))

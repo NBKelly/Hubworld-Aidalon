@@ -32,18 +32,20 @@
 ;;; Playing cards.
 (defn- complete-play-instant
   "Completes the play of the event / operation that the player can play for"
-  [state side eid {:keys [title] :as card} payment-str ignore-cost]
+  [state side eid {:keys [title] :as card} payment-str ignore-cost flash]
   (let [play-msg (if ignore-cost
                    "play "
                    (build-spend-msg payment-str "play"))]
-    (system-msg state side (str play-msg title (when ignore-cost " at no cost")))
+    (system-msg state side (str play-msg title
+                                (when flash " at instant speed")
+                                (when ignore-cost " at no cost")))
     (implementation-msg state card)
     (if-let [sfx (:play-sound (card-def card))]
       (play-sfx state side sfx)
       (play-sfx state side "play-instant"))
     ;; Select the "on the table" version of the card
     (let [card (current-handler state side card)
-          cdef (-> (:on-play (card-def card))
+          cdef (-> ((if flash :flash :on-play) (card-def card))
                    (dissoc :cost :additional-cost)
                    (dissoc-req))
           card (card-init state side card {:resolve-effect true :init-data true})
@@ -99,9 +101,10 @@
 
 (defn can-play-instant?
   ([state side eid card] (can-play-instant? state side eid card nil))
-  ([state side eid card {:keys [targets silent] :as args}]
+  ([state side eid card {:keys [targets silent flash] :as args}]
    (let [eid (assoc eid :source-type :play)
-         on-play (or (:on-play (card-def card)) {})
+         on-play (or (and flash (:flash (card-def card)))
+                     (:on-play (card-def card)) {})
          costs (play-instant-costs state side card args)]
      (and ;; card still exists
        (get-card state card)
@@ -125,7 +128,7 @@
        true))))
 
 (defn continue-play-instant
-  [state side eid card costs {:keys [ignore-cost] :as args}]
+  [state side eid card costs {:keys [ignore-cost flash] :as args}]
   (let [original-zone (:zone card)
         moved-card (move state side (assoc card :seen true) :play-area)]
     (wait-for (pay state side (make-eid state (assoc eid :action :play-instant)) moved-card costs)
@@ -135,7 +138,7 @@
                 (if payment-str
                   (do
                     (update! state side (assoc moved-card :special (:special (card-def moved-card))))
-                    (complete-play-instant state side eid moved-card payment-str ignore-cost))
+                    (complete-play-instant state side eid moved-card payment-str ignore-cost flash))
                   ;; could not pay the card's price; put it back and mark the effect as being over.
                   (let [returned-card (move state side moved-card original-zone)]
                     (continue-ability
@@ -159,7 +162,7 @@
          costs (play-instant-costs state side card (dissoc args :cached-costs))]
      ;; ensure the instant can be played
      (if (can-play-instant? state side eid card (assoc args :cached-costs costs))
-       (continue-play-instant state side eid card costs args);)
+       (continue-play-instant state side eid card costs args)
        (continue-ability
          state side
          {:msg (msg "reveal that they are unable to play " (:title card))
