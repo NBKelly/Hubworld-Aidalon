@@ -165,3 +165,18 @@
     (delve-empty-server state :corp :archives {:give-heat? true})
     (click-prompts state :corp "Sergeant Cole: Precinct 204, 3rd Level" "Yes")
     (is (= 2 (count (get-discard state :runner))) "Milled 2")))
+
+(deftest ulin-marr-eccentric-architect
+  (collects? {:name "Ulin Marr: Eccentric Architect"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Ulin Marr: Eccentric Architect" "Capricious Informant" "Shardwinner" "Fun Run"]}})
+    (play-from-hand state :corp "Ulin Marr: Eccentric Architect" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (card-ability state :corp (pick-card state :corp :council :inner) 1)
+    (click-card state :corp "Shardwinner")
+    (stage-select state :corp :council :outer)
+    (click-card state :corp "Capricious Informant")
+    (stage-select state :corp :council :middle)
+    (is (no-prompt? state :corp))))

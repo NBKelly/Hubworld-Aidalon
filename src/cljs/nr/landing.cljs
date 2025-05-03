@@ -18,8 +18,8 @@
     [:li [:a {:href "https://hubworld-db.com/" :target "_blank"} "hubworld-db's card browser and deckbuilder"]]]
    [:h4 "Things went wrong!"]
    [:ul.list.compact
-    [:li "If your decklist is displaying as invalid, it may be because of a format update, or that some of the cards have changed names. Open the decklist and save it again and see if that fixes it."]
-    [:li "Additionally, I may not have the particular cards you are using implemented yet"]
+    [:li "If your decklist is displaying as invalid, or not displaying at all, it may be because of a format update, or that some of the cards have changed attributes during development. Open the decklist and save it again and see if that fixes it."]
+    [:li "Additionally, I may not have the particular cards you are using implemented or available yet"]
     [:li "There's a little help section in the game window, above the chat log"]]
    [:h4 "Quick Tips, and notes about this service"]
    [:ul.list.compact

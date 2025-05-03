@@ -4,7 +4,7 @@
    [game.core.card :refer [in-hand? installed? agent? obstacle?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
-   [game.core.def-helpers :refer [defcard shift-self-abi]]
+   [game.core.def-helpers :refer [defcard stage-n-cards shift-self-abi]]
    [game.core.exhausting :refer [unexhaust]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.moving :refer [mill]]
@@ -107,3 +107,9 @@
                            :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
                            :async true
                            :effect (req (mill state side eid (other-side side) 2))}}]}))
+
+(defcard "Ulin Marr: Eccentric Architect"
+  (collect
+    {:cards 1}
+    {:cipher [(->c :exhaust-front-row 1)]
+     :abilities [(stage-n-cards 2 {:cost [(->c :click 1) (->c :exhaust-self)] :action true})]}))

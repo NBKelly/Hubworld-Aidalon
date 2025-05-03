@@ -3,7 +3,7 @@
     [clojure.string :as str]
     [game.core.access :refer [access-bonus]]
     [game.core.board :refer [all-installed]]
-    [game.core.card :refer [active? can-be-advanced? corp? faceup? get-card get-counters has-subtype? in-discard? runner? in-hand?]]
+    [game.core.card :refer [active? can-be-advanced? corp? faceup? get-card get-counters has-subtype? in-discard? runner? in-hand? moment?]]
     [game.core.card-defs :as card-defs]
     [game.core.drawing :refer [draw]]
     [game.core.damage :refer [damage]]
@@ -19,6 +19,7 @@
     [game.core.revealing :refer [conceal-hand reveal-hand reveal-loud]]
     [game.core.say :refer [system-msg system-say]]
     [game.core.shifting :refer [shift-a-card]]
+    [game.core.staging :refer [stage-a-card]]
     [game.core.to-string :refer [card-str]]
     [game.core.toasts :refer [toast]]
     [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -314,6 +315,31 @@
    :effect (req (shift-a-card state side eid card card {:cost cost}))})
 
 (def card-defs-cache (atom {}))
+
+(defn stage-n-cards
+  [n {:keys [action cost rep]}]
+  {:label (str "stage up to " n " cards")
+   :async true
+   :prompt (if (> n 1)
+             (str "Stage a card (" n " remaining)")
+             "Stage a card")
+   :action action
+   :cost cost
+   :waiting-prompt true
+   :msg (when-not rep (msg "stage up to " (quantify n "card")))
+   :req (req (seq (get-in @state [side :hand])))
+   :choices {:req (req (and (in-hand? target)
+                            (= (:side card) (:side target))
+                            (not (moment? target))))}
+   :effect (req (wait-for
+                  (stage-a-card state side card target)
+                  (if (and async-result (> n 1))
+                    (continue-ability
+                      state side
+                      (stage-n-cards (dec n) {:rep true})
+                      card nil)
+                    (effect-completed state side eid))))})
+
 
 (defn with-revealed-hand
   "Resolves an ability while a player has their hand revealed (so you can click cards in their hand)
