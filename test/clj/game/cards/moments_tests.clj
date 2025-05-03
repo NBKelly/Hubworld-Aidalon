@@ -113,6 +113,26 @@
         (is (= 2 (count (get-discard state :runner))))
         (click-prompt state :runner "No Action")))))
 
+(deftest print-on-demand-test
+  (do-game
+    (new-game {:corp {:hand ["Print on Demand"]
+                      :deck ["Shardwinner"]}})
+    (play-from-hand state :corp "Print on Demand")
+    (click-prompt state :corp "Shardwinner")
+    (stage-select state :corp :council :outer)))
+
+(deftest rapid-growth-test
+  (do-game
+    (new-game {:corp {:hand ["Rapid Growth" "Ulin Marr: Eccentric Architect" "Capricious Informant" "Shardwinner" "Fun Run"]}})
+    (play-from-hand state :corp "Rapid Growth")
+    (click-card state :corp "Shardwinner")
+    (stage-select state :corp :council :outer)
+    (click-card state :corp "Capricious Informant")
+    (stage-select state :corp :council :middle)
+    (click-card state :corp "Ulin Marr: Eccentric Architect")
+    (stage-select state :corp :council :inner)
+    (is (no-prompt? state :corp))))
+
 (deftest twice-as-bad-test
   (do-game
     (new-game {:corp {:hand ["Likely a Trap" "Twice as Bad" "Barbican Gate"]}

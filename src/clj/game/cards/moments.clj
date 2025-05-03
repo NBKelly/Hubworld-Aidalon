@@ -4,15 +4,21 @@
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
+                           source?
                            seeker?
                            in-hand? rezzed? installed?]]
-   [game.core.def-helpers :refer [defcard]]
+   [game.core.def-helpers :refer [defcard stage-n-cards]]
    [game.core.drawing :refer [draw]]
+   [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.revealing :refer [reveal-loud]]
+   [game.core.say :refer [system-msg]]
    [game.core.shifting :refer [shift-a-card]]
+   [game.core.shuffling :refer [shuffle!]]
+   [game.core.staging :refer [stage-a-card]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
@@ -118,6 +124,35 @@
                                                                    :msg (msg "archive the top 2 cards of " (other-player-name state me) "'s commons")
                                                                    :effect (req (mill state me eid op 2))}}}
                                           card nil)))}}]})
+
+(defcard "Print on Demand"
+  {:on-play {:action true
+             :additional-cost [(->c :click 1)]
+             :prompt "Choose a source"
+             :req (req (seq (get-in @state [side :deck])))
+             :choices (req (concat (->> (get-in @state [side :deck])
+                                        (filter source?)
+                                        (map :title)
+                                        distinct
+                                        sort)
+                                   ["Done"]))
+             :async true
+             :effect (req (if (= target "Done")
+                            (do (system-msg state side "shuffles [their] Commons")
+                                (shuffle! state side :deck)
+                                (effect-completed state side eid))
+                            (let [target-card (first (filter #(= (:title %) target)
+                                                             (get-in @state [side :deck])))]
+                              (wait-for
+                                (reveal-loud state side card nil target-card)
+                                (wait-for
+                                  (stage-a-card state side card target-card)
+                                  (do (system-msg state side "shuffles [their] Commons")
+                                      (shuffle! state side :deck)
+                                      (effect-completed state side eid)))))))}})
+
+(defcard "Rapid Growth"
+  {:on-play (stage-n-cards 3 {:action true :additional-cost [(->c :click 1)]})})
 
 (defcard "Smooth Handoff"
   {:on-play {:additional-cost [(->c :click 1)]

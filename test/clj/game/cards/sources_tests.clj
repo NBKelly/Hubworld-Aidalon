@@ -72,6 +72,22 @@
     (is (changed? [(get-heat state :corp)]
           (click-prompt state :corp "Lost Byway")))))
 
+(deftest pax-observatory
+  (collects? {:name "Pax Observatory"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Pax Observatory"] :credit 6}})
+    (play-from-hand state :corp "Pax Observatory" :council :inner)
+    (dotimes [_ 3]
+      (click-credit state :corp)
+      (click-credit state :runner))
+    (forge state :corp (pick-card state :corp :council :inner))
+    (end-turn state :corp)
+    (end-turn state :runner)
+    (click-prompt state :corp "Pax Observatory")
+    (is (= 4 (:click (get-corp))) "Gained a click")
+    (is (no-prompt? state :corp) "No lingering prompt")))
+
 (deftest silkline-shuttle
   (collects? {:name "Silkline Shuttle"
               :cards 1})

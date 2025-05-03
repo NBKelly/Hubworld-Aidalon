@@ -94,6 +94,20 @@
                                             (adjacent? card %))
                                       (hubworld-all-installed state side))))})
 
+(defcard "Silent Interrogator"
+  {:discover-abilities
+   [{:optional
+     {:req (req (and (installed? card)
+                     (seq (get-in @state [(other-side side) :deck]))))
+      :waiting-prompt true
+      :prompt "Archive the bottom 4 cards of your opponent's Commons?"
+      :yes-ability {:async true
+                    :msg (msg "archive the bottom 4 cards of " (other-player-name state side) "'s Commons")
+                    :effect (req (trash-cards state side eid
+                                              (->> (get-in @state [(other-side side) :deck])
+                                                   reverse
+                                                   (take 4))))}}}]})
+
 (defcard "Transit Station"
   {:barrier-bonus  (req (if (in-middle-row? card) 2 0))
    :presence-bonus (req (if (and (installed? card) (in-front-row?  card)) 4 0))})

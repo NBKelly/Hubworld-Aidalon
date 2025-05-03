@@ -839,7 +839,8 @@
 (defn collects?-impl
   [{:keys [name id server slot credits cards prompts] :or {server :council slot :inner credits 0 cards 0} :as args}]
   (is' (or name id) (str "Collects? usage: {:name name, optional: server, slot, credits, cards}"))
-  (let [state (new-game {:corp {:hand [name] :id id :deck [(qty "Fun Run" 10)]}})]
+  (let [state (new-game {:corp {:hand [name] :id id :deck [(qty "Fun Run" 10)] :credits 10}
+                         :runner {:hand ["Fun Run"]}})]
     (when name
       (play-from-hand state :corp name server slot)
       (forge state :corp (pick-card state :corp server slot)))

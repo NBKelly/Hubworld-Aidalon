@@ -317,7 +317,7 @@
 (def card-defs-cache (atom {}))
 
 (defn stage-n-cards
-  [n {:keys [action cost rep]}]
+  [n {:keys [action cost additional-cost rep]}]
   {:label (str "stage up to " n " cards")
    :async true
    :prompt (if (> n 1)
@@ -325,6 +325,7 @@
              "Stage a card")
    :action action
    :cost cost
+   :additional-cost additional-cost
    :waiting-prompt true
    :msg (when-not rep (msg "stage up to " (quantify n "card")))
    :req (req (seq (get-in @state [side :hand])))

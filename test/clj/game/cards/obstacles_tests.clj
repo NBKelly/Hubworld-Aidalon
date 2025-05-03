@@ -67,4 +67,17 @@
           (click-prompt state :corp "Yes"))
         "Lost 1 heat")))
 
+(deftest silent-interrogator-test
+  (do-game
+    (new-game {:corp {:hand ["Silent Interrogator"]}
+               :runner {:deck [(qty "Fun Run" 10)]}})
+    (play-from-hand state :corp "Silent Interrogator" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-discover-impl state :runner)
+    (is (changed? [(count (:deck (get-runner))) -4]
+          (click-prompt state :corp "Yes"))
+        "Milled 4")))
+
 ;; TODO: Waterway Ferry

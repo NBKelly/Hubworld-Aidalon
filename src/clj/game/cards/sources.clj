@@ -7,7 +7,7 @@
    [game.core.def-helpers :refer [collect defcard shift-self-abi]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
-   [game.core.gaining :refer [gain-credits lose]]
+   [game.core.gaining :refer [gain-credits gain-clicks lose]]
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [move trash swap-installed]]
    [game.core.payment :refer [->c can-pay?]]
@@ -74,6 +74,15 @@
                  :ability {:async true
                            :msg "remove 1 [heat]"
                            :effect (req (lose-heat state side eid 1))}}]}))
+
+(defcard "Pax Observatory"
+  (collect
+    {:cards 1}
+    {:reaction [{:reaction :refresh-actions
+                 :type :ability
+                 :max-uses 1
+                 :ability {:msg "gain an additional [Click]"
+                           :effect (req (gain-clicks state side 1))}}]}))
 
 (defcard "Silkline Shuttle"
   (collect

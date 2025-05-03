@@ -264,3 +264,15 @@
                   (other-side delver) (str "Your opponent finished an encounter with " (:title encounter-card))}
          :waiting "your opponent to resolve post-encounter reactions"}))
     (effect-completed state side eid)))
+
+
+;; REFRESH PHASE
+
+(defn refresh-actions-reaction
+  [state side eid]
+  (push-reaction! state :refresh-actions {})
+  (resolve-reaction-effects-with-priority
+    state nil eid :refresh-actions resolve-reaction-for-side
+    {:prompt {:corp   "Refresh phase - refill actions"
+              :runner "Refresh phase - refill actions"}
+     :waiting "your opponent to resolve refresh-actions reactions"}))
