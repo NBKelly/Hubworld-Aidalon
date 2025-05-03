@@ -20,7 +20,7 @@
     [game.core.expend :refer [expend expendable?]]
     [game.core.play-instants :refer [play-instant can-play-instant?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
-    [game.core.prompts :refer [cancel-bluff cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift]]
+    [game.core.prompts :refer [cancel-bluff cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift clear-wait-prompt]]
     [game.core.props :refer [add-counter add-prop set-prop]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
     [game.core.staging :refer [stage]]
@@ -260,7 +260,9 @@
                         state side eid bac (adjacent-zones card-to-shift)
                         (str "Shift " (:title card-to-shift) " where?")
                         {:async true
-                         :effect (req (play-ability
+                         :effect (req
+                                   (clear-wait-prompt state (other-side side))
+                                   (play-ability
                                         state side eid
                                         {:card bac
                                          :ability 5

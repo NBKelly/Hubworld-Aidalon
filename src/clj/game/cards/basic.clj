@@ -15,7 +15,7 @@
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.shifting :refer [shift]]
    [game.core.staging :refer [stage]]
-   [game.core.to-string :refer [card-str]]
+   [game.core.to-string :refer [card-str hubworld-card-str]]
    [game.macros :refer [effect msg req wait-for]]
    [game.utils :refer :all]
    [jinteki.utils :refer :all]))
@@ -91,12 +91,11 @@
                                 target-card (:card context)
                                 old-card (get-in @state [side :paths server slot 0])]
                             (if old-card
-                              (str "swap " (card-str state target-card) " with " (card-str state old-card))
-                              (str "shift " (card-str state target-card) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
+                              (str "swap " (hubworld-card-str state target-card) " with " (card-str state old-card))
+                              (str "shift " (hubworld-card-str state target-card) " to the " (name slot) " of [their] " (str/capitalize (name server)) " path"))))
                 :cost [(->c :click 1)]
                 :req (req (> (count (hubworld-all-installed state side)) 1))
-                :async true
-                :effect (req (shift state side eid (:card context) (:server context) (:slot context) nil))}
+                :effect (req (shift state side (:card context) (:server context) (:slot context) nil))}
 
                ;; --> 6
                {:action true
