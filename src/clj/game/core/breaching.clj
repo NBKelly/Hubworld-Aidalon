@@ -13,7 +13,7 @@
    [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [complete-breach-reaction pre-discovery-reaction post-discover-ability-reaction]]
+   [game.core.reactions :refer [complete-breach-reaction pre-discover-reaction pre-discovery-reaction post-discover-ability-reaction]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.set-aside :refer [add-to-set-aside get-set-aside]]
    [game.core.update :refer [update!]]
@@ -107,8 +107,10 @@
   (if-not (get-card state card)
     (discover-cleanup state side eid card)
     (let [card (update! state side (assoc card :seen true))]
-      (system-msg state side (str "discovers " (:title card)))
-      (resolve-discover-abilities state side eid card (:discover-abilities (card-def card))))))
+      (wait-for (pre-discover-reaction state side {:card card
+                                                   :engaged-side side})
+                (system-msg state side (str "discovers " (:title card)))
+                (resolve-discover-abilities state side eid (get-card state card) (:discover-abilities (card-def card)))))))
 
 ;; HELPERS FOR BREACHING
 

@@ -2,15 +2,17 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [in-hand? installed? agent? obstacle? rezzed? seeker?]]
+   [game.core.card :refer [in-hand? installed? agent? source? obstacle? rezzed? seeker?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard stage-n-cards shift-self-abi]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed]]
    [game.core.exhausting :refer [unexhaust exhaust]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.moving :refer [mill archive]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.presence :refer [update-card-presence]]
    [game.core.rezzing :refer [derez]]
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
@@ -98,6 +100,28 @@
                                         (if (:exhausted target)
                                           (effect-completed state side eid)
                                           (exhaust state side eid card target)))}]}))
+
+(defcard "Coroner Goodman: Slab Sleuth"
+  (let [reaction {:type :ability
+                  :prompt "Give engaged card +3 [presence] until the end of the confrontation?"
+                  :req (req (and (not= side (:engaged-side context))
+                                 (or (source? card)
+                                     (agent? card)
+                                     (obstacle? card))))
+                  :ability {:cost [(->c :exhaust-self) (->c :exile-from-archives 1)]
+                            :msg (msg "give " (:title (:card context)) " + 3 [presence] until the end of the confrontation")
+                            :effect (req (let [target-card (:card context)]
+                                           (register-lingering-effect
+                                             state side card
+                                             {:type :presence-value
+                                              :value 3
+                                              :req (req (same-card? target-card target))
+                                              :duration :end-of-confrontation})
+                                           (update-card-presence state side target-card)))}}]
+    (collect
+      {:shards 1}
+      {:reaction [(assoc reaction :reaction :pre-discover)
+                  (assoc reaction :reaction :pre-confrontation)]})))
 
 (defcard "Doctor Twilight: Dream Surgeon"
   (collect

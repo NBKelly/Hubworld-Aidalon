@@ -42,6 +42,26 @@
 
 ;; TODO: Boss Bresloo: The Deal-Maker
 
+(deftest coroner-goodman-discover-in-district
+  (do-game
+    (new-game {:corp {:hand ["Coroner Goodman: Slab Sleuth"]
+                      :deck [(qty "Shardwinner" 10)]
+                      :discard ["Infiltrate"]}})
+    (play-from-hand state :corp "Coroner Goodman: Slab Sleuth" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-empty-server state :runner :commons {:give-heat? true})
+    (click-prompts state :corp "Coroner Goodman: Slab Sleuth" "Yes")
+    (click-card state :corp "Infiltrate")
+    (is (changed? [(:credit (get-runner)) -5]
+                  (click-prompt state :runner "Pay 5 [Credits]: Exile"))
+        "Coroner Goodman increased presence from 2 -> 5")))
+
+(deftest coroner-goodman-collects
+  (collects? {:name "Coroner Goodman: Slab Sleuth"
+              :credits 1}))
+
 (deftest doctor-twilight-dream-surgeon-gain-3
   (do-game
     (new-game {:corp {:hand ["Doctor Twilight: Dream Surgeon"]
