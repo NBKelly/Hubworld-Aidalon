@@ -425,7 +425,7 @@
 (defn deck-influence-html
   "Returns hiccup-ready vector with dots colored appropriately to deck's influence."
   [deck]
-  (dots-html influence-dot (validator/influence-map deck)))
+  (dots-html influence-dot (validator/affiliation-map deck)))
 
 (defn distinct-by [f coll]
   (letfn [(step [xs seen]
@@ -746,6 +746,8 @@
         [:div count (str " " (tr [:deck-builder.cards "cards"]))
          (when-not (<= min-count count max-count)
            [:span.invalid (str " (" (tr [:deck-builder.expected "expected:"]) " " min-count ")")])])
+      [:div (str (tr [:deck-builder.affiliation "Affiliation"]) ": ")
+       (deck-influence-html deck)]
       ;; TODO - figure out how the inf works once enough info is out
       ;; (let [inf (validator/influence-count deck)
       ;;       id-limit (validator/id-inf-limit id)]
