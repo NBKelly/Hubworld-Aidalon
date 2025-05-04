@@ -143,6 +143,21 @@
                            :async true
                            :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}}]}))
 
+(defcard "Maestro: The Bebop Boffin"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :steal-heat 1)]
+     :reaction [{:reaction :approach-district
+                 :type :ability
+                 :req (req (and (seq (get-in @state [side :hand]))
+                                (= side (:delver context))
+                                (can-pay? state side eid card nil [(->c :exhaust-self)])))
+                 :prompt "Stage a card?"
+                 :ability {:choices {:req (req (and (in-hand? target)
+                                                    (same-side? card target)))}
+                           :async true
+                           :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}}]}))
+
 (defcard "Prime Treasurer Geel: Munificent Financier"
   (collect
     {:shards 1}
