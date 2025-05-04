@@ -113,6 +113,36 @@
   (collects? {:name "Kryzar the Rat: Navigator of the Cortex Maze"
               :credits 1}))
 
+(deftest maestro-free-stage
+  (do-game
+    (new-game {:corp {:hand ["Maestro: The Bebop Boffin"
+                             "Eye Enforcers"]}})
+    (play-from-hand state :corp "Maestro: The Bebop Boffin" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (delve-server state :corp :council)
+    (delve-continue-to-approach state :corp)
+    (click-prompts state :corp "Maestro: The Bebop Boffin" "Yes" "Eye Enforcers")
+    (stage-select state :corp :council :outer)
+    (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted maestro")
+    (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
+
+(deftest maestro-cipher-steal-1-heat
+  (do-game
+    (new-game {:runner {:hand ["Maestro: The Bebop Boffin"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (is (changed? [(get-heat state :corp) 1
+                   (get-heat state :runner) -1]
+                  (click-prompt state :corp "Pay 1 [Credits] and steal 1 [heat]: Secure"))
+        "Secured maestro")
+    (is (= 1 (count (get-scored state :corp))) "Maestro is in the score area")))
+
+(deftest maestro-collects
+  (collects? {:name "Maestro: The Bebop Boffin"
+              :credits 1}))
+
 (deftest prime-treasurer-geel-munificent-financier
   (collects? {:name "Prime Treasurer Geel: Munificent Financier"
               :credits 1})

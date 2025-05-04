@@ -15,7 +15,7 @@
    [game.core.exhausting :refer [exhaust]]
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
-   [game.core.heat :refer [gain-heat]]
+   [game.core.heat :refer [gain-heat lose-heat]]
    [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
@@ -27,7 +27,8 @@
    [game.core.update :refer [update!]]
    [game.core.virus :refer [number-of-virus-counters]]
    [game.macros :refer [continue-ability req wait-for]]
-   [game.utils :refer [enumerate-str quantify same-card? same-side?]]))
+   [game.utils :refer [enumerate-str quantify same-card? same-side?]]
+   [jinteki.utils :refer [other-side]]))
 
 ;; Click
 (defmethod value :click [cost] (:cost/amount cost))
@@ -776,6 +777,19 @@
             (complete-with-result state side eid {:paid/msg (str "gains " (value cost) " [heat]")
                                                   :paid/type :gain-heat
                                                   :paid/value (value cost)})))
+
+;; Steal heat
+(defmethod value :steal-heat [cost] (:cost/amount cost))
+(defmethod label :steal-heat [cost] (str "steal " (value cost) " [heat]"))
+(defmethod payable? :steal-heat [cost state side eid card]
+  (>= (value cost) (get-in @state [(other-side side) :heat :base] 0)))
+(defmethod handler :steal-heat
+  [cost state side eid card]
+  (wait-for (lose-heat state (other-side side) (value cost) {:suppress-checkpoint true})
+            (wait-for (gain-heat state side (value cost) {:suppress-checkpoint true})
+                      (complete-with-result state side eid {:paid/msg (str "steals " (value cost) " [heat]")
+                                                            :paid/type :steal-heat
+                                                            :paid/value (value cost)}))))
 
 ;; TrashFromDeck
 (defmethod value :trash-from-deck [cost] (:cost/amount cost))
