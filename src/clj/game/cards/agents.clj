@@ -83,9 +83,10 @@
                                                     (rezzed? target)))}
                            :msg (msg "unforge " (:title target))
                            :effect (req (derez state side target))}}]
-     :discover-abilities [{:req (req (some #(and (rezzed? %)
-                                                 (not (seeker? %)))
-                                           (hubworld-all-installed state (other-side side))))
+     :discover-abilities [{:req (req (and (some #(and (rezzed? %)
+                                                      (not (seeker? %)))
+                                                (hubworld-all-installed state (other-side side)))
+                                          (installed? card)))
                            :prompt "Choose a card to unforge and exhaust"
                            :choices {:req (req (and (not= (:side card) (:side target))
                                                     (rezzed? target)
