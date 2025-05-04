@@ -402,19 +402,17 @@
 (defn card-influence-html
   "Returns hiccup-ready vector with dots for influence as well as rotated / restricted / banned symbols"
   [format card qty in-faction allied?]
-  (let [influence (* (:factioncost card) qty)
+  (let [influence (:factioncost card 0)
         card-status (format-status format card)
         banned (:banned card-status)
         restricted (:restricted card-status)
         rotated (:rotated card-status)
         points (:points card-status)]
     [:span " "
-     (when (and (not banned) (not in-faction))
+     (when (not banned)
        [:span.influence {:key "influence"
                          :class (utils/faction-label card)}
-        (if allied?
-          (alliance-dots influence)
-          (influence-dots influence))])
+        (influence-dots influence)])
      (if banned
        banned-span
        [:span {:key "restricted"}
