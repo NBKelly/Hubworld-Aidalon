@@ -279,7 +279,6 @@
     (let [approached-card (card-for-current-slot state)]
       (if (and approached-card (rezzed? approached-card))
         (do (swap! state assoc-in [:delve :encounter-select] :confront)
-            (system-msg state side (str "confronts " (:title approached-card)))
             (wait-for (confront-card state side approached-card)
                       (when-not (delve-ended? state side eid)
                         (delve-complete-encounter state side eid))))
