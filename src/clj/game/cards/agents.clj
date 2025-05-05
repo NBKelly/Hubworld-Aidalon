@@ -117,9 +117,9 @@
   (let [reaction {:type :ability
                   :prompt "Give engaged card +3 [presence] until the end of the confrontation?"
                   :req (req (and (not= side (:engaged-side context))
-                                 (or (source? card)
-                                     (agent? card)
-                                     (obstacle? card))))
+                                 (or (source? (:card context))
+                                     (agent? (:card context))
+                                     (obstacle? (:card context)))))
                   :ability {:cost [(->c :exhaust-self) (->c :exile-from-archives 1)]
                             :msg (msg "give " (:title (:card context)) " + 3 [presence] until the end of the confrontation")
                             :effect (req (let [target-card (:card context)]

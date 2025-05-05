@@ -4,16 +4,17 @@
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
-                           source?
-                           seeker?
+                           source? seeker?
                            in-hand? rezzed? installed?]]
    [game.core.def-helpers :refer [defcard stage-n-cards]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill archive]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.presence :refer [update-card-presence]]
    [game.core.revealing :refer [reveal-loud]]
    [game.core.say :refer [system-msg]]
    [game.core.shifting :refer [shift-a-card]]
@@ -186,6 +187,26 @@
                             (when (pos? (count-heat state target-side))
                               (lose state target-side :heat 1))
                             (draw state target-side eid 1)))}})
+
+(defcard "Tenacity"
+  (let [reaction {:type :moment
+                  :location :hand
+                  :prompt "Give engaged card +3 [presence] until the end of the confrontation?"
+                  :req (req (and (not= side (:engaged-side context))
+                                 (installed? (:card context))
+                                 (my-card? (:card context))))
+                  :ability {:cost [(->c :exile-reaction)]
+                            :msg (msg "give " (:title (:card context)) " + 3 [presence] until the end of the confrontation")
+                            :effect (req (let [target-card (:card context)]
+                                           (register-lingering-effect
+                                             state side card
+                                             {:type :presence-value
+                                              :value 3
+                                              :req (req (same-card? target-card target))
+                                              :duration :end-of-confrontation})
+                                           (update-card-presence state side target-card)))}}]
+    {:reaction [(assoc reaction :reaction :pre-discover)
+                (assoc reaction :reaction :pre-confrontation)]}))
 
 (defcard "Turn Up the Heat"
   {:reaction [{:location :hand

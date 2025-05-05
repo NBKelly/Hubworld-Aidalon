@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [game.core.card :refer [get-card
                            in-hand?
-                           rezzed?]]
+                           rezzed? installed?]]
    [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -52,6 +52,26 @@
                                 (= (:delver context) side)
                                 (can-pay? state side eid card nil [(->c :credit 1)])
                                 (< (known-copies state side "Infiltrate") 2)))))
+
+   ;; PRE-DISCOVER (A SINGLE CARD)
+   ;;   TENACITY
+   :pre-discover (req (and (seq (get-in @state [side :hand]))
+                           (bluffs-enabled? state)
+                           (or
+                             (and ;; TENACITY
+                               (not= side (:engaged-side context))
+                               (installed? (:card context))
+                               (< (known-copies state side "Tenacity") 2)))))
+
+   ;; PRE-DISCOVER (A SINGLE CARD)
+   ;;   TENACITYa
+   :pre-confrontation (req (and (seq (get-in @state [side :hand]))
+                                (bluffs-enabled? state)
+                                (or
+                                  (and ;; TENACITY
+                                    (not= side (:engaged-side context))
+                                    (installed? (:card context))
+                                    (< (known-copies state side "Tenacity") 2)))))
 
    ;; POST DISCOVER ABILITY
    ;;   TWICE AS BAD

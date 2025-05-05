@@ -95,6 +95,22 @@
       (is-hand? state :corp ["Fun Run"])
       (is (zero? (get-heat state :corp)) "No heat"))))
 
+(deftest tenacity-test
+  (doseq [opt [:discover :confront]]
+    (do-game
+      (new-game {:corp {:hand ["Tenacity" "Crispy Crawler"]}})
+      (play-from-hand state :corp "Crispy Crawler" :council :outer)
+      (click-credit state :runner)
+      (click-credit state :corp)
+      (delve-server state :runner :council)
+      (if (= opt :confront)
+        (do (forge state :corp (pick-card state :corp :council :outer))
+            (delve-confront-impl state :runner))
+        (delve-discover-impl state :runner))
+      (click-prompts state :corp "Tenacity" "Yes")
+      (is (changed? [(:credit (get-runner)) -5]
+            (click-prompt state :runner "Pay 5 [Credits]: Exile"))))))
+
 (deftest trading-secrets
   (do-game
     (new-game {:corp {:hand ["Trading Secrets"]
