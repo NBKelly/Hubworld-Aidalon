@@ -1,6 +1,5 @@
 (ns game.macros
-  (:require [clojure.string :as str]
-            [clojure.tools.analyzer.jvm :as a.j]
+  (:require [clojure.tools.analyzer.jvm :as a.j]
             [clojure.tools.analyzer.ast :as ast]))
 
 (def forms
@@ -37,7 +36,7 @@
       runnable-servers (game.core.servers/zones->sorted-names
                          (game.core.runs/get-runnable-zones state side eid card nil))
       opponent (if (= side :corp) :runner :corp)
-      my-card? (fn [c] (= (keyword (str/lower-case (:side c))) side))
+      my-card? (fn [c] (= (keyword (clojure.string/lower-case (:side c))) side))
       hq-runnable (some #{:hq} (game.core.runs/get-runnable-zones state))
       rd-runnable (some #{:rd} (game.core.runs/get-runnable-zones state))
       archives-runnable (some #{:archives} (game.core.runs/get-runnable-zones state))

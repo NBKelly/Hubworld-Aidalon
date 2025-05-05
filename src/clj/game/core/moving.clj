@@ -562,8 +562,8 @@
     (when (and (pred? a)
                (pred? b)
                (same-side? a b))
-      (let [a (get-card state a)
-            b (get-card state b)
+      (let [a (dissoc (get-card state a) :seen)
+            b (dissoc (get-card state b) :seen)
             a-new (assoc a :zone (:zone b))
             b-new (assoc b :zone (:zone a))]
         (swap! state assoc-in (cons side (:zone a)) [b-new])
@@ -585,7 +585,7 @@
   [state side a server slot]
   (let [pred? (every-pred installed?)]
     (when (pred? a)
-      (let [a (get-card state a)
+      (let [a (dissoc (get-card state a) :seen)
             a-new (assoc a :zone [:paths server slot])]
         (swap! state assoc-in [side :paths server slot] [a-new])
         (swap! state assoc-in (concat [side] (:zone a)) [])
