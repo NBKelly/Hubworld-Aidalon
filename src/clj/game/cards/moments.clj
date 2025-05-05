@@ -1,10 +1,11 @@
 (ns game.cards.moments
   (:require
    [clojure.string :as str]
+   [game.core.barrier :refer [update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
-                           source? seeker?
+                           source? seeker? obstacle?
                            in-hand? rezzed? installed?]]
    [game.core.def-helpers :refer [defcard stage-n-cards]]
    [game.core.drawing :refer [draw]]
@@ -163,6 +164,26 @@
                                   (do (system-msg state side "shuffles [their] Commons")
                                       (shuffle! state side :deck)
                                       (effect-completed state side eid)))))))}})
+
+(defcard "Protecting Our Investment"
+  {:reaction [{:type :moment
+               :reaction :pre-confrontation
+               :location :hand
+               :prompt "Give engaged card +3 [barrier] until the end of the confrontation?"
+               :req (req (and (not= side (:engaged-side context))
+                              (installed? (:card context))
+                              (obstacle? (:card context))
+                              (my-card? (:card context))))
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "give " (:title (:card context)) " + 3 [barrier] until the end of the confrontation")
+                         :effect (req (let [target-card (:card context)]
+                                        (register-lingering-effect
+                                          state side card
+                                          {:type :barrier-value
+                                           :value 3
+                                           :req (req (same-card? target-card target))
+                                           :duration :end-of-confrontation})
+                                        (update-card-barrier state side target-card)))}}]})
 
 (defcard "Rapid Growth"
   {:on-play (stage-n-cards 3 {:action true :additional-cost [(->c :click 1)]})})

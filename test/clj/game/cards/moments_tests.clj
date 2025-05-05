@@ -84,6 +84,19 @@
     (click-prompts state :corp "Infiltrate" "Yes" "No Action" "No Action" "No Action")
     (is (no-prompt? state :corp))))
 
+(deftest protecting-our-investment
+  (do-game
+    (new-game {:corp {:hand ["Protecting Our Investment" "Asset Protection Hub"]}})
+    (play-from-hand state :corp "Asset Protection Hub" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (delve-confront-impl state :runner)
+    (click-prompts state :corp "Protecting Our Investment" "Yes")
+    (is (changed? [(:credit (get-runner)) -4]
+          (click-prompt state :runner "Yes")))))
+
 (deftest smooth-handoff
   (doseq [heat [0 1]]
     (do-game

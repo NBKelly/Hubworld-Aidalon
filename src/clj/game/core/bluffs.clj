@@ -63,11 +63,17 @@
                                (installed? (:card context))
                                (< (known-copies state side "Tenacity") 2)))))
 
-   ;; PRE-DISCOVER (A SINGLE CARD)
-   ;;   TENACITYa
+   ;; PRE-CONFRONT (A SINGLE CARD)
+   ;;   TENACITY
+   ;;   PROTECTING OUR INVESTMENT
    :pre-confrontation (req (and (seq (get-in @state [side :hand]))
                                 (bluffs-enabled? state)
                                 (or
+                                  (and ;; TENACITY
+                                    (not= side (:engaged-side context))
+                                    (installed? (:card context))
+                                    (obstacle? (:card context))
+                                    (< (known-copies state side "Protecting Our Investment") 2))
                                   (and ;; TENACITY
                                     (not= side (:engaged-side context))
                                     (installed? (:card context))
