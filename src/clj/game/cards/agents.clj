@@ -4,6 +4,7 @@
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker?]]
    [game.core.def-helpers :refer [collect]]
+   [game.core.delving :refer [delve-approach]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard stage-n-cards shift-self-abi]]
    [game.core.effects :refer [register-lingering-effect]]
@@ -13,13 +14,14 @@
    [game.core.moving :refer [mill move archive]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.presence :refer [update-card-presence]]
+   [game.core.prompts :refer [show-shift-prompt]]
    [game.core.rezzing :refer [derez]]
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? to-keyword same-side?]]
    [game.macros :refer [effect msg req wait-for]]
-   [jinteki.utils :refer [other-player-name other-side]]))
+   [jinteki.utils :refer [adjacent-zones other-player-name]]))
 
 (defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
   (collect
@@ -62,16 +64,16 @@
                             :prompt "Archive 1 card from your opponent's council?"
                             :req (req (and (> (count (get-in @state [side :hand]))
                                               (count (get-in @state [opponent :hand])))
-                                           (seq (get-in @state [(other-side side) :hand]))))
+                                           (seq (get-in @state [opponent :hand]))))
                             :yes-ability {:msg (msg "archive 1 card at random from " (other-player-name state side) "'s Council")
                                           :async true
-                                          :effect (req (archive state side eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}}]
+                                          :effect (req (archive state side eid (first (shuffle (get-in @state [opponent :hand])))))}}}]
      :abilities [{:action true
                   :cost [(->c :click 1) (->c :exhaust-self)]
                   :label "Gain 3 [Credits]"
                   :msg "Gain 3 [Credits]"
                   :req (req (> (count (get-in @state [side :hand]))
-                               (count (get-in @state [(other-side side) :hand]))))
+                               (count (get-in @state [opponent :hand]))))
                   :async true
                   :effect (req (gain-credits state side eid 3))}]}))
 
@@ -97,9 +99,9 @@
                            :effect (req (derez state side target))}}]
      :discover-abilities [{:req (req (some #(and (rezzed? %)
                                                  (not (seeker? %)))
-                                           (hubworld-all-installed state (other-side side))))
+                                           (hubworld-all-installed state opponent)))
                            :prompt "Choose a card to unforge and exhaust"
-                           :choices {:req (req (and (not= (:side card) (:side target))
+                           :choices {:req (req (and (not (my-card? target))
                                                     (rezzed? target)
                                                     (installed? target)
                                                     (not (seeker? target))))}
@@ -167,23 +169,39 @@
     {:cipher [(->c :exhaust-council 1)]
      :static-abilities [{:type :rez-cost
                          :req (req (and (installed? target)
-                                        (= (:side target) (:side card))
+                                        (my-card? target)
                                         (not (same-card? card target))))
                          :value -1}]}))
 
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"
   (collect
     {:shards 1}
-    {:reaction [{:reaction :approach-district
-                 :type :ability
-                 :req (req (and (seq (get-in @state [side :hand]))
-                                (= side (:delver context))
-                                (can-pay? state side eid card nil [(->c :exhaust-self)])))
-                 :prompt "Stage a card?"
-                 :ability {:choices {:req (req (and (in-hand? target)
-                                                    (same-side? card target)))}
-                           :async true
-                           :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}}]}))
+    {:rush true
+     :abilities [{:fake-cost [(->c :exhaust-self)(->c :archive-from-council 1)]
+                  :req (req (and (= side (->> @state :delve :delver))
+                                 (contains? #{:approach-slot :approach-district} (->> @state :delve :phase))
+                                 (can-pay? state side eid card nil
+                                           [(->c :archive-from-council 1)(->c :exhaust-self)])))
+                  :label "Redirect delve to an adjacent slot"
+                  :prompt "Choose an adjacent slot"
+                  :async true
+                  :effect (req
+                            (let [{:keys [server position]} (:delve @state)]
+                              (show-shift-prompt
+                                state side eid card (adjacent-zones server position)
+                                (str "Redirect the delve where?")
+                                {:cost [(->c :archive-from-council 1)(->c :exhaust-self)]
+                                 :msg (msg (let [server (:server context)
+                                                 slot (:slot context)]
+                                             (str "redirect the delve to the " (name slot) " position of " (str/capitalize (name server)) " (The delve is now in the Approach step)")))
+                                 :async true
+                                 :effect (req (let [server (:server context)
+                                                    slot (:slot context)]
+                                                (swap! state assoc-in [:delve :server] server)
+                                                (swap! state assoc-in [:delve :position] slot)
+                                                (delve-approach state side eid)))}
+                                {:waiting-prompt true
+                                 :other-side? true})))}]}))
 
 (defcard "Maestro: The Bebop Boffin"
   (collect
@@ -231,12 +249,12 @@
                  :type :ability
                  :prompt "Archive the top 2 cards of your opponent's Commons?"
                  :req (req (and (= (:breach-server context) :archives)
-                                (seq (get-in @state [(other-side side) :deck]))
+                                (seq (get-in @state [opponent :deck]))
                                 (= (:delver context) side)))
                  :ability {:cost [(->c :exhaust-self)]
                            :msg (msg "archive the top 2 cards of " (other-player-name state side) "'s commons")
                            :async true
-                           :effect (req (mill state side eid (other-side side) 2))}}]}))
+                           :effect (req (mill state side eid opponent 2))}}]}))
 
 (defcard "“Spider” Rebbek: Dragon’s Hoard Pitboss"
   (collect
@@ -246,9 +264,9 @@
                                           (some #(and (rezzed? %)
                                                       (installed? %)
                                                       (not (seeker? %)))
-                                                (hubworld-all-installed state (other-side side)))))
+                                                (hubworld-all-installed state opponent))))
                            :choices {:req (req (and (installed? target)
-                                                    (not= (:side card) (:side target))
+                                                    (not (my-card? target))
                                                     (not (seeker? target))
                                                     (rezzed? target)))}
                            :async true
@@ -260,7 +278,7 @@
                          :req (req (and (not (same-card? card target))
                                         (not (seeker? target))
                                         (installed? target)
-                                        (= (:side card) (:side target))))}]}))
+                                        (my-card? target)))}]}))
 
 (defcard "Ulin Marr: Eccentric Architect"
   (collect

@@ -134,19 +134,33 @@
           (forge state :corp (pick-card state :corp :council :outer)))
         "1c discount")))
 
-(deftest kryzar-free-stage
-  (do-game
-    (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
-                             "Eye Enforcers"]}})
-    (play-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
-    (click-credit state :runner)
-    (forge state :corp (pick-card state :corp :council :inner))
-    (delve-server state :corp :council)
-    (delve-continue-to-approach state :corp)
-    (click-prompts state :corp "Kryzar the Rat: Navigator of the Cortex Maze" "Yes" "Eye Enforcers")
-    (stage-select state :corp :council :outer)
-    (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted kryzar")
-    (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
+;; (deftest kryzar-free-stage
+;;   (do-game
+;;     (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
+;;                              "Eye Enforcers"]}})
+;;     (play-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
+;;     (click-credit state :runner)
+;;     (forge state :corp (pick-card state :corp :council :inner))
+;;     (delve-server state :corp :council)
+;;     (delve-continue-to-approach state :corp)
+;;     (click-prompts state :corp "Kryzar the Rat: Navigator of the Cortex Maze" "Yes" "Eye Enforcers")
+;;     (stage-select state :corp :council :outer)
+;;     (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted kryzar")
+;;     (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
+
+(deftest kryzar-bypass-works
+  (doseq [[serv slot] [[:council :middle] [:commons :outer] [:archives :outer]]]
+    (do-game
+      (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze" "Shardwinner"]}})
+      (click-credit state :corp)
+      (click-credit state :runner)
+      (delve-server state :corp :council)
+      (rush-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
+      (card-ability state :corp (pick-card state :corp :council :inner) 1)
+      (stage-select state :corp serv slot)
+      (click-card state :corp "Shardwinner")
+      (is (= serv (:server (:delve @state))) "Correct server")
+      (is (= slot (:position (:delve @state))) "Correct slot"))))
 
 (deftest kryzar-the-rat-collects
   (collects? {:name "Kryzar the Rat: Navigator of the Cortex Maze"

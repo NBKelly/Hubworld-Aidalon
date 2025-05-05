@@ -528,12 +528,42 @@
         (stage-select-impl state side server slot))
       true)))
 
+(defn rush-from-hand-impl
+  [state side title server slot]
+  (let [card (find-card title (get-in @state [side :hand]))]
+    (ensure-no-prompts state)
+    (is' (some? card) (str title " is in the hand"))
+    (when-not (some? card)
+      (let [other-side (if (= side :runner) :corp :runner)]
+        (when (some? (find-card title (get-in @state [other-side :hand])))
+          (println title " was instead found in the opposing hand - was the wrong side used?"))))
+    (when server
+      (is' (some #{server} [:council :commons :archives])
+           (str server " is not a valid server.")))
+    (when slot
+      (is' (some #{slot} [:inner :middle :outer])
+           (str slot " is not a valid smpt.")))
+    (is' (:rush (core/card-def card)) (str "card is not rushable"))
+    (when (some? card)
+      (is' (core/process-action "rush" state side {:card card :server server}))
+      (when (and server slot)
+        (stage-select-impl state side server slot))
+      true)))
+
 (defmacro play-from-hand
   "Play a card from hand based on its title. If installing a Corp card, also indicate
   the server to install into with a string."
   ([state side title] `(play-from-hand ~state ~side ~title nil nil))
   ([state side title server slot]
    `(error-wrapper (play-from-hand-impl ~state ~side ~title ~server ~slot))))
+
+(defmacro rush-from-hand
+  "Rush a card from hand based on its title. If installing a Corp card, also indicate
+  the server to install into with a string."
+  ([state side title] `(rush-from-hand ~state ~side ~title nil nil))
+  ([state side title server slot]
+   `(error-wrapper (rush-from-hand-impl ~state ~side ~title ~server ~slot))))
+
 
 (defn play-from-hand-with-prompts-impl
   [state side title choices]
