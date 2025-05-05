@@ -5,7 +5,7 @@
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle? get-counters]]
    [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
-   [game.core.delving :refer [end-the-delve!]]
+   [game.core.delving :refer [end-the-delve! delve-encounter delve-complete-encounter]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits gain-clicks lose]]
@@ -57,6 +57,23 @@
                          :req (req (and (in-front-row? target)
                                         (not= (:side target) (:side card))
                                         (or (agent? target) (obstacle? target))))}]}))
+
+(defcard "Containment Funnel"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :pre-confrontation
+                 :type :ability
+                 :prompt "Redirect em?"
+                 :req (req (and (not= side (:engaged-side context))
+                                (adjacent? card (:card context))))
+                 :ability {:cost [(->c :exhaust-self)]
+                           :async true
+                           :effect (req (let [server (nth (:zone card) 1)
+                                              slot (nth (:zone card) 2)]
+                                          (swap! state assoc-in [:delve :server] server)
+                                          (swap! state assoc-in [:delve :position] slot)
+                                          (delve-encounter state side eid)))
+                           }}]}))
 
 (defcard "Crispy Crawler"
   (collect

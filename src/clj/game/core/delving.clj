@@ -35,6 +35,11 @@
       (play-sfx state side "run-successful")
       (play-sfx state side "run-unsuccessful"))))
 
+(defn card-for-current-slot
+  [state]
+  (let [{:keys [defender server position]} (:delve @state)]
+    (get-in @state [defender :paths server position 0])))
+
 ;; DISCOVERY - facedown installed cards, and cards in centrals, can be discovered
 ;;             go through all the discover abilities top->bottom, then the player may dispatch the card
 ;;             NOTE: this is in the breach class because of circular dependency issues
@@ -127,8 +132,10 @@
     (wait-for
       (pre-confrontation-reaction state side {:card card
                                               :engaged-side side})
-      (system-msg state side (str "confronts " (:title card)))
-      (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card))))))
+      (when (same-card? (card-for-current-slot state) card)
+        (system-msg state side (str "confronts " (:title card)))
+        (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))
+        ))))
 
 ;; UTILS FOR DELVES
 
@@ -183,11 +190,6 @@
         (checkpoint state side eid))
       true)
     nil))
-
-(defn card-for-current-slot
-  [state]
-  (let [{:keys [defender server position]} (:delve @state)]
-    (get-in @state [defender :paths server position 0])))
 
 ;; STEPS OF A DELVE
 ;;   1) Nominate a server.

@@ -58,6 +58,19 @@
           (click-prompt state :runner "Pay 2 [Credits]: Exile"))
         "Refunded 1")))
 
+(deftest containment-funnel-test
+  (collects? {:name "Containment Funnel"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Containment Funnel" "Barbican Gate"]}})
+    (play-from-hand state :corp "Containment Funnel" :archives :outer)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Barbican Gate" :council :outer)
+    (forge state :corp (pick-card state :corp :archives :outer))
+    (forge state :corp (pick-card state :corp :council :outer))
+    (delve-server state :runner :council)
+    (click-prompts state :corp ["Containment Funnel" "Yes"])))
+
 (deftest crispy-crawler-test
   (collects? {:name "Crispy Crawler"
               :credits 1})
