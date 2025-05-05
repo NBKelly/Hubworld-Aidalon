@@ -84,6 +84,17 @@
     (click-prompts state :corp "Infiltrate" "Yes" "No Action" "No Action" "No Action")
     (is (no-prompt? state :corp))))
 
+(deftest paper-trail-test
+  (do-game
+    (new-game {:corp {:hand ["Paper Trail"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :archives {:give-heat? true})
+    (is (changed? [(:credit (get-corp)) -2]
+          (click-prompts state :corp "Paper Trail" "Yes" "No Action"))
+        "It costs 2")
+    (is (no-prompt? state :corp))))
+
 (deftest propaganda-test
   (do-game
     (new-game {:corp {:hand ["Propaganda"]

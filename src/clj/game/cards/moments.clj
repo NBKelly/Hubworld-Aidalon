@@ -139,6 +139,18 @@
                                                                    :effect (req (mill state me eid op 2))}}}
                                           card nil)))}}]})
 
+(defcard "Paper Trail"
+  {:reaction [{:location :hand
+               :reaction :complete-breach
+               :prompt "Discover 1 card from your opponent's Council?"
+               :type :moment
+               :req (req (and (= (:breach-server context) :archives)
+                              (seq (get-in @state [opponent :hand]))
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exile-reaction)]
+                         :async true
+                         :effect (req (discover-card state side eid (first (shuffle (get-in @state [opponent :hand])))))}}]})
+
 (defcard "Print on Demand"
   {:on-play {:action true
              :additional-cost [(->c :click 1)]

@@ -28,6 +28,7 @@
   {;; END BREACH SERVER:
    ;;   FUN RUN
    ;;   CORNERING THE MARKET
+   ;;   PAPER TRAIL
    :complete-breach (req (and (seq (get-in @state [side :hand]))
                               (bluffs-enabled? state)
                               (or
@@ -40,6 +41,9 @@
                                     (and (= (:breach-server context) :commons)
                                          (or (< (known-copies state side "Fun Run") 2)
                                              (< (known-copies state side "Cornering the Market") 2)))
+                                    (and (< (known-copies state side "Paper Trail") 2)
+                                         (= (:breach-server context) :archives)
+                                         (seq (get-in @state [(:defender context) :hand])))
                                     ;; TURN UP THE HEAT
                                     (< (known-copies state side "Turn Up the Heat") 2))))))
    ;; BREACH SERVER
