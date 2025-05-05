@@ -11,6 +11,7 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.exhausting :refer [unexhaust exhaust]]
    [game.core.gaining :refer [gain-credits]]
+   [game.core.hand-size :refer [me-hand-size+]]
    [game.core.moving :refer [mill move archive swap-installed]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.presence :refer [update-card-presence]]
@@ -235,6 +236,24 @@
                             :yes-ability {:async true
                                           :msg "gain 4 [Credits]"
                                           :effect (req (gain-credits state side eid 4))}}}]}))
+
+(defcard "Recruiter Nilero: Effusive Inducer"
+  (collect
+    {:cards 1}
+    {:static-abilities [(me-hand-size+ 2)]
+     :discover-abilities [{:label "Choose a player to draw 2 cards"
+                           :prompt "Choose a player"
+                           :waiting-prompt true
+                           :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                                                   (same-card? target (get-in @state [:runner :identity]))))}
+                           :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+                                       (str
+                                         (when-not (= target-side side)
+                                           (str "force " (other-player-name state side) " to "))
+                                         "draw 2 cards")))
+                           :async true
+                           :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+                                          (draw state target-side eid 2)))}]}))
 
 (defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect

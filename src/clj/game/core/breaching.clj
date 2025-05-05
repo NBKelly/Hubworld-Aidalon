@@ -46,9 +46,9 @@
 (defn discover-continue
   [state side eid discovered-card]
   (let [can-interact? (and (or (not (moment? discovered-card))
-                               (in-discard? discovered-card)))
+                               (= [:discard] (:previous-zone discovered-card))))
         should-secure? (agent? discovered-card)
-        interact-cost? (merge-costs (concat (when-not (in-discard? discovered-card) [(->c :credit (get-presence discovered-card))])
+        interact-cost? (merge-costs (concat (when-not (= [:discard] (:previous-zone discovered-card)) [(->c :credit (get-presence discovered-card))])
                                             (:cipher (card-def discovered-card))))]
     (if (or (not (get-card state discovered-card)))
       (discover-cleanup state side eid discovered-card)
@@ -161,11 +161,9 @@
 (defn- resolve-breach-discovery-for-card
   "discovered cards are always set aside if not moved"
   [state side eid card remaining next-fn]
-  (wait-for (discover-card state side card)
-            ;; cards that are not exiled/secured are simply set aside faceup
-            (when (get-card state card)
-              (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))
-            (next-fn state side eid (dec remaining))))
+  (let [c (last (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))]
+    (wait-for (discover-card state side c)
+              (next-fn state side eid (dec remaining)))))
 
 ;; TODO -- BELOW, COMPLETE WITH RESULT
 (defn resolve-access-council
