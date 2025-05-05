@@ -113,6 +113,15 @@
                                           (effect-completed state side eid)
                                           (exhaust state side eid card target)))}]}))
 
+(defcard "Counselor Vreenax: Planetary Exchequer"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :exile-total-shard-cost-from-council 3)]
+     :static-abilities [{:type :rez-cost
+                         :req (req (and (installed? target)
+                                        (not= (:side target) (:side card))))
+                         :value 1}]}))
+
 (defcard "Coroner Goodman: Slab Sleuth"
   (let [reaction {:type :ability
                   :prompt "Give engaged card +3 [presence] until the end of the confrontation?"
