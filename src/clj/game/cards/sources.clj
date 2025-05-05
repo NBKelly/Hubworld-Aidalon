@@ -66,14 +66,14 @@
                  :prompt "Redirect em?"
                  :req (req (and (not= side (:engaged-side context))
                                 (adjacent? card (:card context))))
+                 :msg "redirect the delve to encounter Containment Funnel"
                  :ability {:cost [(->c :exhaust-self)]
-                           :async true
                            :effect (req (let [server (nth (:zone card) 1)
                                               slot (nth (:zone card) 2)]
                                           (swap! state assoc-in [:delve :server] server)
                                           (swap! state assoc-in [:delve :position] slot)
-                                          (delve-encounter state side eid)))
-                           }}]}))
+                                          (swap! state assoc-in [:delve :card-for-confrontation] (get-card state card))
+                                          (swap! state assoc-in [:reaction :pre-confrontation :card] (get-card state card))))}}]}))
 
 (defcard "Crispy Crawler"
   (collect

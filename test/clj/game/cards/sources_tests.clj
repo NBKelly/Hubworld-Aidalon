@@ -69,7 +69,30 @@
     (forge state :corp (pick-card state :corp :archives :outer))
     (forge state :corp (pick-card state :corp :council :outer))
     (delve-server state :runner :council)
-    (click-prompts state :corp ["Containment Funnel" "Yes"])))
+    (delve-continue-impl state :runner)
+    (click-prompts state :corp "Containment Funnel" "Yes")
+    (is (= (:server (:delve @state)) :archives) "Redirected to archives")
+    (click-prompt state :runner "Pay 3 [Credits]: Exile")
+    (is (no-prompt? state :corp) "No lingering prompt from barbican gate")))
+
+(deftest containment-funnel-chains
+  (do-game
+    (new-game {:corp {:hand ["Containment Funnel" "Containment Funnel" "Barbican Gate"]
+                      :credits 20}})
+    (play-from-hand state :corp "Containment Funnel" :archives :outer)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Containment Funnel" :council :outer)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Barbican Gate" :commons :outer)
+    (forge state :corp (pick-card state :corp :archives :outer))
+    (forge state :corp (pick-card state :corp :commons :outer))
+    (forge state :corp (pick-card state :corp :council :outer))
+    (delve-server state :runner :commons)
+    (delve-continue-impl state :runner)
+    (click-prompts state :corp "Containment Funnel" "Yes" "Containment Funnel" "Yes")
+    (is (= (:server (:delve @state)) :archives) "Redirected to archives")
+    (click-prompt state :runner "Pay 3 [Credits]: Exile")
+    (is (no-prompt? state :corp) "No lingering prompt from barbican gate")))
 
 (deftest crispy-crawler-test
   (collects? {:name "Crispy Crawler"
