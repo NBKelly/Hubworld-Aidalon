@@ -760,20 +760,20 @@
                                                             :paid/value (value cost)}))))
 
 ;; TrashFromDeck
-(defmethod value :trash-from-deck [cost] (:cost/amount cost))
-(defmethod label :trash-from-deck [cost]
+(defmethod value :archive-from-deck [cost] (:cost/amount cost))
+(defmethod label :archive-from-deck [cost]
   (str "archive " (quantify (value cost) "card") " from the top of your Commons"))
-(defmethod payable? :trash-from-deck
+(defmethod payable? :archive-from-deck
   [cost state side eid card]
   (<= 0 (- (count (get-in @state [side :deck])) (value cost))))
-(defmethod handler :trash-from-deck
+(defmethod handler :archive-from-deck
   [cost state side eid card]
   (wait-for (mill state side side (value cost) {:suppress-checkpoint true})
             (complete-with-result
               state side eid
               {:paid/msg (str "archives " (quantify (count async-result) "card")
-                             " from the top of [their] Commons")
-               :paid/type :trash-from-deck
+                              " from the top of [their] Commons")
+               :paid/type :archive-from-deck
                :paid/value (count async-result)
                :paid/targets async-result})))
 

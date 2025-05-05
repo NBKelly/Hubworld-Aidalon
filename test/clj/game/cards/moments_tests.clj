@@ -95,6 +95,14 @@
       (is-hand? state :corp ["Fun Run"])
       (is (zero? (get-heat state :corp)) "No heat"))))
 
+(deftest trading-secrets
+  (do-game
+    (new-game {:corp {:hand ["Trading Secrets"]
+                      :deck [(qty "Fun Run" 4)]}})
+    (is (changed? [(:credit (get-corp)) 2
+                   (count (:discard (get-corp))) 2]
+          (flash-from-hand state :corp "Trading Secrets")))))
+
 (deftest turn-up-the-heat
   (doseq [s [:archives :council :commons]]
     (do-game

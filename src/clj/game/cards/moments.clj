@@ -204,9 +204,14 @@
            :choices {:req (req (and (installed? target)
                                     (= (:side target) (:side card))
                                     (not (seeker? target))))}
-           :cost [(->c :exile-reaction)]
            :async true
            :effect (req (shift-a-card state side eid card target))}})
+
+(defcard "Trading Secrets"
+  {:flash {:additional-cost [(->c :archive-from-deck 2)]
+           :msg "gain 2 [Credits]"
+           :async true
+           :effect (req (gain-credits state side eid 2))}})
 
 (defcard "Twice as Bad"
   {:reaction [{:location :hand
