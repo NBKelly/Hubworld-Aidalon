@@ -183,6 +183,19 @@
           (forge state :corp (pick-card state :corp :council :inner)))
         "+1 presence")))
 
+(deftest wall-wizard-test
+  (do-game
+    (new-game {:corp {:hand ["Wall Wizard"]}
+               :runner {:hand [(qty "Fun Run" 5)]}})
+    (play-from-hand state :corp "Wall Wizard" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (click-credit state :runner)
+    (delve-empty-server state :corp :commons)
+    (is (changed? [(:credit (get-corp)) 2]
+          (click-prompts state :corp "Wall Wizard" "Yes"))
+        "Gained 2c")
+    (is (no-prompt? state :corp))))
+
 (deftest waterfront-soakhouse
   (collects? {:name "Waterfront Soakhouse"
               :credits 1})

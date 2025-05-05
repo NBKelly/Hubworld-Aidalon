@@ -174,6 +174,18 @@
                          :value 1
                          :req (req (adjacent? card target))}]}))
 
+(defcard "Wall Wizard"
+  {:refund 1
+   :reaction [{:reaction :complete-breach
+               :prompt "Gain 2 [Credits]?"
+               :type :ability
+               :req (req (and (= (:breach-server context) :commons)
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exhaust-self)]
+                         :msg "gain 2 [Credits]"
+                         :async true
+                         :effect (req (gain-credits state side eid 2))}}]})
+
 (defcard "Waterfront Soakhouse"
   (collect
     {:shards 1}
