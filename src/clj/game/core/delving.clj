@@ -115,7 +115,10 @@
   (if-not (rezzed? (get-card state card))
       (confrontation-cleanup state side eid card)
       (if (seq abs)
-        (let [ab (first abs)]
+        (let [ab (first abs)
+              ab (if (:optional ab)
+                   (update-in ab [:optional :waiting-prompt] #(or % true))
+                   (update ab :waiting-prompt #(or % true)))]
           (wait-for (resolve-ability state (other-side side) ab card nil)
                     (resolve-confrontation-abilities state side eid card (rest abs))))
         (confrontation-resolve-barrier state side eid card))))

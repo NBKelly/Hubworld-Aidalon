@@ -843,7 +843,7 @@
 
 (defmethod value :reveal-agent-in-hand-or-discard [cost] (:cost/amount cost))
 (defmethod label :reveal-agent-in-hand-or-discard [cost]
-  (str "reveal " (quantify (value cost) "agent") "in your Council or Archives"))
+  (str "reveal " (quantify (value cost) "agent") " in your Council or Archives"))
 (defmethod payable? :reveal-agent-in-hand-or-discard
   [cost state side eid card]
   (<= 0 (-
@@ -867,6 +867,34 @@
                     state side eid
                     {:paid/msg (str "reveals " (enumerate-str (map #(hubworld-card-str state %) targets)))
                      :paid/type :reveal-agent-in-hand-or-discard
+                     :paid/value (count targets)
+                     :paid/targets targets}))}
+    nil nil))
+
+(defmethod value :shuffle-installed [cost] (:cost/amount cost))
+(defmethod label :shuffle-installed [cost]
+  (str "shuffle " (quantify (value cost) "card") " from your grid into your Commons"))
+(defmethod payable? :shuffle-installed
+  [cost state side eid card]
+  (<= 0 (- (count (filter (complement seeker?) (hubworld-all-installed state side))) (value cost))))
+(defmethod handler :shuffle-installed
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Shuffle " (quantify (value cost) "card") " from your grid into your Commons")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (my-card? target)
+                              (installed? target)
+                              (not (seeker? target))))}
+     :async true
+     :effect (req (doseq [t targets]
+                    (move state side t :deck))
+                  (shuffle! state side :deck)
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "shuffles " (enumerate-str (map #(hubworld-card-str state %) targets)) " into their Commons")
+                     :paid/type :shuffle-installed
                      :paid/value (count targets)
                      :paid/targets targets}))}
     nil nil))

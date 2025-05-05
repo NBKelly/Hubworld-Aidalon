@@ -92,6 +92,22 @@
             (click-prompt state :corp "Yes"))
           "Drained 1c"))))
 
+(deftest probabilities-exhange-tests
+  (do-game
+    (new-game {:corp {:hand ["Probabilities Exchange"]}
+               :runner {:hand ["Shardwinner" "Crispy Crawler"]}})
+    (play-from-hand state :corp "Probabilities Exchange" :council :outer)
+    (play-from-hand state :runner "Shardwinner" :council :outer)
+    (click-credit state :corp)
+    (play-from-hand state :runner "Crispy Crawler" :council :middle)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (delve-continue-impl state :runner)
+    (click-prompt state :corp "Yes")
+    (click-card state :runner "Crispy Crawler")
+    (click-prompts state :runner "Yes" "Pay 4 [Credits] and exhaust 1 card protecting your front row: Exile" "Shardwinner")))
+
 ;; TODO: Transit Station
 
 (deftest tunnel-runners-test

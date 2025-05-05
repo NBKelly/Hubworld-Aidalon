@@ -133,6 +133,20 @@
                                          :duration :end-of-delve})
                                       (update-card-barrier state side card))}}]})
 
+(defcard "Probabilities Exchange"
+  {:confront-abilities [{:optional
+                         {:prompt "Have your opponent shuffle 1 card from their grid into their commons?"
+                          :req (req (seq (filter (complement seeker?) (hubworld-all-installed state opponent))))
+                          :yes-ability {:async true
+                                        :effect (req (continue-ability
+                                                       state opponent
+                                                       {:cost [(->c :shuffle-installed 1)]
+                                                        :waiting-promt true
+                                                        :display-side side
+                                                        :msg :cost}
+                                                       card nil))}}}]
+   :cipher [(->c :exhaust-front-row 1)]})
+
 (defcard "Salvage Rats"
   {:rush true
    :barrier-bonus (req (count (filter #(and (not (rezzed? %))
