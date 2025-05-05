@@ -316,23 +316,27 @@
   {:corp {:deck (or (transform "Corp" (conj (:deck corp)
                                             (:hand corp)
                                             (:score-area runner)
-                                            (:score-area corp)
-                                            (:discard corp)))
+                                            (:discard corp)
+                                            (:exile corp)))
                     (:deck corp)
                     (transform "Corp" (qty "Fun Run" 10)))
           :hand (when-let [hand (:hand corp)]
                   (flatten hand))
           :score-area (when-let [scored (:score-area corp)]
-                    (flatten scored))
+                        (flatten scored))
           :discard (when-let [discard (:discard corp)]
                      (flatten discard))
           :identity (when-let [id (or (:id corp) (:identity corp))]
                       (utils/server-card id))
           :heat (:heat corp)
+          :exile (when-let [exile (:exile corp)]
+                   (flatten exile))
           :credits (:credits corp)}
    :runner {:deck (or (transform "Runner" (conj (:deck runner)
                                                 (:hand runner)
-                                                (:discard runner)))
+                                                (:score-area corp)
+                                                (:discard runner)
+                                                (:exile runner)))
                       (:deck runner)
                       (transform "Runner" (qty "Fun Run" 10)))
             :hand (when-let [hand (:hand runner)]
@@ -341,6 +345,8 @@
                     (flatten scored))
             :discard (when-let [discard (:discard runner)]
                        (flatten discard))
+            :exile (when-let [exile (:exile runner)]
+                     (flatten exile))
             :identity (when-let [id (or (:id runner) (:identity runner))]
                         (utils/server-card id))
             :heat (:heat runner)
@@ -403,6 +409,15 @@
                             (when (empty? (:hand side-map))
                               (find-card ctitle (get-in @state [side :hand]))))
                         :discard)))
+         (when (seq (:exile side-map))
+           (doseq [ctitle (:exile side-map)]
+             (core/move state side
+                        (or (find-card ctitle (get-in @state [side :deck]))
+                            ;; This is necessary as a :discard card will only end up in
+                            ;; the hand when we're not already using (starting-hand)
+                            (when (empty? (:hand side-map))
+                              (find-card ctitle (get-in @state [side :hand]))))
+                        :rfg)))
          (when (:heat side-map)
            (swap! state assoc-in [side :heat :base] (:heat side-map)))
          (when (:credits side-map)
@@ -513,12 +528,42 @@
         (stage-select-impl state side server slot))
       true)))
 
+(defn rush-from-hand-impl
+  [state side title server slot]
+  (let [card (find-card title (get-in @state [side :hand]))]
+    (ensure-no-prompts state)
+    (is' (some? card) (str title " is in the hand"))
+    (when-not (some? card)
+      (let [other-side (if (= side :runner) :corp :runner)]
+        (when (some? (find-card title (get-in @state [other-side :hand])))
+          (println title " was instead found in the opposing hand - was the wrong side used?"))))
+    (when server
+      (is' (some #{server} [:council :commons :archives])
+           (str server " is not a valid server.")))
+    (when slot
+      (is' (some #{slot} [:inner :middle :outer])
+           (str slot " is not a valid smpt.")))
+    (is' (:rush (core/card-def card)) (str "card is not rushable"))
+    (when (some? card)
+      (is' (core/process-action "rush" state side {:card card :server server}))
+      (when (and server slot)
+        (stage-select-impl state side server slot))
+      true)))
+
 (defmacro play-from-hand
   "Play a card from hand based on its title. If installing a Corp card, also indicate
   the server to install into with a string."
   ([state side title] `(play-from-hand ~state ~side ~title nil nil))
   ([state side title server slot]
    `(error-wrapper (play-from-hand-impl ~state ~side ~title ~server ~slot))))
+
+(defmacro rush-from-hand
+  "Rush a card from hand based on its title. If installing a Corp card, also indicate
+  the server to install into with a string."
+  ([state side title] `(rush-from-hand ~state ~side ~title nil nil))
+  ([state side title server slot]
+   `(error-wrapper (rush-from-hand-impl ~state ~side ~title ~server ~slot))))
+
 
 (defn play-from-hand-with-prompts-impl
   [state side title choices]

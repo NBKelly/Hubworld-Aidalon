@@ -52,30 +52,30 @@
 
 (defcard "Canal Network"
   {:confront-abilities [{:async true
-                         :prompt "Shift an unforged card on your opponent's grid"
+                         :prompt "Shift an unforged card?"
                          :waiting-prompt true
                          :req (req (seq (filter #(and (installed? %)
-                                                  (not= side (to-keyword (:side %)))
-                                                  (not= "Seeker" (:type %))
-                                                  (not (rezzed? %)))
-                                                (hubworld-all-installed state (other-side side)))))
+                                                      (not= "Seeker" (:type %))
+                                                      (not (rezzed? %)))
+                                                (concat (hubworld-all-installed state opponent)
+                                                        (hubworld-all-installed state side)))))
                          :choices {:req (req (and (installed? target)
-                                                  (not= side (to-keyword (:side target)))
                                                   (not= "Seeker" (:type target))
                                                   (not (rezzed? target))))}
-                         :effect (req (shift-a-card state side eid card target {:other-side? true :no-wait-prompt? true}))}]
+                         :effect (req (shift-a-card state side eid card target {:other-side? (not (my-card? target)) :no-wait-prompt? true}))}]
    :discover-abilities [{:async true
-                         :label "Shift a card on your opponent's grid"
-                         :prompt "Exhaust your Seeker: Shift a card on your opponent's grid"
+                         :label "Shift a card"
+                         :prompt "Shift a card?"
                          :waiting-prompt true
-                         :req (req (and (can-pay? state side eid card nil [(->c :exhaust-seeker)])
+                         :req (req (and (installed? card)
                                         (seq (filter #(and (installed? %)
-                                                           (not (seeker? %)))
-                                                     (hubworld-all-installed state (other-side side))))))
+                                                           (not= "Seeker" (:type %)))
+                                                     (concat (hubworld-all-installed state opponent)
+                                                             (hubworld-all-installed state side))))))
                          :choices {:req (req (and (installed? target)
-                                                  (not= side (to-keyword (:side target)))
                                                   (not= "Seeker" (:type target))))}
-                         :effect (req (shift-a-card state side eid card target {:other-side? true :cost [(->c :exhaust-seeker)] :no-wait-prompt? true}))}]})
+                         :effect (req
+                                   (shift-a-card state side eid card target {:other-side? (not (my-card? target)) :no-wait-prompt? true}))}]})
 
 (defcard "Emperor Drejj"
   {:reaction [{:reaction :forge

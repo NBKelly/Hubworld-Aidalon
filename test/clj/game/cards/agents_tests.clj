@@ -7,24 +7,34 @@
    [game.test-framework :refer :all]
    [game.core.payment :refer [->c]]))
 
-(deftest auntie-ruth-draw-3
-  (doseq [s [:corp :runner]]
+;; (deftest auntie-ruth-draw-3
+;;   (doseq [s [:corp :runner]]
+;;     (do-game
+;;       (new-game {:corp {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"]
+;;                         :deck [(qty "Fun Run" 4)]}
+;;                  :runner {:hand []
+;;                           :deck [(qty "Fun Run" 10)]}})
+;;       (play-from-hand state :corp "Auntie Ruth: Proprietor of the Hidden Tea House" :council :inner)
+;;       (forge state :corp (pick-card state :corp :council :inner))
+;;       (is (changed? [(count (get-hand state s)) 3]
+;;             (click-prompt state :corp "Auntie Ruth: Proprietor of the Hidden Tea House")
+;;             (click-card state :corp (get-id state s)))
+;;           (str "side: " s " drew 3")))))
+
+(deftest auntie-ruth-force-draw
+  (doseq [[s a] [[:corp 1] [:runner 2]]]
     (do-game
-      (new-game {:corp {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"]
-                        :deck [(qty "Fun Run" 4)]}
-                 :runner {:hand []
-                          :deck [(qty "Fun Run" 10)]}})
+      (new-game {:corp {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"] :deck ["Fun Run"]}})
       (play-from-hand state :corp "Auntie Ruth: Proprietor of the Hidden Tea House" :council :inner)
       (forge state :corp (pick-card state :corp :council :inner))
-      (is (changed? [(count (get-hand state s)) 3]
-            (click-prompt state :corp "Auntie Ruth: Proprietor of the Hidden Tea House")
-            (click-card state :corp (get-id state s)))
-          (str "side: " s " drew 3")))))
+      (is (changed? [(count (get-hand state s)) 1]
+            (card-ability state :corp (pick-card state :corp :council :inner) a))
+          "Forced a draw for side"))))
 
 (deftest auntie-ruth-collects
   (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
-              :credits 1
-              :prompts ["Auntie Ruth: Proprietor of the Hidden Tea House" "Goldie Xin: Junk Collector"]}))
+              ;;:prompts ["Auntie Ruth: Proprietor of the Hidden Tea House" "Goldie Xin: Junk Collector"]
+              :credits 1}))
 
 (deftest auntie-ruth-cipher-lose-one-action
   (do-game
@@ -77,6 +87,15 @@
   (collects? {:name "Doctor Twilight: Dream Surgeon"
               :cards 1}))
 
+(deftest doctor-twilight-discover-ability
+  (do-game
+    (new-game {:runner {:hand ["Doctor Twilight: Dream Surgeon"] :exile ["Shardwinner"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (click-card state :runner "Shardwinner")
+    (is-discard? state :runner ["Shardwinner"])))
+
 (deftest gargala-larga-imperator-of-growth-unexhaust-seeker
   (do-game
     (new-game {:corp {:hand ["Gargala Larga: Imperator of Growth"]}})
@@ -115,19 +134,33 @@
           (forge state :corp (pick-card state :corp :council :outer)))
         "1c discount")))
 
-(deftest kryzar-free-stage
-  (do-game
-    (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
-                             "Eye Enforcers"]}})
-    (play-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
-    (click-credit state :runner)
-    (forge state :corp (pick-card state :corp :council :inner))
-    (delve-server state :corp :council)
-    (delve-continue-to-approach state :corp)
-    (click-prompts state :corp "Kryzar the Rat: Navigator of the Cortex Maze" "Yes" "Eye Enforcers")
-    (stage-select state :corp :council :outer)
-    (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted kryzar")
-    (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
+;; (deftest kryzar-free-stage
+;;   (do-game
+;;     (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
+;;                              "Eye Enforcers"]}})
+;;     (play-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
+;;     (click-credit state :runner)
+;;     (forge state :corp (pick-card state :corp :council :inner))
+;;     (delve-server state :corp :council)
+;;     (delve-continue-to-approach state :corp)
+;;     (click-prompts state :corp "Kryzar the Rat: Navigator of the Cortex Maze" "Yes" "Eye Enforcers")
+;;     (stage-select state :corp :council :outer)
+;;     (is (exhausted? (pick-card state :corp :council :inner)) "Exhausted kryzar")
+;;     (is (= "Eye Enforcers" (:title (pick-card state :corp :council :outer))) "Staged EE")))
+
+(deftest kryzar-bypass-works
+  (doseq [[serv slot] [[:council :middle] [:commons :outer] [:archives :outer]]]
+    (do-game
+      (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze" "Shardwinner"]}})
+      (click-credit state :corp)
+      (click-credit state :runner)
+      (delve-server state :corp :council)
+      (rush-from-hand state :corp "Kryzar the Rat: Navigator of the Cortex Maze" :council :inner)
+      (card-ability state :corp (pick-card state :corp :council :inner) 1)
+      (stage-select state :corp serv slot)
+      (click-card state :corp "Shardwinner")
+      (is (= serv (:server (:delve @state))) "Correct server")
+      (is (= slot (:position (:delve @state))) "Correct slot"))))
 
 (deftest kryzar-the-rat-collects
   (collects? {:name "Kryzar the Rat: Navigator of the Cortex Maze"

@@ -35,6 +35,8 @@
                     (empty? (get-in @state [:corp :servers server :ices])))
       runnable-servers (game.core.servers/zones->sorted-names
                          (game.core.runs/get-runnable-zones state side eid card nil))
+      opponent (if (= side :corp) :runner :corp)
+      my-card? (fn [c] (= (keyword (clojure.string/lower-case (:side c))) side))
       hq-runnable (some #{:hq} (game.core.runs/get-runnable-zones state))
       rd-runnable (some #{:rd} (game.core.runs/get-runnable-zones state))
       archives-runnable (some #{:archives} (game.core.runs/get-runnable-zones state))

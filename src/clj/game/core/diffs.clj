@@ -237,6 +237,7 @@
    :card
    :prompt-type
    :show-discard
+   :show-exile
    :selectable
    ;; hubworld stuff
    :target-paths

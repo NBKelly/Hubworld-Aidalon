@@ -140,7 +140,7 @@
   (when-let [card (get-card state card)]
     (let [context (assoc context :card card)
           card-to-stage card
-          rush-abi {:msg (msg (println context) "rush itself to the " (name (:slot context)) " row of [their] " (string/capitalize (name (:server context))))
+          rush-abi {:msg (msg "rush itself to the " (name (:slot context)) " row of [their] " (string/capitalize (name (:server context))))
                     :async true
                     :cost [(->c :credit (rez-cost state side card-to-stage nil))]
                     :effect (req (let [c (:card context) server (:server context) slot (:slot context)]
