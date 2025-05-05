@@ -8,6 +8,7 @@
    [game.core.delving :refer [end-the-delve!]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
+   [game.core.eid :refer [effect-completed]]
    [game.core.gaining :refer [gain-credits gain-clicks lose]]
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [move trash swap-installed]]
@@ -57,6 +58,39 @@
                          :req (req (and (in-front-row? target)
                                         (not= (:side target) (:side card))
                                         (or (agent? target) (obstacle? target))))}]}))
+
+(defcard "Cargo Manifest"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :forge
+                 :type :ability
+                 :max-uses 1
+                 :req (req (same-card? card (:card context)))
+                 :ability {:prompt "Choose a player"
+                           :waiting-prompt true
+                           :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                                                   (same-card? target (get-in @state [:runner :identity]))))
+                                     :all true}
+                           :msg (msg (let [target-side (card-side target)]
+                                       (str "look at the top card of "
+                                            (if (= target-side side) "[their]" (str (other-player-name state side) "'s"))
+                                            " Commons")))
+                           :async true
+                           :effect (req (continue-ability
+                                          state side
+                                          (let [chosen-side (card-side target)
+                                                top-of-commons (first (get-in @state [chosen-side :deck]))]
+                                            {:optional
+                                             {:prompt (str "Put " (:title top-of-commons) " on the bottom of "
+                                                           (if (= chosen-side side) "your" (str (other-player-name state side) "'s"))
+                                                           " Commons")
+                                              :yes-ability {:msg (str "move the top of "
+                                                                      (if (= chosen-side side) "[their]" (str (other-player-name state side) "'s"))
+                                                                      " Commons to the bottom")
+                                                            :async true
+                                                            :effect (req (move state chosen-side top-of-commons :deck)
+                                                                         (effect-completed state side eid))}
+                                              }}) card nil ))}}]}))
 
 (defcard "Crispy Crawler"
   (collect
