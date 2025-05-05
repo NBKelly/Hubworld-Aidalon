@@ -84,6 +84,23 @@
     (click-prompts state :corp "Infiltrate" "Yes" "No Action" "No Action" "No Action")
     (is (no-prompt? state :corp))))
 
+(deftest propaganda-test
+  (do-game
+    (new-game {:corp {:hand ["Propaganda"]
+                      :discard ["Auntie Ruth: Proprietor of the Hidden Tea House"]}})
+    (play-from-hand state :corp "Propaganda")
+    (is (changed? [(:credit (get-corp)) 4]
+          (click-card state :corp "Auntie Ruth: Proprietor of the Hidden Tea House"))
+        "Gained 4")))
+
+(deftest propaganda-test
+  (do-game
+    (new-game {:corp {:hand ["Propaganda" "Auntie Ruth: Proprietor of the Hidden Tea House"]}})
+    (play-from-hand state :corp "Propaganda")
+    (is (changed? [(:credit (get-corp)) 4]
+          (click-card state :corp "Auntie Ruth: Proprietor of the Hidden Tea House"))
+        "Gained 4")))
+
 (deftest protecting-our-investment
   (do-game
     (new-game {:corp {:hand ["Protecting Our Investment" "Asset Protection Hub"]}})

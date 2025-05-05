@@ -165,6 +165,13 @@
                                       (shuffle! state side :deck)
                                       (effect-completed state side eid)))))))}})
 
+(defcard "Propaganda"
+  {:on-play {:action true
+             :additional-cost [(->c :click 1) (->c :reveal-agent-in-hand-or-discard 1)]
+             :msg "gain 4 [Credits]"
+             :async true
+             :effect (req (gain-credits state side eid 4))}})
+
 (defcard "Protecting Our Investment"
   {:reaction [{:type :moment
                :reaction :pre-confrontation

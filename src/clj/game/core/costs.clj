@@ -4,7 +4,7 @@
    [game.core.barrier :refer [get-barrier]]
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
                            rezzed? in-discard? installed?
-                           seeker?
+                           seeker? agent?
                            in-front-row? in-back-row?
                            in-archives-path? in-council-path?]]
    [game.core.card-defs :refer [card-def]]
@@ -838,5 +838,35 @@
                                     " with " (hubworld-card-str state (second targets)))
                      :paid/type :swap-front-and-back-row-cards
                      :paid/value 1
+                     :paid/targets targets}))}
+    nil nil))
+
+(defmethod value :reveal-agent-in-hand-or-discard [cost] (:cost/amount cost))
+(defmethod label :reveal-agent-in-hand-or-discard [cost]
+  (str "reveal " (quantify (value cost) "agent") "in your Council or Archives"))
+(defmethod payable? :reveal-agent-in-hand-or-discard
+  [cost state side eid card]
+  (<= 0 (-
+          (count
+            (filter agent? (concat (get-in @state [side :hand]) (get-in @state [side :discard]))))
+          (value cost))))
+(defmethod handler :reveal-agent-in-hand-or-discard
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Reveal " (quantify (value cost) "agent") "in your Council or Archives")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (agent? target)
+                              (my-card? target)
+                              (or (in-hand? target)
+                                  (in-discard? target))))}
+     :async true
+     :effect (req (reveal-and-queue-event state side targets)
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "reveals " (enumerate-str (map #(hubworld-card-str state %) targets)))
+                     :paid/type :reveal-agent-in-hand-or-discard
+                     :paid/value (count targets)
                      :paid/targets targets}))}
     nil nil))

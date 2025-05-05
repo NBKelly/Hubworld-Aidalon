@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [game.core.card :refer [get-card
-                           in-hand?
-                           rezzed? installed?]]
+                           obstacle?
+                           in-hand? rezzed? installed?]]
    [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
