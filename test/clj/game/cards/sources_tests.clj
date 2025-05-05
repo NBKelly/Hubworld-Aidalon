@@ -77,6 +77,21 @@
           (click-prompt state :corp "Crispy Crawler"))
         "Took 1")))
 
+(deftest daring-aeroboarder
+  (collects? {:name "Daring Aeroboarder"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Daring Aeroboarder"]}})
+    (play-from-hand state :corp "Daring Aeroboarder" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (delve-server state :corp :council)
+    (click-prompt state :corp "Daring Aeroboarder")
+    (click-prompt state :corp "Yes")
+    (stage-select state :corp :commons :outer)
+    (is (= :commons (:server (:delve @state))) "Correct server")
+    (is (= :outer (:position (:delve @state))) "Correct slot")))
+
 (deftest disagreeable-inspector-test
   (collects? {:name "Disagreeable Inspector"
               :credits 1})
