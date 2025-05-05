@@ -7,24 +7,34 @@
    [game.test-framework :refer :all]
    [game.core.payment :refer [->c]]))
 
-(deftest auntie-ruth-draw-3
-  (doseq [s [:corp :runner]]
+;; (deftest auntie-ruth-draw-3
+;;   (doseq [s [:corp :runner]]
+;;     (do-game
+;;       (new-game {:corp {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"]
+;;                         :deck [(qty "Fun Run" 4)]}
+;;                  :runner {:hand []
+;;                           :deck [(qty "Fun Run" 10)]}})
+;;       (play-from-hand state :corp "Auntie Ruth: Proprietor of the Hidden Tea House" :council :inner)
+;;       (forge state :corp (pick-card state :corp :council :inner))
+;;       (is (changed? [(count (get-hand state s)) 3]
+;;             (click-prompt state :corp "Auntie Ruth: Proprietor of the Hidden Tea House")
+;;             (click-card state :corp (get-id state s)))
+;;           (str "side: " s " drew 3")))))
+
+(deftest auntie-ruth-force-draw
+  (doseq [[s a] [[:corp 1] [:runner 2]]]
     (do-game
-      (new-game {:corp {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"]
-                        :deck [(qty "Fun Run" 4)]}
-                 :runner {:hand []
-                          :deck [(qty "Fun Run" 10)]}})
+      (new-game {:corp {:hand ["Auntie Ruth: Proprietor of the Hidden Tea House"] :deck ["Fun Run"]}})
       (play-from-hand state :corp "Auntie Ruth: Proprietor of the Hidden Tea House" :council :inner)
       (forge state :corp (pick-card state :corp :council :inner))
-      (is (changed? [(count (get-hand state s)) 3]
-            (click-prompt state :corp "Auntie Ruth: Proprietor of the Hidden Tea House")
-            (click-card state :corp (get-id state s)))
-          (str "side: " s " drew 3")))))
+      (is (changed? [(count (get-hand state s)) 1]
+            (card-ability state :corp (pick-card state :corp :council :inner) a))
+          "Forced a draw for side"))))
 
 (deftest auntie-ruth-collects
   (collects? {:name "Auntie Ruth: Proprietor of the Hidden Tea House"
-              :credits 1
-              :prompts ["Auntie Ruth: Proprietor of the Hidden Tea House" "Goldie Xin: Junk Collector"]}))
+              ;;:prompts ["Auntie Ruth: Proprietor of the Hidden Tea House" "Goldie Xin: Junk Collector"]
+              :credits 1}))
 
 (deftest auntie-ruth-cipher-lose-one-action
   (do-game

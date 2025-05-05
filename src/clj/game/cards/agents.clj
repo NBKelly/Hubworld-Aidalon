@@ -24,23 +24,33 @@
 (defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
   (collect
     {:shards 1}
-    {:reaction [{:reaction :forge
-                 :type :ability
-                 :max-uses 1
-                 :req (req (same-card? card (:card context)))
-                 :ability {:prompt "Choose a player"
-                           :waiting-prompt true
-                           :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
-                                                   (same-card? target (get-in @state [:runner :identity]))))
-                                     :all true}
-                           :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
-                                       (str
-                                         (when-not (= target-side side)
-                                           (str "force " (other-player-name state side) " to "))
-                                         "draw 3 cards")))
-                           :async true
-                           :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
-                                          (draw state target-side eid 3)))}}]
+    ;; {:reaction [{:reaction :forge
+    ;;              :type :ability
+    ;;              :max-uses 1
+    ;;              :req (req (same-card? card (:card context)))
+    ;;              :ability {:prompt "Choose a player"
+    ;;                        :waiting-prompt true
+    ;;                        :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+    ;;                                                (same-card? target (get-in @state [:runner :identity]))))
+    ;;                                  :all true}
+    ;;                        :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+    ;;                                    (str
+    ;;                                      (when-not (= target-side side)
+    ;;                                        (str "force " (other-player-name state side) " to "))
+    ;;                                      "draw 3 cards")))
+    ;;                        :async true
+    ;;                        :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+    ;;                                       (draw state target-side eid 3)))}}]
+    {:abilities [{:cost [(->c :exhaust-self)]
+                  :label "Draw a card"
+                  :async true
+                  :msg "draw a card"
+                  :effect (req (draw state side eid 1))}
+                 {:cost [(->c :exhaust-self)]
+                  :label "Your opponent draws a card"
+                  :async true
+                  :msg (msg "force " (other-player-name state side) " to draw a card")
+                  :effect (req (draw state opponent eid 1))}]
      :cipher [(->c :lose-click 1)]}))
 
 (defcard "Big Varna Gorvis: Friends in Every District"
@@ -51,7 +61,7 @@
                             :waiting-prompt true
                             :prompt "Archive 1 card from your opponent's council?"
                             :req (req (and (> (count (get-in @state [side :hand]))
-                                              (count (get-in @state [(other-side side) :hand])))
+                                              (count (get-in @state [opponent :hand])))
                                            (seq (get-in @state [(other-side side) :hand]))))
                             :yes-ability {:msg (msg "archive 1 card at random from " (other-player-name state side) "'s Council")
                                           :async true
