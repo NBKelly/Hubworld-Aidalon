@@ -87,6 +87,15 @@
   (collects? {:name "Doctor Twilight: Dream Surgeon"
               :cards 1}))
 
+(deftest doctor-twilight-discover-ability
+  (do-game
+    (new-game {:runner {:hand ["Doctor Twilight: Dream Surgeon"] :exile ["Shardwinner"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (click-card state :runner "Shardwinner")
+    (is-discard? state :runner ["Shardwinner"])))
+
 (deftest gargala-larga-imperator-of-growth-unexhaust-seeker
   (do-game
     (new-game {:corp {:hand ["Gargala Larga: Imperator of Growth"]}})

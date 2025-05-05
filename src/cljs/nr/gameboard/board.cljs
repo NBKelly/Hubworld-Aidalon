@@ -2003,6 +2003,7 @@
 (defn button-pane [{:keys [side prompt-state]}]
   (let [autocomp (r/track (fn [] (get-in @prompt-state [:choices :autocomplete])))
         show-discard? (r/track (fn [] (get-in @prompt-state [:show-discard])))
+        show-exile? (r/track (fn [] (get-in @prompt-state [:show-exile])))
         prompt-type (r/track (fn [] (get-in @prompt-state [:prompt-type])))
         opened-by-system (r/atom false)]
     (r/create-class
@@ -2014,7 +2015,10 @@
            (-> "#card-title" js/$ (.autocomplete (clj->js {"source" @autocomp}))))
          (cond @show-discard? (do (-> ".me .discard-container .popup" js/$ .fadeIn)
                                   (reset! opened-by-system true))
+               @show-exile? (do (-> ".me .exile-container .popup" js/$ .fadeIn)
+                                  (reset! opened-by-system true))
                @opened-by-system (do (-> ".me .discard-container .popup" js/$ .fadeOut)
+                                     (-> ".me .exile-container .popup" js/$ .fadeOut)
                                      (reset! opened-by-system false)))
          (if (= "select" @prompt-type)
            (set! (.-cursor (.-style (.-body js/document))) "url('/img/gold_crosshair.png') 12 12, crosshair")

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [in-hand? installed? agent? source? obstacle? rezzed? seeker?]]
+   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.drawing :refer [draw]]
    [game.core.def-helpers :refer [defcard stage-n-cards shift-self-abi]]
@@ -10,7 +10,7 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.exhausting :refer [unexhaust exhaust]]
    [game.core.gaining :refer [gain-credits]]
-   [game.core.moving :refer [mill archive]]
+   [game.core.moving :refer [mill move archive]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.presence :refer [update-card-presence]]
    [game.core.rezzing :refer [derez]]
@@ -136,7 +136,15 @@
 (defcard "Doctor Twilight: Dream Surgeon"
   (collect
     {:cards 1}
-    {:abilities [{:cost [(->c :exhaust-self) (->c :exile-from-archives 1)]
+    {:discover-abilities [{:label "Move 1 card from Exile to Archives"
+                           :req (req (seq (get-in @state [side :rfg])))
+                           :show-exile true
+                           :prompt "Add 1 card from your Exile to your Archives"
+                           :choices {:req (req (and (my-card? target)
+                                                    (in-rfg? target)))}
+                           :msg (msg "move " (:title target) " from [their] Exile to [their] Archives")
+                           :effect (req (move state side target :discard))}]
+     :abilities [{:cost [(->c :exhaust-self) (->c :exile-from-archives 1)]
                   :label "Gain 3 [Credits]"
                   :msg "gain 3 [Credits]"
                   :async true

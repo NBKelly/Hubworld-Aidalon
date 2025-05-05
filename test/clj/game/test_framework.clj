@@ -316,23 +316,27 @@
   {:corp {:deck (or (transform "Corp" (conj (:deck corp)
                                             (:hand corp)
                                             (:score-area runner)
-                                            (:score-area corp)
-                                            (:discard corp)))
+                                            (:discard corp)
+                                            (:exile corp)))
                     (:deck corp)
                     (transform "Corp" (qty "Fun Run" 10)))
           :hand (when-let [hand (:hand corp)]
                   (flatten hand))
           :score-area (when-let [scored (:score-area corp)]
-                    (flatten scored))
+                        (flatten scored))
           :discard (when-let [discard (:discard corp)]
                      (flatten discard))
           :identity (when-let [id (or (:id corp) (:identity corp))]
                       (utils/server-card id))
           :heat (:heat corp)
+          :exile (when-let [exile (:exile corp)]
+                   (flatten exile))
           :credits (:credits corp)}
    :runner {:deck (or (transform "Runner" (conj (:deck runner)
                                                 (:hand runner)
-                                                (:discard runner)))
+                                                (:score-area corp)
+                                                (:discard runner)
+                                                (:exile runner)))
                       (:deck runner)
                       (transform "Runner" (qty "Fun Run" 10)))
             :hand (when-let [hand (:hand runner)]
@@ -341,6 +345,8 @@
                     (flatten scored))
             :discard (when-let [discard (:discard runner)]
                        (flatten discard))
+            :exile (when-let [exile (:exile runner)]
+                     (flatten exile))
             :identity (when-let [id (or (:id runner) (:identity runner))]
                         (utils/server-card id))
             :heat (:heat runner)
@@ -403,6 +409,15 @@
                             (when (empty? (:hand side-map))
                               (find-card ctitle (get-in @state [side :hand]))))
                         :discard)))
+         (when (seq (:exile side-map))
+           (doseq [ctitle (:exile side-map)]
+             (core/move state side
+                        (or (find-card ctitle (get-in @state [side :deck]))
+                            ;; This is necessary as a :discard card will only end up in
+                            ;; the hand when we're not already using (starting-hand)
+                            (when (empty? (:hand side-map))
+                              (find-card ctitle (get-in @state [side :hand]))))
+                        :rfg)))
          (when (:heat side-map)
            (swap! state assoc-in [side :heat :base] (:heat side-map)))
          (when (:credits side-map)
