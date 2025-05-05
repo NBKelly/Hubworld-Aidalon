@@ -129,13 +129,18 @@
   [state side eid card]
   (if-not (and (get-card state card) (rezzed? card))
     (confrontation-cleanup state side eid card)
-    (wait-for
-      (pre-confrontation-reaction state side {:card card
-                                              :engaged-side side})
-      (when (same-card? (card-for-current-slot state) card)
-        (system-msg state side (str "confronts " (:title card)))
-        (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card)))
-        ))))
+    (do
+      (swap! state assoc-in [:delve :card-for-confrontation] card)
+      (wait-for
+        (pre-confrontation-reaction state side {:card card
+                                                :engaged-side side})
+        (let [card (get-card state (get-in @state [:delve :card-for-confrontation]))]
+          (swap! state dissoc-in [:delve :card-for-confrontation])
+          (if (and card (same-card? (card-for-current-slot state) card))
+            (do (system-msg state side (str "confronts " (:title card)))
+                (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card))))
+            (confrontation-cleanup state side eid nil)
+            ))))))
 
 ;; UTILS FOR DELVES
 
