@@ -12,7 +12,7 @@
    [game.core.def-helpers :refer [defcard]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits lose-credits]]
-   [game.core.heat :refer [lose-heat]]
+   [game.core.heat :refer [gain-heat lose-heat]]
    [game.core.moving :refer [archive trash-cards]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.shifting :refer [shift-a-card]]
@@ -190,3 +190,22 @@
                :req (req (same-card? card (:card context)))
                :ability {:async true
                          :effect (req (shift-a-card state side eid card card nil))}}]})
+
+(defcard "Yowling Tezu"
+  {:confront-abilities [{:optional
+                         {:prompt "Have each player gain 1 [heat]?"
+                          :yes-ability {:cost [(->c :gain-heat 1)]
+                                        :async true
+                                        :msg (msg "make " (other-player-name state side)
+                                                  " gain 1 [heat]")
+                                        :effect (req (gain-heat state opponent eid 1))}}}]
+   :discover-abilities [{:label "Archive this card to give your opponent 2 [heat]"
+                         :optional
+                         {:prompt "Archive Yowling Tezu to give your opponent 2 [heat]?"
+                          :waiting-prompt true
+                          :req (req (installed? card))
+                          :yes-ability {:cost [(->c :trash-can)]
+                                        :async true
+                                        :msg (msg "make " (other-player-name state side)
+                                                  " gain 2 [heat]")
+                                        :effect (req (gain-heat state opponent eid 2))}}}]})

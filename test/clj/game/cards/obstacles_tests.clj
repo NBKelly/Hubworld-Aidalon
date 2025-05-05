@@ -122,4 +122,38 @@
           (click-prompt state :corp "Yes"))
         "Milled 4")))
 
-;; TODO: Waterway Ferry
+(deftest waterway-ferry-shift-on-forge
+  (do-game
+    (new-game {:corp {:hand ["Waterway Ferry"]}})
+    (play-from-hand state :corp "Waterway Ferry" :council :outer)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (click-prompt state :corp "Waterway Ferry")
+    (click-prompt state :corp "Yes")
+    (stage-select state :corp :council :middle)
+    (is (= "Waterway Ferry" (:title (pick-card state :corp :council :middle))) "Shifted")))
+
+(deftest yowling-tezu-discover-force-2-heat
+  (do-game
+    (new-game {:corp {:hand ["Yowling Tezu"]}})
+    (play-from-hand state :corp "Yowling Tezu" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-discover-impl state :runner)
+    (is (changed? [(get-heat state :runner) 2]
+          (click-prompt state :corp "Yes"))
+        "Gained 2 heat")))
+
+(deftest yowling-encounter-heat-for-heat
+  (do-game
+    (new-game {:corp {:hand ["Yowling Tezu"]}})
+    (play-from-hand state :corp "Yowling Tezu" :council :outer)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-confront-impl state :runner)
+    (is (changed? [(get-heat state :runner) 1
+                   (get-heat state :corp) 1]
+          (click-prompt state :corp "Yes"))
+        "Both gained 1 heat")))
