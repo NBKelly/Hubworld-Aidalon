@@ -11,7 +11,7 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.exhausting :refer [unexhaust exhaust]]
    [game.core.gaining :refer [gain-credits]]
-   [game.core.moving :refer [mill move archive]]
+   [game.core.moving :refer [mill move archive swap-installed]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.presence :refer [update-card-presence]]
    [game.core.prompts :refer [show-shift-prompt]]
@@ -285,3 +285,23 @@
     {:cards 1}
     {:cipher [(->c :exhaust-front-row 1)]
      :abilities [(stage-n-cards 2 {:cost [(->c :click 1) (->c :exhaust-self)] :action true})]}))
+
+(defcard "Vapor X: Holomancer for Hire"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :swap-front-and-back-row-cards 1)]
+     :abilities [{:label "Swap 2 other cards"
+                  :cost [(->c :credit 1) (->c :exhaust-self)]
+                  :prompt "Choose two cards to swap"
+                  :req (req (>= (count (filter #(and (not (same-card? card %))
+                                                     (not (seeker? %)))
+                                               (hubworld-all-installed state side)))
+                                2))
+                  :choices {:all true
+                            :max 2
+                            :req (req (and (installed? target)
+                                           (not (same-card? card target))
+                                           (my-card? target)
+                                           (not (seeker? target))))}
+                  :msg (msg "swap " (hubworld-card-str state (first targets)) " and " (hubworld-card-str state (second targets)))
+                  :effect (req (swap-installed state side (first targets) (second targets)))}]}))

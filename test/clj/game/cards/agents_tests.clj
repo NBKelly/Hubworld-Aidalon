@@ -295,3 +295,18 @@
     (click-card state :corp "Capricious Informant")
     (stage-select state :corp :council :middle)
     (is (no-prompt? state :corp))))
+
+(deftest vapor-x-holomancer-for-hire
+  (collects? {:name "Vapor X: Holomancer for Hire"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Shardwinner" "Crispy Crawler"]}
+               :runner {:hand ["Vapor X: Holomancer for Hire"]}})
+    (play-from-hand state :corp "Shardwinner" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Crispy Crawler" :council :outer)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (click-prompt state :corp "Pay 1 [Credits] and swap a card in your front and back row: Secure")
+    (click-prompts state :corp "Shardwinner" "Crispy Crawler")
+    (is (seq (get-scored state :corp)) "Scored vapor x")))

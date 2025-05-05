@@ -5,7 +5,7 @@
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
                            rezzed? in-discard? installed?
                            seeker?
-                           in-front-row?
+                           in-front-row? in-back-row?
                            in-archives-path? in-council-path?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
@@ -16,7 +16,7 @@
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.heat :refer [gain-heat lose-heat]]
-   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards]]
+   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards swap-installed]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
    [game.core.props :refer [add-counter add-prop]]
@@ -807,3 +807,36 @@
                                  :paid/value (count async-result)
                                  :paid/targets async-result})))}
       nil nil)))
+
+(defmethod value :swap-front-and-back-row-cards [cost] (:cost/amount cost))
+(defmethod label :swap-front-and-back-row-cards [cost]
+  "swap a card in your front and back row")
+(defmethod payable? :swap-front-and-back-row-cards
+  [cost state side eid card]
+  (and (some in-front-row? (hubworld-all-installed state side))
+       (some in-back-row? (hubworld-all-installed state side))))
+(defmethod handler :swap-front-and-back-row-cards
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose cards in your front and back row to swap")
+     :choices {:all true
+               :max 2
+               :req (req (and (installed? target)
+                              (my-card? target)
+                              (let [pre-selected (first (:cards (get-in @state [side :selected 0] [])))]
+                                (or (and (not pre-selected)
+                                         (or (in-front-row? target) (in-back-row? target)))
+                                    (same-card? target pre-selected)
+                                    (and (in-front-row? target) (in-back-row? pre-selected))
+                                    (and (in-front-row? pre-selected) (in-back-row? target))))))}
+     :async true
+     :effect (req (swap-installed state side (first targets) (second targets))
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "swaps " (hubworld-card-str state (first targets))
+                                    " with " (hubworld-card-str state (second targets)))
+                     :paid/type :swap-front-and-back-row-cards
+                     :paid/value 1
+                     :paid/targets targets}))}
+    nil nil))
