@@ -10,7 +10,6 @@
    [game.core.say :refer [make-system-message]]
    [game.core.set-up :refer [init-game]]
    [game.main :as main]
-   [jinteki.preconstructed :as preconstructed]
    [jinteki.utils :refer [side-from-str]]
    [medley.core :refer [find-first]]
    [web.app-state :as app-state]
@@ -123,29 +122,9 @@
   (let [player (first (filter #(= (:side %) side) (:players game)))]
     (:uid player)))
 
-(defn set-precon-deck
-  [game side decklist]
-  (if-let [uid (side-player-uid game side)]
-    (let [deck (lobby/process-deck decklist)]
-      (assoc game :players (player-map-deck (:players game) uid deck)))
-    game))
-
-(defn set-precon-match
-  [game precon-match]
-  (-> game
-      (set-precon-deck "Corp" (:corp precon-match))
-      (set-precon-deck "Runner" (:runner precon-match))))
-
-(defn handle-precon-decks
-  [game]
-  (if-let [precon (:precon game)]
-    (set-precon-match game (preconstructed/matchup-by-key precon))
-    game))
-
 (defn handle-start-game [lobbies gameid players now]
   (if-let [lobby (get lobbies gameid)]
     (as-> lobby g
-      (handle-precon-decks g)
       (merge g {:started true
                 :original-players players
                 :ending-players players

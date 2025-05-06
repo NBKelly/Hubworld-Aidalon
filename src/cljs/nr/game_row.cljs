@@ -1,7 +1,6 @@
 (ns nr.game-row
   (:require
    [jinteki.utils :refer [superuser?]]
-   [jinteki.preconstructed :refer [matchup-by-key]]
    [cljc.java-time.instant :as inst]
    [cljc.java-time.duration :as duration]
    [cljc.java-time.temporal.chrono-unit :as chrono]
@@ -177,26 +176,16 @@
         (let [c (count (:spectators game))]
           (when (pos? c) (str " (" (tr [:lobby.spectator-count] c) ")"))))])
 
-(defn- precon-span [precon]
-  (when precon
-    [:span.format-precon (str ": " (tr (:tr-tag (matchup-by-key precon))))]))
-
-(defn- precon-under-span [precon]
-  (when precon
-    [:span.format-precon-deck-names (tr (:tr-underline (matchup-by-key precon)))]))
-
-(defn- open-decklists-span [precon open-decklists]
-  (when (and open-decklists (not precon))
+(defn- open-decklists-span [open-decklists]
+  (when open-decklists
     [:span.open-decklists (str " " (tr [:lobby.open-decklists-b] "(open decklists)"))]))
 
-(defn game-format [{fmt :format singleton? :singleton precon :precon open-decklists :open-decklists}]
+(defn game-format [{fmt :format singleton? :singleton  open-decklists :open-decklists}]
   [:div {:class "game-format"}
    [:span.format-label (tr [:lobby.format "Format"]) ":  "]
    [:span.format-type (tr-format (slug->format fmt "Unknown"))]
-   [precon-span precon]
    [:span.format-singleton (str (when singleton? (str " " (tr [:lobby.singleton-b "(singleton)"]))))]
-   [open-decklists-span precon open-decklists]
-   [precon-under-span precon]])
+   [open-decklists-span open-decklists]])
 
 (defn- time-since
   "Helper method for game-time. Computes how many minutes since game start"
