@@ -30,6 +30,7 @@
 
 (defcard "Barbican Gate"
   {:confront-abilities [{:async true
+                         :label "Gain 2 unless opponent exhausts a forged card"
                          :effect (req (let [me side
                                             op (other-side side)]
                                         (continue-ability
@@ -52,6 +53,7 @@
 
 (defcard "Canal Network"
   {:confront-abilities [{:async true
+                         :label "Shift an unforged card"
                          :prompt "Shift an unforged card?"
                          :waiting-prompt true
                          :req (req (seq (filter #(and (installed? %)
@@ -98,7 +100,8 @@
                          :effect (req (shift-a-card state side eid card target {:other-side? true :no-wait-prompt? true}))}]})
 
 (defcard "Eye Enforcers"
-  {:confront-abilities [{:optional
+  {:confront-abilities [{:label "Pay 1 [Credits] to archive a random card from Council"
+                         :optional
                          {:prompt "Pay 1 [Credits] to archive a card at random your opponents Council?"
                           :waiting-prompt true
                           :req (req (and (can-pay? state side eid card nil [(->c :credit 1)])
@@ -134,7 +137,8 @@
                                       (update-card-barrier state side card))}}]})
 
 (defcard "Probabilities Exchange"
-  {:confront-abilities [{:optional
+  {:confront-abilities [{:label "Opponent shuffles a card from grid into Commons"
+                         :optional
                          {:prompt "Have your opponent shuffle 1 card from their grid into their commons?"
                           :req (req (seq (filter (complement seeker?) (hubworld-all-installed state opponent))))
                           :yes-ability {:async true
@@ -155,7 +159,8 @@
 
 (defcard "Silent Interrogator"
   {:discover-abilities
-   [{:optional
+   [{:label "Archive the bottom 4 cards of Commons"
+     :optional
      {:req (req (and (installed? card)
                      (seq (get-in @state [(other-side side) :deck]))))
       :waiting-prompt true
@@ -173,7 +178,8 @@
 
 (defcard "Tunnel Runners"
   {:refund 1
-   :confront-abilities [{:optional
+   :confront-abilities [{:label "Pay 1 [Credits]: Lose 1 [Heat]"
+                         :optional
                          {:prompt "Pay 1 [Credits] to lose 1 [heat]?"
                           :waiting-prompt true
                           :req (req (and (can-pay? state side eid card nil [(->c :credit 1)])
@@ -186,6 +192,7 @@
 (defcard "Oroba Plaza"
   (let [abs [{:optional
               {:prompt "Steal 1 [Shard]"
+               :label "Steal 1 [Shard] if heat >= 2"
                :waiting-prompt true
                :req (req (and (>= (count-heat state side) 2)
                               (pos? (get-in @state [(other-side side) :credit]))))
@@ -206,7 +213,8 @@
                          :effect (req (shift-a-card state side eid card card nil))}}]})
 
 (defcard "Yowling Tezu"
-  {:confront-abilities [{:optional
+  {:confront-abilities [{:label "Each players gains 1 [heat]"
+                         :optional
                          {:prompt "Have each player gain 1 [heat]?"
                           :yes-ability {:cost [(->c :gain-heat 1)]
                                         :async true
