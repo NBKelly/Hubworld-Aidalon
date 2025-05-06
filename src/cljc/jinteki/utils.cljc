@@ -190,6 +190,9 @@
    {:name "/error"
     :usage "/error"
     :help "Displays an error toast"}
+   {:name "/exile"
+    :usage "/exile"
+    :help "Choose a card to exile (rival will secure if exiling an agent)"}
    {:name "/handsize"
     :has-args :required
     :usage "/handsize n"
