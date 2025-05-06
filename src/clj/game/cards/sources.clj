@@ -10,7 +10,7 @@
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits gain-clicks lose]]
    [game.core.heat :refer [lose-heat]]
-   [game.core.moving :refer [move trash swap-installed]]
+   [game.core.moving :refer [move trash swap-installed archive]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.props :refer [add-counter]]
    [game.core.staging :refer [stage-a-card]]
@@ -57,6 +57,24 @@
                          :req (req (and (in-front-row? target)
                                         (not= (:side target) (:side card))
                                         (or (agent? target) (obstacle? target))))}]}))
+
+(defcard "Cargo Inspector"
+  {:abilities [{:label "Draw 2 cards. Archive 1 card from your Council."
+                :cost [(->c :exhaust-self)]
+                :msg "draw 2 cards"
+                :async true
+                :effect (req (wait-for
+                               (draw state side 2)
+                               (continue-ability
+                                 state side
+                                 {:req (req (pos? (count (:hand corp))))
+                                  :prompt "Choose a card in your Council to archive"
+                                  :msg "archive 1 card from [their] Council"
+                                  :async true
+                                  :choices {:card #(and (in-hand? %)
+                                                        (same-side? side (:side %)))}
+                                  :effect (effect (archive eid target nil))}
+                                 card nil)))}]})
 
 (defcard "Crispy Crawler"
   (collect
