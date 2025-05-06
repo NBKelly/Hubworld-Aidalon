@@ -9,7 +9,7 @@
                            in-hand? in-discard? installed?
                            moment?  seeker? agent? obstacle?]]
    [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
-   [game.core.delving :refer [end-the-delve!]]
+   [game.core.delving :refer [end-the-delve! delve-encounter delve-complete-encounter]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed]]
@@ -64,6 +64,22 @@
                                         (not= (:side target) (:side card))
                                         (or (agent? target) (obstacle? target))))}]}))
 
+(defcard "Containment Funnel"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :pre-confrontation
+                 :type :ability
+                 :prompt "Redirect em?"
+                 :req (req (and (not= side (:engaged-side context))
+                                (adjacent? card (:card context))))
+                 :msg "redirect the delve to encounter Containment Funnel"
+                 :ability {:cost [(->c :exhaust-self)]
+                           :effect (req (let [server (nth (:zone card) 1)
+                                              slot (nth (:zone card) 2)]
+                                          (swap! state assoc-in [:delve :server] server)
+                                          (swap! state assoc-in [:delve :position] slot)
+                                          (swap! state assoc-in [:delve :card-for-confrontation] (get-card state card))
+                                          (swap! state assoc-in [:reaction :pre-confrontation :card] (get-card state card))))}}]}))
 (defcard "Cargo Manifest"
   (collect
     {:shards 1}
