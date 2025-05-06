@@ -299,8 +299,8 @@
     (push-reaction! state :approach-slot args)
     (resolve-reaction-effects-with-priority
       state nil eid :approach-slot resolve-reaction-for-side
-      {:prompt {defender              #(str "Your opponent is approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (:title approached-card))) )
-                (other-side defender) #(str "You are approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (hubworld-card-str state approached-card)))}
+      {:prompt {defender              #(str "Your opponent is approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (:title (:approached-card %))))
+                (other-side defender) #(str "You are approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (hubworld-card-str state (:approached-card %))))}
        :waiting "your opponent to resolve approach-slot reactions"})))
 
 ;; CARDS MOVING ZONES / COSTS

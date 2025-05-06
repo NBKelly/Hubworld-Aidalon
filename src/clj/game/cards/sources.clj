@@ -9,7 +9,7 @@
                            in-hand? in-discard? installed?
                            moment?  seeker? agent? obstacle?]]
    [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
-   [game.core.delving :refer [end-the-delve! delve-encounter delve-complete-encounter]]
+   [game.core.delving :refer [card-for-current-slot end-the-delve! delve-encounter delve-complete-encounter]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed]]
@@ -72,9 +72,10 @@
                  :type :ability
                  :prompt "Redirect your delve to approach a grid slot adjacent to your current position?"
                  :req (req (and (= side (->> @state :delve :delver))
+                                (can-pay? state side eid card nil [(->c :exhaust-self)])
                                 (>= 3 (count (get-in @state [side :hand])))))
-                 :ability {:async true
-                           :cost [(->c :exhaust-self)]
+                 :ability {:fake-cost [(->c :exhaust-self)]
+                           :async true
                            :effect (req
                                      (let [{:keys [server position]} (:delve @state)]
                                        (show-shift-prompt
@@ -83,12 +84,12 @@
                                          {:msg (msg (let [server (:server context)
                                                           slot (:slot context)]
                                                       (str "redirect the delve to the " (name slot) " position of " (str/capitalize (name server)) " (The delve is now in the Approach step)")))
-                                          :async true
+                                          :cost [(->c :exhaust-self)]
                                           :effect (req (let [server (:server context)
                                                              slot (:slot context)]
                                                          (swap! state assoc-in [:delve :server] server)
                                                          (swap! state assoc-in [:delve :position] slot)
-                                                         (delve-approach state side eid)))}
+                                                         (swap! state update-in [:reaction :approach-slot] #(merge % {:server server :position slot :approached-card (card-for-current-slot state)}))))}
                                          {:waiting-prompt true
                                           :other-side? true})))}}]}))
 
