@@ -871,6 +871,35 @@
                      :paid/targets targets}))}
     nil nil))
 
+(defmethod value :unforge [cost] (:cost/amount cost))
+(defmethod label :unforge [cost]
+  (str "unforge " (quantify (value cost) " installed card")))
+(defmethod payable? :unforge
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred rezzed? (complement seeker?))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :unforge
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (value cost) " cards to unforge")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (my-card? target)
+                              (installed? target)
+                              (rezzed? target)
+                              (not (seeker? target))))}
+     :effect (req (doseq [t targets]
+                    (derez state side t {:no-msg true}))
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "unforges " (enumerate-str (map :title targets)))
+                     :paid/type :unfroge
+                     :paid/value (count targets)
+                     :paid/targets targets}))}
+    nil nil))
+
 (defmethod value :shuffle-installed [cost] (:cost/amount cost))
 (defmethod label :shuffle-installed [cost]
   (str "shuffle " (quantify (value cost) "card") " from your grid into your Commons"))

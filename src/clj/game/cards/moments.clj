@@ -66,6 +66,36 @@
                          :async true
                          :effect (req (gain-credits state side eid 3))}}]})
 
+(defcard "Dodge"
+  {:reaction [{:location :hand
+               :reaction :pre-discover-ability
+               :req (req (and (not= side (:defender context))
+                              (let [ab (:ability context)]
+                                (cond (:req ab) ((:req ab) state opponent eid (:card context) nil)
+                                      (:req (:optional ab))
+                                      ((:req (:optional ab)) state opponent eid (:card context) nil)
+                                      :else true))
+                              (not (:ability-prevented context))))
+               :type :moment
+               :prompt (msg "prevent '" (or (:label (:ability context)) "(a discover ability)") "' from resolving")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "prevent '" (or (:label (:ability context)) "(a discover ability)") "' from resolving")
+                         :effect (req (swap! state assoc-in [:reaction :pre-discover-ability :ability-prevented] true))}}
+              {:location :hand
+               :reaction :pre-confrontation-ability
+               :req (req (and (not= side (:defender context))
+                              (let [ab (:ability context)]
+                                (cond (:req ab) ((:req ab) state opponent eid (:card context) nil)
+                                      (:req (:optional ab))
+                                      ((:req (:optional ab)) state opponent eid (:card context) nil)
+                                      :else true))
+                              (not (:ability-prevented context))))
+               :type :moment
+               :prompt (msg "prevent '" (or (:label (:ability context)) "(a confrontation ability)") "' from resolving")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "prevent '" (or (:label (:ability context)) "(a confrontation ability)") "' from resolving")
+                         :effect (req (swap! state assoc-in [:reaction :pre-confrontation-ability :ability-prevented] true))}}]})
+
 (defcard "Forced Liquidation"
   {:reaction [{:location :hand
                :type :moment
@@ -224,6 +254,12 @@
 
 (defcard "Rapid Growth"
   {:on-play (stage-n-cards 3 {:action true :additional-cost [(->c :click 1)]})})
+
+(defcard "Recalibrate"
+  {:flash {:additional-cost [(->c :unforge 1)]
+           :msg "draw 1 card"
+           :async true
+           :effect (req (draw state side eid 1))}})
 
 (defcard "Smooth Handoff"
   {:on-play {:additional-cost [(->c :click 1)]

@@ -220,6 +220,19 @@
     (stage-select state :corp :council :inner)
     (is (no-prompt? state :corp))))
 
+(deftest recalibrate-test
+  (do-game
+    (new-game {:corp {:hand ["Recalibrate" "Shardwinner"] :deck ["Fun Run"]}})
+    (flash-from-hand state :corp "Recalibrate")
+    (is (no-prompt? state :corp))
+    (play-from-hand state :corp "Shardwinner" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (flash-from-hand state :corp "Recalibrate")
+    (is (changed? [(count (:hand (get-corp))) 1]
+          (click-card state :corp "Shardwinner")
+          (is (not (:rezzed (pick-card state :corp :council :inner))) "No longer rezzed"))
+        "Drew 1")))
+
 (deftest twice-as-bad-test
   (do-game
     (new-game {:corp {:hand ["Likely a Trap" "Twice as Bad" "Barbican Gate"]}

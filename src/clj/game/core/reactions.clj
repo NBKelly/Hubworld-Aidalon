@@ -253,6 +253,24 @@
               (other-side engaged-side) (str "Your opponent is confronting " (:title card))}
      :waiting "your opponent to resolve pre-confrontation reactions"}))
 
+(defn pre-confrontation-ability-reaction
+  [state side eid {:keys [defender card] :as args}]
+  (push-reaction! state :pre-confrontation-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-confrontation-ability resolve-reaction-for-side
+    {:prompt {defender              (str "You are about to resolve a confrontation ability")
+              (other-side defender) (str "your opponent is about to resolve a confrontation ability")}
+     :waiting "your opponent to resolve pre-confrontation-ability reactions"}))
+
+(defn pre-discover-ability-reaction
+  [state side eid {:keys [defender card] :as args}]
+  (push-reaction! state :pre-discover-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-discover-ability resolve-reaction-for-side
+    {:prompt {defender              (str "You are about to resolve a discover ability")
+              (other-side defender) (str "your opponent is about to resolve a discover ability")}
+     :waiting "your opponent to resolve pre-discover-ability reactions"}))
+
 (defn post-discover-ability-reaction
   [state side eid {:keys [defender discovered-card] :as args}]
   (push-reaction! state :post-discover-ability args)
