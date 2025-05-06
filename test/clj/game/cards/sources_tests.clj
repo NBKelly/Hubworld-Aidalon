@@ -107,6 +107,19 @@
     (click-prompts state :corp "Shardwinner" "Capricious Informant")
     (is (not (:delve @state)) "Delve over")))
 
+(deftest job-board-test
+  (collects? {:name "Job Board"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Job Board" "Shardwinner"]}})
+    (play-from-hand state :corp "Job Board" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Shardwinner" :council :middle)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-corp)) -2]
+          (forge state :corp (pick-card state :corp :council :middle)))
+        "Got a discount")))
+
 (deftest lost-byway-test
   (collects? {:name "Lost Byway"
               :credits 1})

@@ -100,6 +100,15 @@
                   :async true
                   :effect (req (end-the-delve! state side eid nil))}]}))
 
+(defcard "Job Board"
+  (collect
+    {:cards 1}
+    {:static-abilities [{:type :rez-cost
+                         :req (req (and (installed? target)
+                                        (my-card? target)
+                                        (adjacent? card target)))
+                         :value -1}]}))
+
 (defcard "Lost Byway"
   (collect
     {:shards 1}
