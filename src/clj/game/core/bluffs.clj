@@ -2,8 +2,9 @@
   (:require
    [clojure.string :as str]
    [game.core.card :refer [get-card
-                           in-hand?
-                           rezzed?]]
+                           obstacle? moment?
+                           in-hand? in-deck? rezzed? installed?
+                           was-in-hand? was-in-deck?]]
    [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -28,6 +29,7 @@
   {;; END BREACH SERVER:
    ;;   FUN RUN
    ;;   CORNERING THE MARKET
+   ;;   PAPER TRAIL
    :complete-breach (req (and (seq (get-in @state [side :hand]))
                               (bluffs-enabled? state)
                               (or
@@ -40,6 +42,9 @@
                                     (and (= (:breach-server context) :commons)
                                          (or (< (known-copies state side "Fun Run") 2)
                                              (< (known-copies state side "Cornering the Market") 2)))
+                                    (and (< (known-copies state side "Paper Trail") 2)
+                                         (= (:breach-server context) :archives)
+                                         (seq (get-in @state [(:defender context) :hand])))
                                     ;; TURN UP THE HEAT
                                     (< (known-copies state side "Turn Up the Heat") 2))))))
    ;; BREACH SERVER
@@ -52,6 +57,39 @@
                                 (= (:delver context) side)
                                 (can-pay? state side eid card nil [(->c :credit 1)])
                                 (< (known-copies state side "Infiltrate") 2)))))
+
+   ;; PRE-DISCOVER (A SINGLE CARD)
+   ;;   TENACITY
+   ;;   KNOT TODAY
+   :pre-discover (req (and (seq (get-in @state [side :hand]))
+                           (bluffs-enabled? state)
+                           (or
+                             (and ;; KNOT TODAY
+                               (not= side (:engaged-side context))
+                               (or (was-in-hand? (:card context))
+                                   (was-in-deck? (:card context)))
+                               (moment? (:card context))
+                               (< (known-copies state side "Knot Today") 2))
+                             (and ;; TENACITY
+                               (not= side (:engaged-side context))
+                               (installed? (:card context))
+                               (< (known-copies state side "Tenacity") 2)))))
+
+   ;; PRE-CONFRONT (A SINGLE CARD)
+   ;;   TENACITY
+   ;;   PROTECTING OUR INVESTMENT
+   :pre-confrontation (req (and (seq (get-in @state [side :hand]))
+                                (bluffs-enabled? state)
+                                (or
+                                  (and ;; TENACITY
+                                    (not= side (:engaged-side context))
+                                    (installed? (:card context))
+                                    (obstacle? (:card context))
+                                    (< (known-copies state side "Protecting Our Investment") 2))
+                                  (and ;; TENACITY
+                                    (not= side (:engaged-side context))
+                                    (installed? (:card context))
+                                    (< (known-copies state side "Tenacity") 2)))))
 
    ;; POST DISCOVER ABILITY
    ;;   TWICE AS BAD
@@ -68,6 +106,8 @@
                                                (or (not r)
                                                    (r state side eid card targets))))))))
 
+   ;; APPROACH SLOT
+   ;;   FORCED LIQUIDATION
    :approach-slot (req (and (seq (get-in @state [side :hand]))
                             (bluffs-enabled? state)
                             (or

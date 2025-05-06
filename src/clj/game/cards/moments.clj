@@ -1,25 +1,27 @@
 (ns game.cards.moments
   (:require
    [clojure.string :as str]
+   [game.core.barrier :refer [update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
-                           source?
-                           seeker?
-                           in-hand? rezzed? installed?]]
+                           source? seeker? obstacle? moment?
+                           was-in-hand? in-hand? in-deck? was-in-deck? rezzed? installed?]]
    [game.core.def-helpers :refer [defcard stage-n-cards]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed]]
+   [game.core.effects :refer [register-lingering-effect]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill archive]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.presence :refer [update-card-presence]]
    [game.core.revealing :refer [reveal-loud]]
    [game.core.say :refer [system-msg]]
    [game.core.shifting :refer [shift-a-card]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.staging :refer [stage-a-card]]
-   [game.utils :refer [to-keyword  same-card?]]
+   [game.utils :refer [dissoc-in to-keyword same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
 
@@ -64,6 +66,36 @@
                          :async true
                          :effect (req (gain-credits state side eid 3))}}]})
 
+(defcard "Dodge"
+  {:reaction [{:location :hand
+               :reaction :pre-discover-ability
+               :req (req (and (not= side (:defender context))
+                              (let [ab (:ability context)]
+                                (cond (:req ab) ((:req ab) state opponent eid (:card context) nil)
+                                      (:req (:optional ab))
+                                      ((:req (:optional ab)) state opponent eid (:card context) nil)
+                                      :else true))
+                              (not (:ability-prevented context))))
+               :type :moment
+               :prompt (msg "prevent '" (or (:label (:ability context)) "(a discover ability)") "' from resolving")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "prevent '" (or (:label (:ability context)) "(a discover ability)") "' from resolving")
+                         :effect (req (swap! state assoc-in [:reaction :pre-discover-ability :ability-prevented] true))}}
+              {:location :hand
+               :reaction :pre-confrontation-ability
+               :req (req (and (not= side (:defender context))
+                              (let [ab (:ability context)]
+                                (cond (:req ab) ((:req ab) state opponent eid (:card context) nil)
+                                      (:req (:optional ab))
+                                      ((:req (:optional ab)) state opponent eid (:card context) nil)
+                                      :else true))
+                              (not (:ability-prevented context))))
+               :type :moment
+               :prompt (msg "prevent '" (or (:label (:ability context)) "(a confrontation ability)") "' from resolving")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "prevent '" (or (:label (:ability context)) "(a confrontation ability)") "' from resolving")
+                         :effect (req (swap! state assoc-in [:reaction :pre-confrontation-ability :ability-prevented] true))}}]})
+
 (defcard "Forced Liquidation"
   {:reaction [{:location :hand
                :type :moment
@@ -106,6 +138,24 @@
                          :msg "discover 2 additional cards"
                          :effect (req (access-bonus state side :council 2))}}]})
 
+(defcard "Knot Today"
+  {:reaction [{:location :hand
+               :reaction :pre-discover
+               :req (req (and (= side (:engaged-side context))
+                              (or (was-in-hand? (:card context))
+                                  (was-in-deck? (:card context)))
+                              (moment? (:card context))))
+               :type :moment
+               :prompt (msg "Archive " (:title (:card context)) " and draw 1 card?")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "archive " (:title (:card context))
+                                   (when (seq (get-in @state [side :deck]))
+                                     " and draw 1 card"))
+                         :async true
+                         :effect (req (wait-for (archive state side (:card context))
+                                                (swap! state dissoc-in [:reaction :pre-discover :card])
+                                                (draw state side eid 1)))}}]})
+
 (defcard "Likely a Trap"
   {:reaction [{:reaction :encounter-ended
                :location :hand
@@ -137,6 +187,18 @@
                                                                    :effect (req (mill state me eid op 2))}}}
                                           card nil)))}}]})
 
+(defcard "Paper Trail"
+  {:reaction [{:location :hand
+               :reaction :complete-breach
+               :prompt "Discover 1 card from your opponent's Council?"
+               :type :moment
+               :req (req (and (= (:breach-server context) :archives)
+                              (seq (get-in @state [opponent :hand]))
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exile-reaction)]
+                         :async true
+                         :effect (req (discover-card state side eid (first (shuffle (get-in @state [opponent :hand])))))}}]})
+
 (defcard "Print on Demand"
   {:on-play {:action true
              :additional-cost [(->c :click 1)]
@@ -163,8 +225,41 @@
                                       (shuffle! state side :deck)
                                       (effect-completed state side eid)))))))}})
 
+(defcard "Propaganda"
+  {:on-play {:action true
+             :additional-cost [(->c :click 1) (->c :reveal-agent-in-hand-or-discard 1)]
+             :msg "gain 4 [Credits]"
+             :async true
+             :effect (req (gain-credits state side eid 4))}})
+
+(defcard "Protecting Our Investment"
+  {:reaction [{:type :moment
+               :reaction :pre-confrontation
+               :location :hand
+               :prompt "Give engaged card +3 [barrier] until the end of the confrontation?"
+               :req (req (and (not= side (:engaged-side context))
+                              (installed? (:card context))
+                              (obstacle? (:card context))
+                              (my-card? (:card context))))
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "give " (:title (:card context)) " + 3 [barrier] until the end of the confrontation")
+                         :effect (req (let [target-card (:card context)]
+                                        (register-lingering-effect
+                                          state side card
+                                          {:type :barrier-value
+                                           :value 3
+                                           :req (req (same-card? target-card target))
+                                           :duration :end-of-confrontation})
+                                        (update-card-barrier state side target-card)))}}]})
+
 (defcard "Rapid Growth"
   {:on-play (stage-n-cards 3 {:action true :additional-cost [(->c :click 1)]})})
+
+(defcard "Recalibrate"
+  {:flash {:additional-cost [(->c :unforge 1)]
+           :msg "draw 1 card"
+           :async true
+           :effect (req (draw state side eid 1))}})
 
 (defcard "Smooth Handoff"
   {:on-play {:additional-cost [(->c :click 1)]
@@ -187,6 +282,26 @@
                               (lose state target-side :heat 1))
                             (draw state target-side eid 1)))}})
 
+(defcard "Tenacity"
+  (let [reaction {:type :moment
+                  :location :hand
+                  :prompt "Give engaged card +3 [presence] until the end of the confrontation?"
+                  :req (req (and (not= side (:engaged-side context))
+                                 (installed? (:card context))
+                                 (my-card? (:card context))))
+                  :ability {:cost [(->c :exile-reaction)]
+                            :msg (msg "give " (:title (:card context)) " + 3 [presence] until the end of the confrontation")
+                            :effect (req (let [target-card (:card context)]
+                                           (register-lingering-effect
+                                             state side card
+                                             {:type :presence-value
+                                              :value 3
+                                              :req (req (same-card? target-card target))
+                                              :duration :end-of-confrontation})
+                                           (update-card-presence state side target-card)))}}]
+    {:reaction [(assoc reaction :reaction :pre-discover)
+                (assoc reaction :reaction :pre-confrontation)]}))
+
 (defcard "Turn Up the Heat"
   {:reaction [{:location :hand
                :reaction :complete-breach
@@ -204,9 +319,14 @@
            :choices {:req (req (and (installed? target)
                                     (= (:side target) (:side card))
                                     (not (seeker? target))))}
-           :cost [(->c :exile-reaction)]
            :async true
            :effect (req (shift-a-card state side eid card target))}})
+
+(defcard "Trading Secrets"
+  {:flash {:additional-cost [(->c :archive-from-deck 2)]
+           :msg "gain 2 [Credits]"
+           :async true
+           :effect (req (gain-credits state side eid 2))}})
 
 (defcard "Twice as Bad"
   {:reaction [{:location :hand

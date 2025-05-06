@@ -15,7 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [approach-district-reaction approach-slot-reaction encounter-ended-reaction pre-confrontation-reaction ]]
+   [game.core.reactions :refer [approach-district-reaction approach-slot-reaction encounter-ended-reaction pre-confrontation-reaction pre-confrontation-ability-reaction]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -34,6 +34,11 @@
     (if success?
       (play-sfx state side "run-successful")
       (play-sfx state side "run-unsuccessful"))))
+
+(defn card-for-current-slot
+  [state]
+  (let [{:keys [defender server position]} (:delve @state)]
+    (get-in @state [defender :paths server position 0])))
 
 ;; DISCOVERY - facedown installed cards, and cards in centrals, can be discovered
 ;;             go through all the discover abilities top->bottom, then the player may dispatch the card
@@ -115,20 +120,36 @@
   (if-not (rezzed? (get-card state card))
       (confrontation-cleanup state side eid card)
       (if (seq abs)
-        (let [ab (first abs)]
-          (wait-for (resolve-ability state (other-side side) ab card nil)
-                    (resolve-confrontation-abilities state side eid card (rest abs))))
+        (let [ab (first abs)
+              ab (if (:optional ab)
+                   (update-in ab [:optional :waiting-prompt] #(or % true))
+                   (update ab :waiting-prompt #(or % true)))]
+          (wait-for
+            (pre-confrontation-ability-reaction state side {:card card :defender (other-side side) :ability ab})
+            (let [{:keys [ability-prevented]} async-result]
+              (if ability-prevented
+                ;; ability was prevented
+                (resolve-confrontation-abilities state side eid card (rest abs))
+                (wait-for (resolve-ability state (other-side side) ab card nil)
+                          (resolve-confrontation-abilities state side eid card (rest abs)))))))
         (confrontation-resolve-barrier state side eid card))))
 
 (defn confront-card
   [state side eid card]
   (if-not (and (get-card state card) (rezzed? card))
     (confrontation-cleanup state side eid card)
-    (wait-for
-      (pre-confrontation-reaction state side {:card card
-                                              :engaged-side side})
-      (system-msg state side (str "confronts " (:title card)))
-      (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card))))))
+    (do
+      (swap! state assoc-in [:delve :card-for-confrontation] card)
+      (wait-for
+        (pre-confrontation-reaction state side {:card card
+                                                :engaged-side side})
+        (let [card (get-card state (get-in @state [:delve :card-for-confrontation]))]
+          (swap! state dissoc-in [:delve :card-for-confrontation])
+          (if (and card (same-card? (card-for-current-slot state) card))
+            (do (system-msg state side (str "confronts " (:title card)))
+                (resolve-confrontation-abilities state side eid (get-card state card) (:confront-abilities (card-def card))))
+            (confrontation-cleanup state side eid nil)
+            ))))))
 
 ;; UTILS FOR DELVES
 
@@ -183,11 +204,6 @@
         (checkpoint state side eid))
       true)
     nil))
-
-(defn card-for-current-slot
-  [state]
-  (let [{:keys [defender server position]} (:delve @state)]
-    (get-in @state [defender :paths server position 0])))
 
 ;; STEPS OF A DELVE
 ;;   1) Nominate a server.
@@ -286,7 +302,6 @@
     (let [approached-card (card-for-current-slot state)]
       (if (and approached-card (rezzed? approached-card))
         (do (swap! state assoc-in [:delve :encounter-select] :confront)
-            (system-msg state side (str "confronts " (:title approached-card)))
             (wait-for (confront-card state side approached-card)
                       (when-not (delve-ended? state side eid)
                         (delve-complete-encounter state side eid))))

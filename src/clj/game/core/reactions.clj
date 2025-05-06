@@ -169,7 +169,8 @@
         (wait-for (resolve-ability
                     state side
                     (choose-one-helper
-                      {:prompt (str (side prompt) " - perform a reaction?")
+                      {:prompt (str ((side prompt) (get-in @state [:reaction key]))
+                                    " - perform a reaction?")
                        :waiting-prompt waiting}
                       (concat (mapv #(build-reaction-option % key) reactions)
                               [(when-not (some :mandatory reactions)
@@ -200,8 +201,8 @@
   (push-reaction! state :forge (assoc args :source-player side))
   (resolve-reaction-effects-with-priority
     state nil eid :forge resolve-reaction-for-side
-    {:prompt  {side              (str "You forged " (:title card))
-               (other-side side) (str "Your opponent forged " (:title card))}
+    {:prompt  {side              #(str "You forged " (-> % :card :title))
+               (other-side side) #(str "Your opponent forged " (-> % :card :title))}
      :waiting "your opponent to resolve on-forge reactions"}))
 
 ;; DELVING SERVERS
@@ -211,8 +212,8 @@
   (push-reaction! state :approach-district args)
   (resolve-reaction-effects-with-priority
     state delver eid :approach-district resolve-reaction-for-side
-    {:prompt {delver   (str "You are approaching your opponent's " (str/capitalize (name server)))
-              defender (str "Your opponent is approaching your " (str/capitalize  (name server)))}
+    {:prompt {delver   #(str "You are approaching your opponent's " (-> % :server name str/capitalize))
+              defender #(str "Your opponent is approaching your " (-> % :server name str/capitalize))}
      :waiting "your opponent to resolve approach-district reactions"}))
 
 (defn complete-breach-reaction
@@ -220,8 +221,8 @@
   (push-reaction! state :complete-breach args)
   (resolve-reaction-effects-with-priority
     state delver eid :complete-breach resolve-reaction-for-side
-    {:prompt {delver   (str "You finished breaching your opponent's " (str/capitalize (name breach-server)))
-              defender (str "Your opponent finished breaching your " (str/capitalize (name breach-server)))}
+    {:prompt {delver   #(str "You finished breaching your opponent's " (str/capitalize (name (:breach-server %))))
+              defender #(str "Your opponent finished breaching your " (str/capitalize (name (:breach-server %))))}
      :waiting "your opponent to resolve end-of-breach reactions"}))
 
 (defn pre-discovery-reaction
@@ -229,8 +230,8 @@
   (push-reaction! state :pre-discovery args)
   (resolve-reaction-effects-with-priority
     state delver eid :pre-discovery resolve-reaction-for-side
-    {:prompt {delver   (str "You are breaching your opponent's " (str/capitalize (name breach-server)))
-              defender (str "Your opponent is breaching your " (str/capitalize (name breach-server)))}
+    {:prompt {delver   #(str "You are breaching your opponent's " (str/capitalize (name (:breach-server %))))
+              defender #(str "Your opponent is breaching your " (str/capitalize (name (:breach-server %))))}
      :waiting "your opponent to resolve pre-discovery reactions"}))
 
 ;; ENCOUNTERING CARDS
@@ -240,8 +241,8 @@
   (push-reaction! state :pre-discover args)
   (resolve-reaction-effects-with-priority
     state nil eid :pre-discover resolve-reaction-for-side
-    {:prompt {engaged-side              (str "You are discovering " (:title card))
-              (other-side engaged-side) (str "Your opponent is discovering " (:title card))}
+    {:prompt {engaged-side              #(str "You are discovering " (:title (:card %)))
+              (other-side engaged-side) #(str "Your opponent is discovering " (:title (:card %)))}
      :waiting "your opponent to resolve pre-discover reactions"}))
 
 (defn pre-confrontation-reaction
@@ -249,17 +250,35 @@
   (push-reaction! state :pre-confrontation args)
   (resolve-reaction-effects-with-priority
     state nil eid :pre-confrontation resolve-reaction-for-side
-    {:prompt {engaged-side              (str "You are confronting " (:title card))
-              (other-side engaged-side) (str "Your opponent is confronting " (:title card))}
+    {:prompt {engaged-side              #(str "You are confronting " (:title (:card %)))
+              (other-side engaged-side) #(str "Your opponent is confronting " (:title (:card %)))}
      :waiting "your opponent to resolve pre-confrontation reactions"}))
+
+(defn pre-confrontation-ability-reaction
+  [state side eid {:keys [defender card] :as args}]
+  (push-reaction! state :pre-confrontation-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-confrontation-ability resolve-reaction-for-side
+    {:prompt {defender              (fn [_] (str "You are about to resolve a confrontation ability"))
+              (other-side defender) (fn [_] (str "your opponent is about to resolve a confrontation ability"))}
+     :waiting "your opponent to resolve pre-confrontation-ability reactions"}))
+
+(defn pre-discover-ability-reaction
+  [state side eid {:keys [defender card] :as args}]
+  (push-reaction! state :pre-discover-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-discover-ability resolve-reaction-for-side
+    {:prompt {defender              (fn [_] (str "You are about to resolve a discover ability"))
+              (other-side defender) (fn [_] (str "your opponent is about to resolve a discover ability"))}
+     :waiting "your opponent to resolve pre-discover-ability reactions"}))
 
 (defn post-discover-ability-reaction
   [state side eid {:keys [defender discovered-card] :as args}]
   (push-reaction! state :post-discover-ability args)
   (resolve-reaction-effects-with-priority
     state nil eid :post-discover-ability resolve-reaction-for-side
-    {:prompt {defender              (str "You have resolved a discover ability")
-              (other-side defender) (str "your opponent has resolved a discover ability")}
+    {:prompt {defender              (fn [_] (str "You have resolved a discover ability"))
+              (other-side defender) (fn [_] (str "your opponent has resolved a discover ability"))}
      :waiting "your opponent to resolve post-discover-ability reactions"}))
 
 (defn encounter-ended-reaction
@@ -269,8 +288,8 @@
       (push-reaction! state :encounter-ended args)
       (resolve-reaction-effects-with-priority
         state nil eid :encounter-ended resolve-reaction-for-side
-        {:prompt {delver              (str "You finished an encounter with " (hubworld-card-str state encounter-card))
-                  (other-side delver) (str "Your opponent finished an encounter with " (:title encounter-card))}
+        {:prompt {delver              #(str "You finished an encounter with " (hubworld-card-str state (:encounter-card %)))
+                  (other-side delver) #(str "Your opponent finished an encounter with " (:title (:encounter-card %)))}
          :waiting "your opponent to resolve post-encounter reactions"}))
     (effect-completed state side eid)))
 
@@ -280,9 +299,28 @@
     (push-reaction! state :approach-slot args)
     (resolve-reaction-effects-with-priority
       state nil eid :approach-slot resolve-reaction-for-side
-      {:prompt {defender              (str "Your opponent is approaching " (if empty "an empty slot" (:title approached-card)) )
-                (other-side defender) (str "You are approaching " (if empty "an empty slot" (hubworld-card-str state approached-card)))}
+      {:prompt {defender              #(str "Your opponent is approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (:title approached-card))) )
+                (other-side defender) #(str "You are approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (hubworld-card-str state approached-card)))}
        :waiting "your opponent to resolve approach-slot reactions"})))
+
+;; CARDS MOVING ZONES / COSTS
+(defn cards-exiled-reaction
+  [state side eid args]
+  (push-reaction! state :cards-exiled args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-exiled resolve-reaction-for-side
+    {:prompt {:corp   (fn [_] "Cards were exiled")
+              :runner (fn [_] "Cards were exiled")}
+     :waiting "your opponent to resolve cards-exiled reactions"}))
+
+(defn cards-archived-reaction
+  [state side eid args]
+  (push-reaction! state :cards-archived args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-archived resolve-reaction-for-side
+    {:prompt {:corp   (fn [_] "Cards were archived")
+              :runner (fn [_] "Cards were archived")}
+     :waiting "your opponent to resolve cards-archived reactions"}))
 
 ;; REFRESH PHASE / TURN
 
@@ -291,8 +329,8 @@
   (push-reaction! state :refresh-actions {})
   (resolve-reaction-effects-with-priority
     state nil eid :refresh-actions resolve-reaction-for-side
-    {:prompt {:corp   "Refresh phase - refill actions"
-              :runner "Refresh phase - refill actions"}
+    {:prompt {:corp   (fn [_] (str "Refresh phase - refill actions"))
+              :runner (fn [_] (str "Refresh phase - refill actions"))}
      :waiting "your opponent to resolve refresh-actions reactions"}))
 
 (defn round-begins-reaction
@@ -300,6 +338,6 @@
   (push-reaction! state :round-begins {})
   (resolve-reaction-effects-with-priority
     state nil eid :round-begins resolve-reaction-for-side
-    {:prompt {:corp   "The round is beginning"
-              :runner "The round is beginning"}
+    {:prompt {:corp   (fn [_] (str "The round is beginning"))
+              :runner (fn [_] (str "The round is beginning"))}
      :waiting "your opponent to resolve round-begins reactions"}))

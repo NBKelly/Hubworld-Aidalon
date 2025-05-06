@@ -13,7 +13,7 @@
    [game.core.moving :refer [exile move secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [complete-breach-reaction pre-discover-reaction pre-discovery-reaction post-discover-ability-reaction]]
+   [game.core.reactions :refer [complete-breach-reaction pre-discover-reaction pre-discovery-reaction post-discover-ability-reaction pre-discover-ability-reaction]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.set-aside :refer [add-to-set-aside get-set-aside]]
    [game.core.update :refer [update!]]
@@ -46,9 +46,9 @@
 (defn discover-continue
   [state side eid discovered-card]
   (let [can-interact? (and (or (not (moment? discovered-card))
-                               (in-discard? discovered-card)))
+                               (= [:discard] (:previous-zone discovered-card))))
         should-secure? (agent? discovered-card)
-        interact-cost? (merge-costs (concat (when-not (in-discard? discovered-card) [(->c :credit (get-presence discovered-card))])
+        interact-cost? (merge-costs (concat (when-not (= [:discard] (:previous-zone discovered-card)) [(->c :credit (get-presence discovered-card))])
                                             (:cipher (card-def discovered-card))))]
     (if (or (not (get-card state discovered-card)))
       (discover-cleanup state side eid discovered-card)
@@ -96,10 +96,16 @@
                  (assoc-in ab [:optional :waiting-prompt] true)
                  (assoc ab :waiting-prompt true))]
         (wait-for
-          (resolve-ability state (other-side side) ab card nil)
-          (wait-for
-            (post-discover-ability-reaction state side {:defender (other-side side) :discoverer side :ability ab :discovered-card card})
-            (resolve-discover-abilities state side eid card (rest abs)))))
+          (pre-discover-ability-reaction state side {:card card :defender (other-side side) :ability ab})
+          (let [{:keys [ability-prevented]} async-result]
+            (if ability-prevented
+              ;; ability was prevented
+              (resolve-discover-abilities state side eid card (rest abs))
+              (wait-for
+                (resolve-ability state (other-side side) ab card nil)
+                (wait-for
+                  (post-discover-ability-reaction state side {:defender (other-side side) :discoverer side :ability ab :discovered-card card})
+                  (resolve-discover-abilities state side eid card (rest abs))))))))
       (discover-continue state side eid card))))
 
 (defn discover-card
@@ -161,11 +167,9 @@
 (defn- resolve-breach-discovery-for-card
   "discovered cards are always set aside if not moved"
   [state side eid card remaining next-fn]
-  (wait-for (discover-card state side card)
-            ;; cards that are not exiled/secured are simply set aside faceup
-            (when (get-card state card)
-              (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))
-            (next-fn state side eid (dec remaining))))
+  (let [c (last (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))]
+    (wait-for (discover-card state side c)
+              (next-fn state side eid (dec remaining)))))
 
 ;; TODO -- BELOW, COMPLETE WITH RESULT
 (defn resolve-access-council

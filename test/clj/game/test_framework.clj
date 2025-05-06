@@ -528,6 +528,20 @@
         (stage-select-impl state side server slot))
       true)))
 
+(defn flash-from-hand-impl
+  [state side title]
+  (let [card (find-card title (get-in @state [side :hand]))]
+    (ensure-no-prompts state)
+    (is' (some? card) (str title " is in the hand"))
+    (when-not (some? card)
+      (let [other-side (if (= side :runner) :corp :runner)]
+        (when (some? (find-card title (get-in @state [other-side :hand])))
+          (println title " was instead found in the opposing hand - was the wrong side used?"))))
+    (is' (:flash (core/card-def card)) "card is not flashable")
+    (when (some? card)
+      (is' (core/process-action "flash" state side {:card card}))
+      true)))
+
 (defn rush-from-hand-impl
   [state side title server slot]
   (let [card (find-card title (get-in @state [side :hand]))]
@@ -557,10 +571,14 @@
   ([state side title server slot]
    `(error-wrapper (play-from-hand-impl ~state ~side ~title ~server ~slot))))
 
+(defmacro flash-from-hand
+  "Flash a card from hand based on its title. If installing a Corp card, also indicate
+  the server to install into with a string."
+  ([state side title] `(error-wrapper (flash-from-hand-impl ~state ~side ~title))))
+
 (defmacro rush-from-hand
   "Rush a card from hand based on its title. If installing a Corp card, also indicate
   the server to install into with a string."
-  ([state side title] `(rush-from-hand ~state ~side ~title nil nil))
   ([state side title server slot]
    `(error-wrapper (rush-from-hand-impl ~state ~side ~title ~server ~slot))))
 

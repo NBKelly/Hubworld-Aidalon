@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker?]]
+   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker? in-front-row?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.delving :refer [delve-approach]]
    [game.core.drawing :refer [draw]]
@@ -11,7 +11,8 @@
    [game.core.eid :refer [effect-completed]]
    [game.core.exhausting :refer [unexhaust exhaust]]
    [game.core.gaining :refer [gain-credits]]
-   [game.core.moving :refer [mill move archive]]
+   [game.core.hand-size :refer [me-hand-size+]]
+   [game.core.moving :refer [mill move archive swap-installed]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.presence :refer [update-card-presence]]
    [game.core.prompts :refer [show-shift-prompt]]
@@ -20,7 +21,7 @@
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? to-keyword same-side?]]
-   [game.macros :refer [effect msg req wait-for]]
+   [game.macros :refer [effect msg req wait-for continue-ability]]
    [jinteki.utils :refer [adjacent-zones other-player-name]]))
 
 (defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
@@ -99,7 +100,9 @@
                            :effect (req (derez state side target))}}]
      :discover-abilities [{:req (req (some #(and (rezzed? %)
                                                  (not (seeker? %)))
-                                           (hubworld-all-installed state opponent)))
+                                           (hubworld-all-installed state opponent))
+                                     (installed? card))
+                           :label "Unforge and exaust a card"
                            :prompt "Choose a card to unforge and exhaust"
                            :choices {:req (req (and (not (my-card? target))
                                                     (rezzed? target)
@@ -113,13 +116,22 @@
                                           (effect-completed state side eid)
                                           (exhaust state side eid card target)))}]}))
 
+(defcard "Counselor Vreenax: Planetary Exchequer"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :exile-total-shard-cost-from-council 3)]
+     :static-abilities [{:type :rez-cost
+                         :req (req (and (installed? target)
+                                        (not= (:side target) (:side card))))
+                         :value 1}]}))
+
 (defcard "Coroner Goodman: Slab Sleuth"
   (let [reaction {:type :ability
                   :prompt "Give engaged card +3 [presence] until the end of the confrontation?"
                   :req (req (and (not= side (:engaged-side context))
-                                 (or (source? card)
-                                     (agent? card)
-                                     (obstacle? card))))
+                                 (or (source? (:card context))
+                                     (agent? (:card context))
+                                     (obstacle? (:card context)))))
                   :ability {:cost [(->c :exhaust-self) (->c :exile-from-archives 1)]
                             :msg (msg "give " (:title (:card context)) " + 3 [presence] until the end of the confrontation")
                             :effect (req (let [target-card (:card context)]
@@ -236,6 +248,49 @@
                                           :msg "gain 4 [Credits]"
                                           :effect (req (gain-credits state side eid 4))}}}]}))
 
+(defcard "Recruiter Nilero: Effusive Inducer"
+  (collect
+    {:cards 1}
+    {:static-abilities [(me-hand-size+ 2)]
+     :discover-abilities [{:label "Choose a player to draw 2 cards"
+                           :prompt "Choose a player"
+                           :waiting-prompt true
+                           :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                                                   (same-card? target (get-in @state [:runner :identity]))))}
+                           :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+                                       (str
+                                         (when-not (= target-side side)
+                                           (str "force " (other-player-name state side) " to "))
+                                         "draw 2 cards")))
+                           :async true
+                           :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+                                          (draw state target-side eid 2)))}]}))
+
+(defcard "Renovator Warlan: ReDev Mogul"
+  (let [reaction {:type :ability
+                  :prompt "Force your opponent to exhaust a card in the front row of their grid?"
+                  :req (req
+                         (println "checking")
+                         (println "some installed?: " (some installed? (:cards context)))
+                         (println (mapv :zone (:cards context)))
+                         (println "contenx: " context)
+                         (and (some installed? (:cards context))
+                              (seq (filter (every-pred in-front-row? (complement :exhausted))
+                                           (hubworld-all-installed state opponent)))))
+                  :ability {:async true
+                            :cost [(->c :exhaust-self)]
+                            :effect (req (continue-ability
+                                           state opponent
+                                           {:msg :cost
+                                            :waiting-prompt true
+                                            :display-side side
+                                            :cost [(->c :exhaust-front-row 1)]}
+                                           card nil))}}]
+    (collect
+      {:shards 1}
+      {:reaction [(assoc reaction :reaction :cards-archived)
+                  (assoc reaction :reaction :cards-exiled)]})))
+
 (defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect
     {:shards 1}
@@ -285,3 +340,23 @@
     {:cards 1}
     {:cipher [(->c :exhaust-front-row 1)]
      :abilities [(stage-n-cards 2 {:cost [(->c :click 1) (->c :exhaust-self)] :action true})]}))
+
+(defcard "Vapor X: Holomancer for Hire"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :swap-front-and-back-row-cards 1)]
+     :abilities [{:label "Swap 2 other cards"
+                  :cost [(->c :credit 1) (->c :exhaust-self)]
+                  :prompt "Choose two cards to swap"
+                  :req (req (>= (count (filter #(and (not (same-card? card %))
+                                                     (not (seeker? %)))
+                                               (hubworld-all-installed state side)))
+                                2))
+                  :choices {:all true
+                            :max 2
+                            :req (req (and (installed? target)
+                                           (not (same-card? card target))
+                                           (my-card? target)
+                                           (not (seeker? target))))}
+                  :msg (msg "swap " (hubworld-card-str state (first targets)) " and " (hubworld-card-str state (second targets)))
+                  :effect (req (swap-installed state side (first targets) (second targets)))}]}))

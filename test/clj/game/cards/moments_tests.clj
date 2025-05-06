@@ -84,6 +84,58 @@
     (click-prompts state :corp "Infiltrate" "Yes" "No Action" "No Action" "No Action")
     (is (no-prompt? state :corp))))
 
+(deftest knot-today-test
+  (do-game
+    (new-game {:corp {:hand ["Knot Today"]
+                      :deck ["Fun Run"]}
+               :runner {:heat 1}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :commons {:give-heat? true})
+    (click-prompts state :corp "Knot Today" "Yes")
+    (click-prompt state :corp "No Action")))
+
+(deftest paper-trail-test
+  (do-game
+    (new-game {:corp {:hand ["Paper Trail"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :archives {:give-heat? true})
+    (is (changed? [(:credit (get-corp)) -2]
+          (click-prompts state :corp "Paper Trail" "Yes" "No Action"))
+        "It costs 2")
+    (is (no-prompt? state :corp))))
+
+(deftest propaganda-test
+  (do-game
+    (new-game {:corp {:hand ["Propaganda"]
+                      :discard ["Auntie Ruth: Proprietor of the Hidden Tea House"]}})
+    (play-from-hand state :corp "Propaganda")
+    (is (changed? [(:credit (get-corp)) 4]
+          (click-card state :corp "Auntie Ruth: Proprietor of the Hidden Tea House"))
+        "Gained 4")))
+
+(deftest propaganda-test
+  (do-game
+    (new-game {:corp {:hand ["Propaganda" "Auntie Ruth: Proprietor of the Hidden Tea House"]}})
+    (play-from-hand state :corp "Propaganda")
+    (is (changed? [(:credit (get-corp)) 4]
+          (click-card state :corp "Auntie Ruth: Proprietor of the Hidden Tea House"))
+        "Gained 4")))
+
+(deftest protecting-our-investment
+  (do-game
+    (new-game {:corp {:hand ["Protecting Our Investment" "Asset Protection Hub"]}})
+    (play-from-hand state :corp "Asset Protection Hub" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (delve-confront-impl state :runner)
+    (click-prompts state :corp "Protecting Our Investment" "Yes")
+    (is (changed? [(:credit (get-runner)) -4]
+          (click-prompt state :runner "Yes")))))
+
 (deftest smooth-handoff
   (doseq [heat [0 1]]
     (do-game
@@ -94,6 +146,30 @@
       (click-card state :corp (get-id state :corp))
       (is-hand? state :corp ["Fun Run"])
       (is (zero? (get-heat state :corp)) "No heat"))))
+
+(deftest tenacity-test
+  (doseq [opt [:discover :confront]]
+    (do-game
+      (new-game {:corp {:hand ["Tenacity" "Crispy Crawler"]}})
+      (play-from-hand state :corp "Crispy Crawler" :council :outer)
+      (click-credit state :runner)
+      (click-credit state :corp)
+      (delve-server state :runner :council)
+      (if (= opt :confront)
+        (do (forge state :corp (pick-card state :corp :council :outer))
+            (delve-confront-impl state :runner))
+        (delve-discover-impl state :runner))
+      (click-prompts state :corp "Tenacity" "Yes")
+      (is (changed? [(:credit (get-runner)) -5]
+            (click-prompt state :runner "Pay 5 [Credits]: Exile"))))))
+
+(deftest trading-secrets
+  (do-game
+    (new-game {:corp {:hand ["Trading Secrets"]
+                      :deck [(qty "Fun Run" 4)]}})
+    (is (changed? [(:credit (get-corp)) 2
+                   (count (:discard (get-corp))) 2]
+          (flash-from-hand state :corp "Trading Secrets")))))
 
 (deftest turn-up-the-heat
   (doseq [s [:archives :council :commons]]
@@ -143,6 +219,19 @@
     (click-card state :corp "Ulin Marr: Eccentric Architect")
     (stage-select state :corp :council :inner)
     (is (no-prompt? state :corp))))
+
+(deftest recalibrate-test
+  (do-game
+    (new-game {:corp {:hand ["Recalibrate" "Shardwinner"] :deck ["Fun Run"]}})
+    (flash-from-hand state :corp "Recalibrate")
+    (is (no-prompt? state :corp))
+    (play-from-hand state :corp "Shardwinner" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (flash-from-hand state :corp "Recalibrate")
+    (is (changed? [(count (:hand (get-corp))) 1]
+          (click-card state :corp "Shardwinner")
+          (is (not (:rezzed (pick-card state :corp :council :inner))) "No longer rezzed"))
+        "Drew 1")))
 
 (deftest twice-as-bad-test
   (do-game
