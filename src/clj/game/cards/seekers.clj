@@ -23,7 +23,7 @@
                                 (seq (get-in @state [(other-side side) :hand]))
                                 (= (:delver context) side)))
                  :prompt "Archive 1 card at random from your oppponent's Council"
-                 :ability {:cost [(->c :exhaust-self) (->c :trash-from-deck 1)]
+                 :ability {:cost [(->c :exhaust-self) (->c :archive-from-deck 1)]
                            :msg (msg "Archive 1 card at random from " (other-player-name state side) "'s Council")
                            :async true
                            :effect (req (archive state side eid (first (shuffle (get-in @state [(other-side side) :hand])))))}}]}))

@@ -30,6 +30,14 @@
     :req req
     :value value}))
 
+(defn me-hand-size+
+  ([value] (me-hand-size+ (constantly true) value))
+  ([req value]
+   (hand-size+ (fn [state side eid card targets]
+                 (and (= side (keyword (clojure.string/lower-case (:side card))))
+                      (req state side eid card targets)))
+               value)))
+
 (defn corp-hand-size+
   ([value] (corp-hand-size+ (constantly true) value))
   ([req value]

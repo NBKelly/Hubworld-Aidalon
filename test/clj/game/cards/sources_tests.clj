@@ -125,6 +125,18 @@
           (click-prompts state :corp "Disagreeable Inspector" "Yes"))
         "Reduced barrier by 2 on encounter")))
 
+(deftest echofield-registry
+  (collects? {:name "Echofield Registry"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Echofield Registry"]
+                      :discard ["Shardwinner"]}})
+    (play-from-hand state :corp "Echofield Registry" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (delve-empty-server state :corp :council)
+    (click-prompts state :corp "Echofield Registry" "Yes" "Shardwinner")))
+
 (deftest echopomp-revoker-test
   (collects? {:name "Echopomp Revoker"
               :cards 1})
@@ -139,6 +151,19 @@
     (click-prompts state :corp "Shardwinner" "Capricious Informant")
     (is (not (:delve @state)) "Delve over")))
 
+(deftest job-board-test
+  (collects? {:name "Job Board"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Job Board" "Shardwinner"]}})
+    (play-from-hand state :corp "Job Board" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Shardwinner" :council :middle)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-corp)) -2]
+          (forge state :corp (pick-card state :corp :council :middle)))
+        "Got a discount")))
+
 (deftest lost-byway-test
   (collects? {:name "Lost Byway"
               :credits 1})
@@ -148,6 +173,17 @@
     (forge state :corp (pick-card state :corp :council :inner))
     (is (changed? [(get-heat state :corp)]
           (click-prompt state :corp "Lost Byway")))))
+
+(deftest marauders-market-test
+  (collects? {:name "Marauder’s Market"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Marauder’s Market"] :heat 2}})
+    (play-from-hand state :corp "Marauder’s Market" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-corp)) 2]
+          (card-ability state :corp (pick-card state :corp :council :inner) 1))
+        "Gained 2c")))
 
 (deftest pax-observatory
   (collects? {:name "Pax Observatory"
@@ -214,6 +250,19 @@
     (is (changed? [(get-presence (pick-card state :corp :council :middle)) 1]
           (forge state :corp (pick-card state :corp :council :inner)))
         "+1 presence")))
+
+(deftest wall-wizard-test
+  (do-game
+    (new-game {:corp {:hand ["Wall Wizard"]}
+               :runner {:hand [(qty "Fun Run" 5)]}})
+    (play-from-hand state :corp "Wall Wizard" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (click-credit state :runner)
+    (delve-empty-server state :corp :commons)
+    (is (changed? [(:credit (get-corp)) 2]
+          (click-prompts state :corp "Wall Wizard" "Yes"))
+        "Gained 2c")
+    (is (no-prompt? state :corp))))
 
 (deftest waterfront-soakhouse
   (collects? {:name "Waterfront Soakhouse"

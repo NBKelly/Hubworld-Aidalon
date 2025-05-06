@@ -15,7 +15,7 @@
    [game.core.moving :refer [move exile secure-agent]]
    [game.core.payment :refer [build-cost-string build-spend-msg ->c can-pay? merge-costs]]
    [game.core.presence :refer [get-presence]]
-   [game.core.reactions :refer [approach-district-reaction approach-slot-reaction encounter-ended-reaction pre-confrontation-reaction ]]
+   [game.core.reactions :refer [approach-district-reaction approach-slot-reaction encounter-ended-reaction pre-confrontation-reaction pre-confrontation-ability-reaction]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.say :refer [play-sfx system-msg]]
    [game.core.to-string :refer [card-str]]
@@ -115,9 +115,18 @@
   (if-not (rezzed? (get-card state card))
       (confrontation-cleanup state side eid card)
       (if (seq abs)
-        (let [ab (first abs)]
-          (wait-for (resolve-ability state (other-side side) ab card nil)
-                    (resolve-confrontation-abilities state side eid card (rest abs))))
+        (let [ab (first abs)
+              ab (if (:optional ab)
+                   (update-in ab [:optional :waiting-prompt] #(or % true))
+                   (update ab :waiting-prompt #(or % true)))]
+          (wait-for
+            (pre-confrontation-ability-reaction state side {:card card :defender (other-side side) :ability ab})
+            (let [{:keys [ability-prevented]} async-result]
+              (if ability-prevented
+                ;; ability was prevented
+                (resolve-confrontation-abilities state side eid card (rest abs))
+                (wait-for (resolve-ability state (other-side side) ab card nil)
+                          (resolve-confrontation-abilities state side eid card (rest abs)))))))
         (confrontation-resolve-barrier state side eid card))))
 
 (defn confront-card

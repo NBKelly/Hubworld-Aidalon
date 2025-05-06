@@ -254,6 +254,23 @@
             (click-prompt state :runner opt))
           q))))
 
+(deftest recruiter-nilero-effusive-inducer
+  (collects? {:name "Recruiter Nilero: Effusive Inducer"
+              :cards 1})
+  (doseq [s [:corp :runner]]
+    (do-game
+      (new-game {:corp {:deck [(qty "Recruiter Nilero: Effusive Inducer" 10)]}})
+      (play-from-hand state :corp "Recruiter Nilero: Effusive Inducer" :archives :inner)
+      (forge state :corp (pick-card state :corp :archives :inner))
+      (is (= 7 (hand-size :corp)) "7 hand size for corp")
+      (is (= 5 (hand-size :runner)) "5 hand size for runner")
+      (click-credit state :runner)
+      (click-credit state :corp)
+      (delve-empty-server state :runner :commons {:give-heat? true})
+      (is (changed? [(count (get-hand state s)) 2]
+            (click-card state :corp (get-id state s)))
+          (str "side: " s " drew 2")))))
+
 (deftest rory-and-bug-moves
   (do-game
     (new-game {:corp {:hand ["Rory & Bug: “We Fetch It, You Catch It!”"]}})
@@ -326,3 +343,18 @@
     (click-card state :corp "Capricious Informant")
     (stage-select state :corp :council :middle)
     (is (no-prompt? state :corp))))
+
+(deftest vapor-x-holomancer-for-hire
+  (collects? {:name "Vapor X: Holomancer for Hire"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Shardwinner" "Crispy Crawler"]}
+               :runner {:hand ["Vapor X: Holomancer for Hire"]}})
+    (play-from-hand state :corp "Shardwinner" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Crispy Crawler" :council :outer)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (click-prompt state :corp "Pay 1 [Credits] and swap a card in your front and back row: Secure")
+    (click-prompts state :corp "Shardwinner" "Crispy Crawler")
+    (is (seq (get-scored state :corp)) "Scored vapor x")))

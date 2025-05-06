@@ -3,7 +3,11 @@
    [clojure.string :as str]
    [game.core.barrier :refer [get-barrier update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle? get-counters]]
+   [game.core.card :refer [get-card get-counters
+                           in-commons-path? in-council-path?
+                           in-front-row?
+                           in-hand? in-discard? installed?
+                           moment?  seeker? agent? obstacle?]]
    [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
    [game.core.delving :refer [end-the-delve!]]
    [game.core.drawing :refer [draw]]
@@ -14,6 +18,7 @@
    [game.core.moving :refer [move trash swap-installed archive]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.props :refer [add-counter]]
+   [game.core.shuffling :refer [shuffle!]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? same-side? enumerate-str]]
@@ -142,6 +147,23 @@
                                              :duration :end-of-confrontation})
                                           (update-card-barrier state side target-card)))}}]}))
 
+(defcard "Echofield Registry"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :complete-breach
+                 :prompt "Shuffle an Archived card into your Commons?"
+                 :type :ability
+                 :req (req (and (= (:delver context) side)
+                                (seq (get-in @state [side :discard]))))
+                 :ability {:cost [(->c :exhaust-self)]
+                           :show-discard true
+                           :choices {:req (req (and (my-card? target)
+                                                    (in-discard? target)))
+                                     :all true}
+                           :msg "shuffles 1 card from [their] Archives into [their] Commons"
+                           :effect (req (move state side target :deck)
+                                        (shuffle! state side :deck))}}]}))
+
 (defcard "Echopomp Revoker"
   (collect
     {:cards 1}
@@ -150,6 +172,16 @@
                   :msg "end the delve"
                   :async true
                   :effect (req (end-the-delve! state side eid nil))}]}))
+
+(defcard "Job Board"
+  (collect
+    {:cards 1}
+    {:refund 1
+     :static-abilities [{:type :rez-cost
+                         :req (req (and (installed? target)
+                                        (my-card? target)
+                                        (adjacent? card target)))
+                         :value -1}]}))
 
 (defcard "Lost Byway"
   (collect
@@ -163,6 +195,16 @@
                  :ability {:async true
                            :msg "remove 1 [heat]"
                            :effect (req (lose-heat state side eid 1))}}]}))
+
+(defcard "Marauder’s Market"
+  (collect
+    {:cards 1}
+    {:abilities [{:cost [(->c :exhaust-self)]
+                  :label "Gain 2 [Credits]"
+                  :msg "gain 2 [Credits]"
+                  :async true
+                  :req (req (>= (count-heat state side) 2))
+                  :effect (req (gain-credits state side eid 2))}]}))
 
 (defcard "Pax Observatory"
   (collect
@@ -224,6 +266,18 @@
     {:static-abilities [{:type :presence-value
                          :value 1
                          :req (req (adjacent? card target))}]}))
+
+(defcard "Wall Wizard"
+  {:refund 1
+   :reaction [{:reaction :complete-breach
+               :prompt "Gain 2 [Credits]?"
+               :type :ability
+               :req (req (and (= (:breach-server context) :commons)
+                              (= (:delver context) side)))
+               :ability {:cost [(->c :exhaust-self)]
+                         :msg "gain 2 [Credits]"
+                         :async true
+                         :effect (req (gain-credits state side eid 2))}}]})
 
 (defcard "Waterfront Soakhouse"
   (collect
