@@ -1,5 +1,6 @@
 (ns game.core.costs
   (:require
+   [clojure.set :as set]
    [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
@@ -732,6 +733,40 @@
                                :paid/value (value cost)
                                :paid/targets targets})))}
     card nil))
+
+(defmethod value :exile-total-shard-cost-from-council [cost] (:cost/amount cost))
+(defmethod label :exile-total-shard-cost-from-council [cost]
+  (str "exile cards from council with total shard cost of " (value cost) " [Credits] or more"))
+(defmethod payable? :exile-total-shard-cost-from-council [cost state side eid card]
+  (<= 0 (- (reduce + (map :cost (get-in @state [side :hand]))) (value cost))))
+(defmethod handler :exile-total-shard-cost-from-council
+  [cost state side eid card]
+  (letfn [(choose-more [remaining to-exile]
+            (let [exile-value (reduce + (map :cost to-exile))
+                  amount-to-pay (max (- (value cost) exile-value) 0)]
+              {:async true
+               :prompt (str "Choose a card to exile (remaining: " amount-to-pay " [Credits])")
+               :choices (if (zero? amount-to-pay) (conj (vec remaining) "Done") remaining)
+               :effect (req (if (= "Done" target)
+                              (wait-for (exile-cards state side to-exile {:cause :ability-cost
+                                                                          :seen true
+                                                                          :unpreventable true
+                                                                          :suppress-checkpoint true})
+                                        (complete-with-result
+                                          state side eid
+                                          {:paid/msg (str "exiles " (quantify (count to-exile) "card")
+                                                          " from [their] council with total shard cost of "
+                                                          exile-value " [Credits] (" (enumerate-str (map :title to-exile)) ")")
+                                           :paid/type :exile-total-shard-cost-from-council
+                                           :paid/value (value cost)
+                                           :paid/targets to-exile}))
+                              (continue-ability state side (choose-more
+                                                             (set/difference (set remaining) (set [target]))
+                                                             (conj to-exile target)) card nil)))
+               }))]
+    (continue-ability state side
+      (choose-more (get-in @state [side :hand]) '()) card nil)))
+
 
 ;; Gain heat
 (defmethod value :gain-heat [cost] (:cost/amount cost))

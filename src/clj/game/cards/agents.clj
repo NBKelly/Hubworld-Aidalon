@@ -99,7 +99,8 @@
                            :effect (req (derez state side target))}}]
      :discover-abilities [{:req (req (some #(and (rezzed? %)
                                                  (not (seeker? %)))
-                                           (hubworld-all-installed state opponent)))
+                                           (hubworld-all-installed state opponent))
+                                     (installed? card))
                            :prompt "Choose a card to unforge and exhaust"
                            :choices {:req (req (and (not (my-card? target))
                                                     (rezzed? target)
@@ -112,6 +113,15 @@
                                         (if (:exhausted target)
                                           (effect-completed state side eid)
                                           (exhaust state side eid card target)))}]}))
+
+(defcard "Counselor Vreenax: Planetary Exchequer"
+  (collect
+    {:shards 1}
+    {:cipher [(->c :exile-total-shard-cost-from-council 3)]
+     :static-abilities [{:type :rez-cost
+                         :req (req (and (installed? target)
+                                        (not= (:side target) (:side card))))
+                         :value 1}]}))
 
 (defcard "Coroner Goodman: Slab Sleuth"
   (let [reaction {:type :ability
