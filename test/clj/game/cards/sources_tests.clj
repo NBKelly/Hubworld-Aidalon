@@ -58,6 +58,38 @@
           (click-prompt state :runner "Pay 2 [Credits]: Exile"))
         "Refunded 1")))
 
+(deftest cargo-manifest-test
+  (collects? {:name "Cargo Manifest"
+              :prompts ["Pass priority"]
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Cargo Manifest"]}
+               :runner {:deck [(qty "Crispy Crawler" 5) "Fun Run" "Waterway Ferry"]}})
+    (play-from-hand state :corp "Cargo Manifest" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (click-prompt state :corp "Cargo Manifest")
+    (click-card state :corp (get-id state :runner))
+    (let [deck-before-move (:deck (get-runner))]
+      (click-prompt state :corp "Yes")
+      (let [deck-after-move (:deck (get-runner))]
+        (is (same-card? (first deck-before-move) (last deck-after-move)))
+        (is (same-card? (second deck-before-move) (first deck-after-move)))))))
+
+(deftest cargo-inspector
+  (do-game
+    (new-game {:corp {:hand ["Cargo Inspector"]
+                      :deck ["Disagreeable Inspector", "Crispy Crawler"]}})
+    (play-from-hand state :corp "Cargo Inspector" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(count (:hand (get-corp))) 2
+                   (count (:deck (get-corp))) -2]
+                  (card-ability state :corp (pick-card state :corp :council :inner) 0))
+        "Drew 2")
+    (is (changed? [(count (:hand (get-corp))) -1
+                   (count (:discard (get-corp))) 1]
+                  (click-card state :corp "Crispy Crawler"))
+        "Archive 1 card")))
+
 (deftest crispy-crawler-test
   (collects? {:name "Crispy Crawler"
               :credits 1})

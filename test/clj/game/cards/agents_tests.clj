@@ -52,6 +52,37 @@
 
 ;; TODO: Boss Bresloo: The Deal-Maker
 
+(deftest counselor-vreenax-collects
+  (collects? {:name "Counselor Vreenax: Planetary Exchequer"
+              :credits 1}))
+
+(deftest counselor-vreenax-increase-forge-cost
+  (do-game
+    (new-game {:corp {:hand ["Counselor Vreenax: Planetary Exchequer"]}
+               :runner {:hand ["Disagreeable Inspector"]}})
+    (play-from-hand state :corp "Counselor Vreenax: Planetary Exchequer" :council :inner)
+    (play-from-hand state :runner "Disagreeable Inspector" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-runner)) -2]
+                  (forge state :runner (pick-card state :runner :council :inner)))
+        "Rival forge cost increased by 1")))
+
+(deftest counselor-vreenax-cipher
+  (do-game
+    (new-game {:corp {:hand ["Tele-Mail Cluster" "Barbican Gate" "Waterway Ferry"]}
+               :runner {:hand ["Counselor Vreenax: Planetary Exchequer"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (is (changed? [(count (:hand (get-corp))) -2
+                   (count (:rfg (get-corp))) 2]
+                  (click-prompts state :corp
+                                 "Pay 1 [Credits] and exile cards from council with total shard cost of 3 [Credits] or more: Secure"
+                                 "Tele-Mail Cluster"
+                                 "Barbican Gate"
+                                 "Done")))
+    (is (= 1 (count (get-scored state :corp))) "Counselor Vreenax is in the score area")))
+
 (deftest coroner-goodman-discover-in-district
   (do-game
     (new-game {:corp {:hand ["Coroner Goodman: Slab Sleuth"]

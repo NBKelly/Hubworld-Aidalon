@@ -91,9 +91,10 @@
                          :label "Shift a card on your opponent's grid"
                          :prompt "Shift a card on your opponent's grid"
                          :waiting-prompt true
-                         :req (req (seq (filter #(and (installed? %)
-                                                      (not (seeker? %)))
-                                                (hubworld-all-installed state (other-side side)))))
+                         :req (req (and (installed? card)
+                                        (seq (filter #(and (installed? %)
+                                                           (not (seeker? %)))
+                                                     (hubworld-all-installed state (other-side side))))))
                          :choices {:req (req (and (installed? target)
                                                   (not= side (to-keyword (:side target)))
                                                   (not= "Seeker" (:type target))))}
