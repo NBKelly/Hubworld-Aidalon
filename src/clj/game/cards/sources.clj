@@ -103,7 +103,8 @@
 (defcard "Job Board"
   (collect
     {:cards 1}
-    {:static-abilities [{:type :rez-cost
+    {:refund 1
+     :static-abilities [{:type :rez-cost
                          :req (req (and (installed? target)
                                         (my-card? target)
                                         (adjacent? card target)))
