@@ -100,7 +100,7 @@
      :discover-abilities [{:req (req (some #(and (rezzed? %)
                                                  (not (seeker? %)))
                                            (hubworld-all-installed state opponent))
-                                     (installed? card)))
+                                     (installed? card))
                            :prompt "Choose a card to unforge and exhaust"
                            :choices {:req (req (and (not (my-card? target))
                                                     (rezzed? target)
