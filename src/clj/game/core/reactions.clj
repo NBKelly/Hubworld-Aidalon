@@ -259,8 +259,8 @@
   (push-reaction! state :pre-confrontation-ability args)
   (resolve-reaction-effects-with-priority
     state nil eid :pre-confrontation-ability resolve-reaction-for-side
-    {:prompt {defender              (str "You are about to resolve a confrontation ability")
-              (other-side defender) (str "your opponent is about to resolve a confrontation ability")}
+    {:prompt {defender              (fn [_] (str "You are about to resolve a confrontation ability"))
+              (other-side defender) (fn [_] (str "your opponent is about to resolve a confrontation ability"))}
      :waiting "your opponent to resolve pre-confrontation-ability reactions"}))
 
 (defn pre-discover-ability-reaction
@@ -268,8 +268,8 @@
   (push-reaction! state :pre-discover-ability args)
   (resolve-reaction-effects-with-priority
     state nil eid :pre-discover-ability resolve-reaction-for-side
-    {:prompt {defender              (str "You are about to resolve a discover ability")
-              (other-side defender) (str "your opponent is about to resolve a discover ability")}
+    {:prompt {defender              (fn [_] (str "You are about to resolve a discover ability"))
+              (other-side defender) (fn [_] (str "your opponent is about to resolve a discover ability"))}
      :waiting "your opponent to resolve pre-discover-ability reactions"}))
 
 (defn post-discover-ability-reaction
@@ -311,8 +311,8 @@
   (push-reaction! state :cards-exiled args)
   (resolve-reaction-effects-with-priority
     state nil eid :cards-exiled resolve-reaction-for-side
-    {:prompt {:corp   "Cards were exiled"
-              :runner "Cards were exiled"}
+    {:prompt {:corp   (fn [_] "Cards were exiled")
+              :runner (fn [_] "Cards were exiled")}
      :waiting "your opponent to resolve cards-exiled reactions"}))
 
 (defn cards-archived-reaction
@@ -320,8 +320,8 @@
   (push-reaction! state :cards-archived args)
   (resolve-reaction-effects-with-priority
     state nil eid :cards-archived resolve-reaction-for-side
-    {:prompt {:corp   "Cards were archived"
-              :runner "Cards were archived"}
+    {:prompt {:corp   (fn [_] "Cards were archived")
+              :runner (fn [_] "Cards were archived")}
      :waiting "your opponent to resolve cards-archived reactions"}))
 
 ;; REFRESH PHASE / TURN
