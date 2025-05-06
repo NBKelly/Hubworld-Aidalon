@@ -101,7 +101,7 @@
                       :discard ["Shardwinner"]}})
     (play-from-hand state :corp "Echofield Registry" :council :inner)
     (click-credit state :runner)
-    (forge state :corp (pick-card state :corp :counil :inner))
+    (forge state :corp (pick-card state :corp :council :inner))
     (delve-empty-server state :corp :council)
     (click-prompts state :corp "Echofield Registry" "Yes" "Shardwinner")))
 

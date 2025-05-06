@@ -890,6 +890,7 @@
                               (installed? target)
                               (rezzed? target)
                               (not (seeker? target))))}
+     :async true
      :effect (req (doseq [t targets]
                     (derez state side t {:no-msg true}))
                   (complete-with-result
