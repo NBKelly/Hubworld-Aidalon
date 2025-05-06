@@ -3,7 +3,11 @@
    [clojure.string :as str]
    [game.core.barrier :refer [get-barrier update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [get-card in-commons-path? in-council-path? in-hand? moment? installed? seeker? in-front-row? agent? obstacle? get-counters]]
+   [game.core.card :refer [get-card get-counters
+                           in-commons-path? in-council-path?
+                           in-front-row?
+                           in-hand? in-discard? installed?
+                           moment?  seeker? agent? obstacle?]]
    [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
    [game.core.delving :refer [end-the-delve!]]
    [game.core.drawing :refer [draw]]
@@ -13,6 +17,7 @@
    [game.core.moving :refer [move trash swap-installed]]
    [game.core.payment :refer [->c can-pay?]]
    [game.core.props :refer [add-counter]]
+   [game.core.shuffling :refer [shuffle!]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? same-side? enumerate-str]]
@@ -90,6 +95,23 @@
                                              :req (req (same-card? target-card target))
                                              :duration :end-of-confrontation})
                                           (update-card-barrier state side target-card)))}}]}))
+
+(defcard "Echofield Registry"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :complete-breach
+                 :prompt "Shuffle an Archived card into your Commons?"
+                 :type :ability
+                 :req (req (and (= (:delver context) side)
+                                (seq (get-in @state [side :discard]))))
+                 :ability {:cost [(->c :exhaust-self)]
+                           :show-discard true
+                           :choices {:req (req (and (my-card? target)
+                                                    (in-discard? target)))
+                                     :all true}
+                           :msg "shuffles 1 card from [their] Archives into [their] Commons"
+                           :effect (req (move state side target :deck)
+                                        (shuffle! state side :deck))}}]}))
 
 (defcard "Echopomp Revoker"
   (collect

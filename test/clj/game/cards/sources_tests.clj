@@ -93,6 +93,18 @@
           (click-prompts state :corp "Disagreeable Inspector" "Yes"))
         "Reduced barrier by 2 on encounter")))
 
+(deftest echofield-registry
+  (collects? {:name "Echofield Registry"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Echofield Registry"]
+                      :discard ["Shardwinner"]}})
+    (play-from-hand state :corp "Echofield Registry" :council :inner)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :counil :inner))
+    (delve-empty-server state :corp :council)
+    (click-prompts state :corp "Echofield Registry" "Yes" "Shardwinner")))
+
 (deftest echopomp-revoker-test
   (collects? {:name "Echopomp Revoker"
               :cards 1})
