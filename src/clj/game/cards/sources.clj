@@ -17,13 +17,14 @@
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [move trash swap-installed archive]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.prompts :refer [show-shift-prompt]]
    [game.core.props :refer [add-counter]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? same-side? enumerate-str]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
-   [jinteki.utils :refer [adjacent? count-heat other-side other-player-name card-side]]))
+   [jinteki.utils :refer [adjacent? count-heat other-side other-player-name card-side adjacent-zones]]))
 
 (defcard "Bubblemap Kiosk"
   (collect
@@ -63,6 +64,33 @@
                          :req (req (and (in-front-row? target)
                                         (not= (:side target) (:side card))
                                         (or (agent? target) (obstacle? target))))}]}))
+
+(defcard "Daring Aeroboarder"
+  (collect
+    {:shards 1}
+    {:reaction [{:reaction :approach-slot
+                 :type :ability
+                 :prompt "Redirect your delve to approach a grid slot adjacent to your current position?"
+                 :req (req (and (= side (->> @state :delve :delver))
+                                (>= 3 (count (get-in @state [side :hand])))))
+                 :ability {:async true
+                           :cost [(->c :exhaust-self)]
+                           :effect (req
+                                     (let [{:keys [server position]} (:delve @state)]
+                                       (show-shift-prompt
+                                         state side eid card (adjacent-zones server position)
+                                         (str "Redirect the delve where?")
+                                         {:msg (msg (let [server (:server context)
+                                                          slot (:slot context)]
+                                                      (str "redirect the delve to the " (name slot) " position of " (str/capitalize (name server)) " (The delve is now in the Approach step)")))
+                                          :async true
+                                          :effect (req (let [server (:server context)
+                                                             slot (:slot context)]
+                                                         (swap! state assoc-in [:delve :server] server)
+                                                         (swap! state assoc-in [:delve :position] slot)
+                                                         (delve-approach state side eid)))}
+                                         {:waiting-prompt true
+                                          :other-side? true})))}}]}))
 
 (defcard "Containment Funnel"
   (collect

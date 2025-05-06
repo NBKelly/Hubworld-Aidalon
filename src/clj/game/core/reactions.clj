@@ -295,15 +295,13 @@
 
 (defn approach-slot-reaction
   [state side eid {:keys [defender approached-card] :as args}]
-  (if-not (get-card state approached-card)
-    (effect-completed state side eid)
-    (do
-      (push-reaction! state :approach-slot args)
-      (resolve-reaction-effects-with-priority
-        state nil eid :approach-slot resolve-reaction-for-side
-        {:prompt {defender              #(str "Your opponent is approaching " (:title (:approached-card %)))
-                  (other-side defender) #(str "You are approaching " (hubworld-card-str state (:approached-card %)))}
-         :waiting "your opponent to resolve approach-slot reactions"}))))
+  (let [empty (nil? approached-card)]
+    (push-reaction! state :approach-slot args)
+    (resolve-reaction-effects-with-priority
+      state nil eid :approach-slot resolve-reaction-for-side
+      {:prompt {defender              #(str "Your opponent is approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (:title approached-card))) )
+                (other-side defender) #(str "You are approaching " (if (not (get-card state (:approached-card %))) "an empty slot" (hubworld-card-str state approached-card)))}
+       :waiting "your opponent to resolve approach-slot reactions"})))
 
 ;; CARDS MOVING ZONES / COSTS
 (defn cards-exiled-reaction
