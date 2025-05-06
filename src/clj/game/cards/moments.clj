@@ -5,8 +5,8 @@
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.breaching :refer [access-bonus discover-card]]
    [game.core.card :refer [get-card
-                           source? seeker? obstacle?
-                           in-hand? rezzed? installed?]]
+                           source? seeker? obstacle? moment?
+                           was-in-hand? in-hand? in-deck? was-in-deck? rezzed? installed?]]
    [game.core.def-helpers :refer [defcard stage-n-cards]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed]]
@@ -21,7 +21,7 @@
    [game.core.shifting :refer [shift-a-card]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.staging :refer [stage-a-card]]
-   [game.utils :refer [to-keyword  same-card?]]
+   [game.utils :refer [dissoc-in to-keyword same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
 
@@ -107,6 +107,24 @@
                :ability {:cost [(->c :exile-reaction)]
                          :msg "discover 2 additional cards"
                          :effect (req (access-bonus state side :council 2))}}]})
+
+(defcard "Knot Today"
+  {:reaction [{:location :hand
+               :reaction :pre-discover
+               :req (req (and (= side (:engaged-side context))
+                              (or (was-in-hand? (:card context))
+                                  (was-in-deck? (:card context)))
+                              (moment? (:card context))))
+               :type :moment
+               :prompt (msg "Archive " (:title (:card context)) " and draw 1 card?")
+               :ability {:cost [(->c :exile-reaction)]
+                         :msg (msg "archive " (:title (:card context))
+                                   (when (seq (get-in @state [side :deck]))
+                                     " and draw 1 card"))
+                         :async true
+                         :effect (req (wait-for (archive state side (:card context))
+                                                (swap! state dissoc-in [:reaction :pre-discover :card])
+                                                (draw state side eid 1)))}}]})
 
 (defcard "Likely a Trap"
   {:reaction [{:reaction :encounter-ended

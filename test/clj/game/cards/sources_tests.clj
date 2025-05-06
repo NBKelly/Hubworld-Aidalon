@@ -117,6 +117,17 @@
     (is (changed? [(get-heat state :corp)]
           (click-prompt state :corp "Lost Byway")))))
 
+(deftest marauders-market-test
+  (collects? {:name "Marauder’s Market"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Marauder’s Market"] :heat 2}})
+    (play-from-hand state :corp "Marauder’s Market" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-corp)) 2]
+          (card-ability state :corp (pick-card state :corp :council :inner) 1))
+        "Gained 2c")))
+
 (deftest pax-observatory
   (collects? {:name "Pax Observatory"
               :cards 1})

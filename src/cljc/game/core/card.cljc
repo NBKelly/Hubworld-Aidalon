@@ -88,6 +88,11 @@
   [card]
   (:zone (get-nested-host card)))
 
+(defn get-previous-zone
+  "Returns the zone of the 'root' card of a hosting chain"
+  [card]
+  (:previous-zone (get-nested-host card)))
+
 (defn in-server?
   "Checks if the specified card is installed in -- and not PROTECTING -- a server"
   [card]
@@ -112,8 +117,23 @@
   (= (get-zone card) #?(:clj [:deck]
                         :cljs ["deck"])))
 
+(defn was-in-hand?
+  "Checks if the specified card is in the hand."
+  [card]
+  (= (get-previous-zone card) #?(:clj [:hand]
+                                 :cljs ["hand"])))
 
+(defn was-in-discard?
+  "Checks if the specified card is in the discard pile."
+  [card]
+  (= (get-previous-zone card) #?(:clj [:discard]
+                                 :cljs ["discard"])))
 
+(defn was-in-deck?
+  "Checks if the specified card is in the draw deck."
+  [card]
+  (= (get-previous-zone card) #?(:clj [:deck]
+                                 :cljs ["deck"])))
 
 (defn in-archives-root?
   [card]

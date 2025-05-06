@@ -2,8 +2,9 @@
   (:require
    [clojure.string :as str]
    [game.core.card :refer [get-card
-                           obstacle?
-                           in-hand? rezzed? installed?]]
+                           obstacle? moment?
+                           in-hand? in-deck? rezzed? installed?
+                           was-in-hand? was-in-deck?]]
    [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -59,9 +60,16 @@
 
    ;; PRE-DISCOVER (A SINGLE CARD)
    ;;   TENACITY
+   ;;   KNOT TODAY
    :pre-discover (req (and (seq (get-in @state [side :hand]))
                            (bluffs-enabled? state)
                            (or
+                             (and ;; KNOT TODAY
+                               (not= side (:engaged-side context))
+                               (or (was-in-hand? (:card context))
+                                   (was-in-deck? (:card context)))
+                               (moment? (:card context))
+                               (< (known-copies state side "Knot Today") 2))
                              (and ;; TENACITY
                                (not= side (:engaged-side context))
                                (installed? (:card context))
@@ -98,6 +106,8 @@
                                                (or (not r)
                                                    (r state side eid card targets))))))))
 
+   ;; APPROACH SLOT
+   ;;   FORCED LIQUIDATION
    :approach-slot (req (and (seq (get-in @state [side :hand]))
                             (bluffs-enabled? state)
                             (or

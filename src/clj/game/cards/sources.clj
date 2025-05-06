@@ -113,6 +113,16 @@
                            :msg "remove 1 [heat]"
                            :effect (req (lose-heat state side eid 1))}}]}))
 
+(defcard "Marauder’s Market"
+  (collect
+    {:cards 1}
+    {:abilities [{:cost [(->c :exhaust-self)]
+                  :label "Gain 2 [Credits]"
+                  :msg "gain 2 [Credits]"
+                  :async true
+                  :req (req (>= (count-heat state side) 2))
+                  :effect (req (gain-credits state side eid 2))}]}))
+
 (defcard "Pax Observatory"
   (collect
     {:cards 1}

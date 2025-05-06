@@ -84,6 +84,17 @@
     (click-prompts state :corp "Infiltrate" "Yes" "No Action" "No Action" "No Action")
     (is (no-prompt? state :corp))))
 
+(deftest knot-today-test
+  (do-game
+    (new-game {:corp {:hand ["Knot Today"]
+                      :deck ["Fun Run"]}
+               :runner {:heat 1}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :commons {:give-heat? true})
+    (click-prompts state :corp "Knot Today" "Yes")
+    (click-prompt state :corp "No Action")))
+
 (deftest paper-trail-test
   (do-game
     (new-game {:corp {:hand ["Paper Trail"]}})
