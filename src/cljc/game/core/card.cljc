@@ -436,8 +436,8 @@
 (defn installed?
   [card]
   (or (:installed card)
-      (= (first (get-zone card)) #?(:clj :servers
-                                    :cljs "servers"))))
+      (= (first (get-zone card)) #?(:clj :paths
+                                    :cljs "paths"))))
 
 (defn facedown?
   "Checks if the specified card is facedown."

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker?]]
+   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker? in-front-row?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.delving :refer [delve-approach]]
    [game.core.drawing :refer [draw]]
@@ -21,7 +21,7 @@
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.utils :refer [same-card? to-keyword same-side?]]
-   [game.macros :refer [effect msg req wait-for]]
+   [game.macros :refer [effect msg req wait-for continue-ability]]
    [jinteki.utils :refer [adjacent-zones other-player-name]]))
 
 (defcard "Auntie Ruth: Proprietor of the Hidden Tea House"
@@ -255,6 +255,31 @@
                            :async true
                            :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
                                           (draw state target-side eid 2)))}]}))
+
+(defcard "Renovator Warlan: ReDev Mogul"
+  (let [reaction {:type :ability
+                  :prompt "Force your opponent to exhaust a card in the front row of their grid?"
+                  :req (req
+                         (println "checking")
+                         (println "some installed?: " (some installed? (:cards context)))
+                         (println (mapv :zone (:cards context)))
+                         (println "contenx: " context)
+                         (and (some installed? (:cards context))
+                              (seq (filter (every-pred in-front-row? (complement :exhausted))
+                                           (hubworld-all-installed state opponent)))))
+                  :ability {:async true
+                            :cost [(->c :exhaust-self)]
+                            :effect (req (continue-ability
+                                           state opponent
+                                           {:msg :cost
+                                            :waiting-prompt true
+                                            :display-side side
+                                            :cost [(->c :exhaust-front-row 1)]}
+                                           card nil))}}]
+    (collect
+      {:shards 1}
+      {:reaction [(assoc reaction :reaction :cards-archived)
+                  (assoc reaction :reaction :cards-exiled)]})))
 
 (defcard "Rory & Bug: “We Fetch It, You Catch It!”"
   (collect

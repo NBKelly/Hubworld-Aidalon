@@ -16,6 +16,7 @@
     [game.core.memory :refer [init-mu-cost]]
     [game.core.prevention :refer [resolve-trash-prevention]]
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
+    [game.core.reactions :refer [cards-exiled-reaction cards-archived-reaction]]
     [game.core.say :refer [enforce-msg play-sfx system-msg]]
     [game.core.servers :refer [is-remote? same-server? target-server type->rig-zone]]
     [game.core.update :refer [update!]]
@@ -399,9 +400,11 @@
                                                          :cause cause
                                                          :cause-card (trim-cause-card cause-card)
                                                          :accessed accessed}))
-                       (if suppress-checkpoint
-                         (effect-completed state nil eid)
-                         (checkpoint state nil eid {:duration trash-event}))))))))))
+                       (wait-for
+                         (cards-archived-reaction state side {:cards (map :old-card moved-cards)})
+                         (if suppress-checkpoint
+                           (effect-completed state nil eid)
+                           (checkpoint state nil eid {:duration trash-event})))))))))))
 
 (defmethod engine/move* :trash-cards [state side eid _action cards args]
   (trash-cards state side eid cards args))
@@ -495,9 +498,11 @@
                                                      :cause cause
                                                      :cause-card (trim-cause-card cause-card)
                                                      :accessed accessed}))
-                   (if suppress-checkpoint
-                     (effect-completed state nil eid)
-                     (checkpoint state nil eid {:duration exile-event}))))))))))))
+                   (wait-for
+                     (cards-exiled-reaction state side {:cards (map :old-card moved-cards)})
+                     (if suppress-checkpoint
+                       (effect-completed state nil eid)
+                       (checkpoint state nil eid {:duration exile-event})))))))))))))
 
 (defn exile
   ([state side eid card] (exile state side eid card nil))

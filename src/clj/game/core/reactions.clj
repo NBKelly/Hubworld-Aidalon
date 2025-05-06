@@ -304,6 +304,25 @@
                   (other-side defender) (str "You are approaching " (hubworld-card-str state approached-card))}
          :waiting "your opponent to resolve approach-slot reactions"}))))
 
+;; CARDS MOVING ZONES / COSTS
+(defn cards-exiled-reaction
+  [state side eid args]
+  (push-reaction! state :cards-exiled args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-exiled resolve-reaction-for-side
+    {:prompt {:corp   "Cards were exiled"
+              :runner "Cards were exiled"}
+     :waiting "your opponent to resolve cards-exiled reactions"}))
+
+(defn cards-archived-reaction
+  [state side eid args]
+  (push-reaction! state :cards-archived args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-archived resolve-reaction-for-side
+    {:prompt {:corp   "Cards were archived"
+              :runner "Cards were archived"}
+     :waiting "your opponent to resolve cards-archived reactions"}))
+
 ;; REFRESH PHASE / TURN
 
 (defn refresh-actions-reaction
