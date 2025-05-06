@@ -52,6 +52,37 @@
 
 ;; TODO: Boss Bresloo: The Deal-Maker
 
+(deftest counselor-vreenax-collects
+  (collects? {:name "Counselor Vreenax: Planetary Exchequer"
+              :credits 1}))
+
+(deftest counselor-vreenax-increase-forge-cost
+  (do-game
+    (new-game {:corp {:hand ["Counselor Vreenax: Planetary Exchequer"]}
+               :runner {:hand ["Disagreeable Inspector"]}})
+    (play-from-hand state :corp "Counselor Vreenax: Planetary Exchequer" :council :inner)
+    (play-from-hand state :runner "Disagreeable Inspector" :council :inner)
+    (forge state :corp (pick-card state :corp :council :inner))
+    (is (changed? [(:credit (get-runner)) -2]
+                  (forge state :runner (pick-card state :runner :council :inner)))
+        "Rival forge cost increased by 1")))
+
+(deftest counselor-vreenax-cipher
+  (do-game
+    (new-game {:corp {:hand ["Tele-Mail Cluster" "Barbican Gate" "Waterway Ferry"]}
+               :runner {:hand ["Counselor Vreenax: Planetary Exchequer"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (is (changed? [(count (:hand (get-corp))) -2
+                   (count (:rfg (get-corp))) 2]
+                  (click-prompts state :corp
+                                 "Pay 1 [Credits] and exile cards from council with total shard cost of 3 [Credits] or more: Secure"
+                                 "Tele-Mail Cluster"
+                                 "Barbican Gate"
+                                 "Done")))
+    (is (= 1 (count (get-scored state :corp))) "Counselor Vreenax is in the score area")))
+
 (deftest coroner-goodman-discover-in-district
   (do-game
     (new-game {:corp {:hand ["Coroner Goodman: Slab Sleuth"]
@@ -223,6 +254,23 @@
             (click-prompt state :runner opt))
           q))))
 
+(deftest recruiter-nilero-effusive-inducer
+  (collects? {:name "Recruiter Nilero: Effusive Inducer"
+              :cards 1})
+  (doseq [s [:corp :runner]]
+    (do-game
+      (new-game {:corp {:deck [(qty "Recruiter Nilero: Effusive Inducer" 10)]}})
+      (play-from-hand state :corp "Recruiter Nilero: Effusive Inducer" :archives :inner)
+      (forge state :corp (pick-card state :corp :archives :inner))
+      (is (= 7 (hand-size :corp)) "7 hand size for corp")
+      (is (= 5 (hand-size :runner)) "5 hand size for runner")
+      (click-credit state :runner)
+      (click-credit state :corp)
+      (delve-empty-server state :runner :commons {:give-heat? true})
+      (is (changed? [(count (get-hand state s)) 2]
+            (click-card state :corp (get-id state s)))
+          (str "side: " s " drew 2")))))
+
 (deftest rory-and-bug-moves
   (do-game
     (new-game {:corp {:hand ["Rory & Bug: “We Fetch It, You Catch It!”"]}})
@@ -295,3 +343,18 @@
     (click-card state :corp "Capricious Informant")
     (stage-select state :corp :council :middle)
     (is (no-prompt? state :corp))))
+
+(deftest vapor-x-holomancer-for-hire
+  (collects? {:name "Vapor X: Holomancer for Hire"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Shardwinner" "Crispy Crawler"]}
+               :runner {:hand ["Vapor X: Holomancer for Hire"]}})
+    (play-from-hand state :corp "Shardwinner" :council :inner)
+    (click-credit state :runner)
+    (play-from-hand state :corp "Crispy Crawler" :council :outer)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :council {:give-heat? true})
+    (click-prompt state :corp "Pay 1 [Credits] and swap a card in your front and back row: Secure")
+    (click-prompts state :corp "Shardwinner" "Crispy Crawler")
+    (is (seq (get-scored state :corp)) "Scored vapor x")))

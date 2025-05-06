@@ -1,11 +1,12 @@
 (ns game.core.costs
   (:require
+   [clojure.set :as set]
    [game.core.board :refer [hubworld-all-installed all-active all-active-installed all-installed all-installed-runner-type]]
    [game.core.barrier :refer [get-barrier]]
    [game.core.card :refer [active? agenda? corp? facedown? get-card get-counters hardware? has-subtype? ice? in-hand?  program? resource?  runner?
                            rezzed? in-discard? installed?
-                           seeker?
-                           in-front-row?
+                           seeker? agent?
+                           in-front-row? in-back-row?
                            in-archives-path? in-council-path?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.damage :refer [damage]]
@@ -16,7 +17,7 @@
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.heat :refer [gain-heat lose-heat]]
-   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards]]
+   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards swap-installed]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
    [game.core.props :refer [add-counter add-prop]]
@@ -733,6 +734,40 @@
                                :paid/targets targets})))}
     card nil))
 
+(defmethod value :exile-total-shard-cost-from-council [cost] (:cost/amount cost))
+(defmethod label :exile-total-shard-cost-from-council [cost]
+  (str "exile cards from council with total shard cost of " (value cost) " [Credits] or more"))
+(defmethod payable? :exile-total-shard-cost-from-council [cost state side eid card]
+  (<= 0 (- (reduce + (map :cost (get-in @state [side :hand]))) (value cost))))
+(defmethod handler :exile-total-shard-cost-from-council
+  [cost state side eid card]
+  (letfn [(choose-more [remaining to-exile]
+            (let [exile-value (reduce + (map :cost to-exile))
+                  amount-to-pay (max (- (value cost) exile-value) 0)]
+              {:async true
+               :prompt (str "Choose a card to exile (remaining: " amount-to-pay " [Credits])")
+               :choices (if (zero? amount-to-pay) (conj (vec remaining) "Done") remaining)
+               :effect (req (if (= "Done" target)
+                              (wait-for (exile-cards state side to-exile {:cause :ability-cost
+                                                                          :seen true
+                                                                          :unpreventable true
+                                                                          :suppress-checkpoint true})
+                                        (complete-with-result
+                                          state side eid
+                                          {:paid/msg (str "exiles " (quantify (count to-exile) "card")
+                                                          " from [their] council with total shard cost of "
+                                                          exile-value " [Credits] (" (enumerate-str (map :title to-exile)) ")")
+                                           :paid/type :exile-total-shard-cost-from-council
+                                           :paid/value (value cost)
+                                           :paid/targets to-exile}))
+                              (continue-ability state side (choose-more
+                                                             (set/difference (set remaining) (set [target]))
+                                                             (conj to-exile target)) card nil)))
+               }))]
+    (continue-ability state side
+      (choose-more (get-in @state [side :hand]) '()) card nil)))
+
+
 ;; Gain heat
 (defmethod value :gain-heat [cost] (:cost/amount cost))
 (defmethod label :gain-heat [cost] (str "gain " (value cost) " [heat]"))
@@ -760,20 +795,20 @@
                                                             :paid/value (value cost)}))))
 
 ;; TrashFromDeck
-(defmethod value :trash-from-deck [cost] (:cost/amount cost))
-(defmethod label :trash-from-deck [cost]
+(defmethod value :archive-from-deck [cost] (:cost/amount cost))
+(defmethod label :archive-from-deck [cost]
   (str "archive " (quantify (value cost) "card") " from the top of your Commons"))
-(defmethod payable? :trash-from-deck
+(defmethod payable? :archive-from-deck
   [cost state side eid card]
   (<= 0 (- (count (get-in @state [side :deck])) (value cost))))
-(defmethod handler :trash-from-deck
+(defmethod handler :archive-from-deck
   [cost state side eid card]
   (wait-for (mill state side side (value cost) {:suppress-checkpoint true})
             (complete-with-result
               state side eid
               {:paid/msg (str "archives " (quantify (count async-result) "card")
-                             " from the top of [their] Commons")
-               :paid/type :trash-from-deck
+                              " from the top of [their] Commons")
+               :paid/type :archive-from-deck
                :paid/value (count async-result)
                :paid/targets async-result})))
 
@@ -807,3 +842,124 @@
                                  :paid/value (count async-result)
                                  :paid/targets async-result})))}
       nil nil)))
+
+(defmethod value :swap-front-and-back-row-cards [cost] (:cost/amount cost))
+(defmethod label :swap-front-and-back-row-cards [cost]
+  "swap a card in your front and back row")
+(defmethod payable? :swap-front-and-back-row-cards
+  [cost state side eid card]
+  (and (some in-front-row? (hubworld-all-installed state side))
+       (some in-back-row? (hubworld-all-installed state side))))
+(defmethod handler :swap-front-and-back-row-cards
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose cards in your front and back row to swap")
+     :choices {:all true
+               :max 2
+               :req (req (and (installed? target)
+                              (my-card? target)
+                              (let [pre-selected (first (:cards (get-in @state [side :selected 0] [])))]
+                                (or (and (not pre-selected)
+                                         (or (in-front-row? target) (in-back-row? target)))
+                                    (same-card? target pre-selected)
+                                    (and (in-front-row? target) (in-back-row? pre-selected))
+                                    (and (in-front-row? pre-selected) (in-back-row? target))))))}
+     :async true
+     :effect (req (swap-installed state side (first targets) (second targets))
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "swaps " (hubworld-card-str state (first targets))
+                                    " with " (hubworld-card-str state (second targets)))
+                     :paid/type :swap-front-and-back-row-cards
+                     :paid/value 1
+                     :paid/targets targets}))}
+    nil nil))
+
+(defmethod value :reveal-agent-in-hand-or-discard [cost] (:cost/amount cost))
+(defmethod label :reveal-agent-in-hand-or-discard [cost]
+  (str "reveal " (quantify (value cost) "agent") " in your Council or Archives"))
+(defmethod payable? :reveal-agent-in-hand-or-discard
+  [cost state side eid card]
+  (<= 0 (-
+          (count
+            (filter agent? (concat (get-in @state [side :hand]) (get-in @state [side :discard]))))
+          (value cost))))
+(defmethod handler :reveal-agent-in-hand-or-discard
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Reveal " (quantify (value cost) "agent") "in your Council or Archives")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (agent? target)
+                              (my-card? target)
+                              (or (in-hand? target)
+                                  (in-discard? target))))}
+     :async true
+     :effect (req (reveal-and-queue-event state side targets)
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "reveals " (enumerate-str (map #(hubworld-card-str state %) targets)))
+                     :paid/type :reveal-agent-in-hand-or-discard
+                     :paid/value (count targets)
+                     :paid/targets targets}))}
+    nil nil))
+
+(defmethod value :unforge [cost] (:cost/amount cost))
+(defmethod label :unforge [cost]
+  (str "unforge " (quantify (value cost) " installed card")))
+(defmethod payable? :unforge
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred rezzed? (complement seeker?))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :unforge
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (value cost) " cards to unforge")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (my-card? target)
+                              (installed? target)
+                              (rezzed? target)
+                              (not (seeker? target))))}
+     :async true
+     :effect (req (doseq [t targets]
+                    (derez state side t {:no-msg true}))
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "unforges " (enumerate-str (map :title targets)))
+                     :paid/type :unfroge
+                     :paid/value (count targets)
+                     :paid/targets targets}))}
+    nil nil))
+
+(defmethod value :shuffle-installed [cost] (:cost/amount cost))
+(defmethod label :shuffle-installed [cost]
+  (str "shuffle " (quantify (value cost) "card") " from your grid into your Commons"))
+(defmethod payable? :shuffle-installed
+  [cost state side eid card]
+  (<= 0 (- (count (filter (complement seeker?) (hubworld-all-installed state side))) (value cost))))
+(defmethod handler :shuffle-installed
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Shuffle " (quantify (value cost) "card") " from your grid into your Commons")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (my-card? target)
+                              (installed? target)
+                              (not (seeker? target))))}
+     :async true
+     :effect (req (doseq [t targets]
+                    (move state side t :deck))
+                  (shuffle! state side :deck)
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "shuffles " (enumerate-str (map #(hubworld-card-str state %) targets)) " into their Commons")
+                     :paid/type :shuffle-installed
+                     :paid/value (count targets)
+                     :paid/targets targets}))}
+    nil nil))

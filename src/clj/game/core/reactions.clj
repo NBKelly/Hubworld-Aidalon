@@ -254,6 +254,24 @@
               (other-side engaged-side) #(str "Your opponent is confronting " (:title (:card %)))}
      :waiting "your opponent to resolve pre-confrontation reactions"}))
 
+(defn pre-confrontation-ability-reaction
+  [state side eid {:keys [defender card] :as args}]
+  (push-reaction! state :pre-confrontation-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-confrontation-ability resolve-reaction-for-side
+    {:prompt {defender              (str "You are about to resolve a confrontation ability")
+              (other-side defender) (str "your opponent is about to resolve a confrontation ability")}
+     :waiting "your opponent to resolve pre-confrontation-ability reactions"}))
+
+(defn pre-discover-ability-reaction
+  [state side eid {:keys [defender card] :as args}]
+  (push-reaction! state :pre-discover-ability args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-discover-ability resolve-reaction-for-side
+    {:prompt {defender              (str "You are about to resolve a discover ability")
+              (other-side defender) (str "your opponent is about to resolve a discover ability")}
+     :waiting "your opponent to resolve pre-discover-ability reactions"}))
+
 (defn post-discover-ability-reaction
   [state side eid {:keys [defender discovered-card] :as args}]
   (push-reaction! state :post-discover-ability args)
@@ -286,6 +304,25 @@
         {:prompt {defender              #(str "Your opponent is approaching " (:title (:approached-card %)))
                   (other-side defender) #(str "You are approaching " (hubworld-card-str state (:approached-card %)))}
          :waiting "your opponent to resolve approach-slot reactions"}))))
+
+;; CARDS MOVING ZONES / COSTS
+(defn cards-exiled-reaction
+  [state side eid args]
+  (push-reaction! state :cards-exiled args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-exiled resolve-reaction-for-side
+    {:prompt {:corp   "Cards were exiled"
+              :runner "Cards were exiled"}
+     :waiting "your opponent to resolve cards-exiled reactions"}))
+
+(defn cards-archived-reaction
+  [state side eid args]
+  (push-reaction! state :cards-archived args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-archived resolve-reaction-for-side
+    {:prompt {:corp   "Cards were archived"
+              :runner "Cards were archived"}
+     :waiting "your opponent to resolve cards-archived reactions"}))
 
 ;; REFRESH PHASE / TURN
 

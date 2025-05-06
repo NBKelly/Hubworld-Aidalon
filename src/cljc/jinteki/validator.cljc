@@ -57,6 +57,12 @@
   (let [identity-faction (get-in deck [:identity :faction])]
     (line-base-cost identity-faction line)))
 
+(defn affiliation-map
+  [deck]
+  (let [agents (filter #(= (->> % :card :type) "Agent") (:cards deck))
+        affiliations (sort (map #(->> % :card faction-label keyword) agents))]
+    (frequencies affiliations)))
+
 (defn influence-map
   "Returns a map of faction keywords to influence values from the faction's cards."
   [deck]
