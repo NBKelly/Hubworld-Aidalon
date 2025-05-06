@@ -235,6 +235,15 @@
 
 ;; ENCOUNTERING CARDS
 
+(defn pre-discover-reaction
+  [state side eid {:keys [engaged-side card] :as args}]
+  (push-reaction! state :pre-discover args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :pre-discover resolve-reaction-for-side
+    {:prompt {engaged-side              (str "You are discovering " (:title card))
+              (other-side engaged-side) (str "Your opponent is discovering " (:title card))}
+     :waiting "your opponent to resolve pre-discover reactions"}))
+
 (defn pre-confrontation-reaction
   [state side eid {:keys [engaged-side card] :as args}]
   (push-reaction! state :pre-confrontation args)

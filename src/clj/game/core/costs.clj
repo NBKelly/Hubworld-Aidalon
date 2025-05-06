@@ -15,7 +15,7 @@
    [game.core.exhausting :refer [exhaust]]
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
-   [game.core.heat :refer [gain-heat]]
+   [game.core.heat :refer [gain-heat lose-heat]]
    [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers pick-virus-counters-to-spend]]
@@ -27,7 +27,8 @@
    [game.core.update :refer [update!]]
    [game.core.virus :refer [number-of-virus-counters]]
    [game.macros :refer [continue-ability req wait-for]]
-   [game.utils :refer [enumerate-str quantify same-card? same-side?]]))
+   [game.utils :refer [enumerate-str quantify same-card? same-side?]]
+   [jinteki.utils :refer [other-side]]))
 
 ;; Click
 (defmethod value :click [cost] (:cost/amount cost))
@@ -387,38 +388,6 @@
                                :paid/targets targets})))}
     card nil))
 
-;; TrashFromHand
-(defmethod value :trash-from-hand [cost] (:cost/amount cost))
-(defmethod label :trash-from-hand [cost]
-  (str "trash " (quantify (value cost) "card") " from your hand"))
-(defmethod payable? :trash-from-hand
-  [cost state side eid card]
-  (<= 0 (- (count (get-in @state [side :hand])) (value cost))))
-(defmethod handler :trash-from-hand
-  [cost state side eid card]
-  (let [select-fn #(and ((if (= :corp side) corp? runner?) %)
-                        (in-hand? %))
-        hand (if (= :corp side) "HQ" "the grip")]
-    (continue-ability
-      state side
-      {:prompt (str "Choose " (quantify (value cost) "card") " to trash")
-       :choices {:all true
-                 :max (value cost)
-                 :card select-fn}
-       :async true
-       :effect (req (wait-for (trash-cards state side targets {:unpreventable true :seen false :cause :ability-cost :suppress-checkpoint true})
-                              (complete-with-result
-                                state side eid
-                                {:paid/msg (str "trashes " (quantify (count async-result) "card")
-                                               (when (and (= :runner side)
-                                                          (pos? (count async-result)))
-                                                 (str " (" (enumerate-str (map #(card-str state %) targets)) ")"))
-                                               " from " hand)
-                                 :paid/type :trash-from-hand
-                                 :paid/value (count async-result)
-                                 :paid/targets async-result})))}
-      nil nil)))
-
 ;; RandomlyTrashFromHand
 (defmethod value :randomly-trash-from-hand [cost] (:cost/amount cost))
 (defmethod label :randomly-trash-from-hand [cost]
@@ -777,6 +746,19 @@
                                                   :paid/type :gain-heat
                                                   :paid/value (value cost)})))
 
+;; Steal heat
+(defmethod value :steal-heat [cost] (:cost/amount cost))
+(defmethod label :steal-heat [cost] (str "steal " (value cost) " [heat]"))
+(defmethod payable? :steal-heat [cost state side eid card]
+  (>= (value cost) (get-in @state [(other-side side) :heat :base] 0)))
+(defmethod handler :steal-heat
+  [cost state side eid card]
+  (wait-for (lose-heat state (other-side side) (value cost) {:suppress-checkpoint true})
+            (wait-for (gain-heat state side (value cost) {:suppress-checkpoint true})
+                      (complete-with-result state side eid {:paid/msg (str "steals " (value cost) " [heat]")
+                                                            :paid/type :steal-heat
+                                                            :paid/value (value cost)}))))
+
 ;; TrashFromDeck
 (defmethod value :trash-from-deck [cost] (:cost/amount cost))
 (defmethod label :trash-from-deck [cost]
@@ -794,3 +776,34 @@
                :paid/type :trash-from-deck
                :paid/value (count async-result)
                :paid/targets async-result})))
+
+(defmethod value :archive-from-council [cost] (:cost/amount cost))
+(defmethod label :archive-from-council [cost]
+  (str "archive " (quantify (value cost) "card") " from your council"))
+(defmethod payable? :archive-from-council
+  [cost state side eid card]
+  (<= 0 (- (count (get-in @state [side :hand])) (value cost))))
+(defmethod handler :archive-from-council
+  [cost state side eid card]
+  (let [select-fn #(and ((if (= :corp side) corp? runner?) %)
+                        (in-hand? %))
+        hand "[their] council"]
+    (continue-ability
+      state side
+      {:prompt (str "Choose " (quantify (value cost) "card") " to archive")
+       :choices {:all true
+                 :max (value cost)
+                 :card select-fn}
+       :async true
+       :effect (req (wait-for (trash-cards state side targets {:unpreventable true :seen false :cause :ability-cost :suppress-checkpoint true})
+                              (complete-with-result
+                                state side eid
+                                {:paid/msg (str "archives " (quantify (count async-result) "card")
+                                               (when (and (= :runner side)
+                                                          (pos? (count async-result)))
+                                                 (str " (" (enumerate-str (map #(card-str state %) targets)) ")"))
+                                               " from " hand)
+                                 :paid/type :trash-from-hand
+                                 :paid/value (count async-result)
+                                 :paid/targets async-result})))}
+      nil nil)))

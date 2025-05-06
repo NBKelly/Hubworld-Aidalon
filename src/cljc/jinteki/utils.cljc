@@ -42,21 +42,21 @@
        (or (= #{a b} #{:inner :middle}) (= #{a b} #{:middle :outer}))))
 
 (defn adjacent-zones
-  [card]
-  (let [[_ server slot] (:zone card)
-        neighbors  (for [sr [:archives :council :commons]
-                         sl [:inner :middle :outer]
-                         :when (and (or (and (adjacent-server sr server)
-                                             (= sl slot))
-                                        (and (adjacent-slot sl slot)
-                                             (= sr server))))]
-                     {:slot sl
-                      :server sr})]
-    (reduce
-      (fn [acc {:keys [server slot]}]
-        (update acc server #(assoc (or % {}) slot true)))
-      {}
-      neighbors)))
+  ([card] (let [[_ server slot] (:zone card)] (adjacent-zones server slot)))
+  ([server slot]
+   (let [neighbors  (for [sr [:archives :council :commons]
+                          sl [:inner :middle :outer]
+                          :when (and (or (and (adjacent-server sr server)
+                                              (= sl slot))
+                                         (and (adjacent-slot sl slot)
+                                              (= sr server))))]
+                      {:slot sl
+                       :server sr})]
+     (reduce
+       (fn [acc {:keys [server slot]}]
+         (update acc server #(assoc (or % {}) slot true)))
+       {}
+       neighbors))))
 
 (defn adjacent?
   [c1 {:keys [zone] :as c2}]
