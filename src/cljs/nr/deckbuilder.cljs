@@ -731,8 +731,11 @@
             :on-mouse-enter #(put! zoom-channel {:card id
                                                  :art (:art id)
                                                  :id (:id id)})
-            :on-mouse-leave #(put! zoom-channel false) }
-       (tr-data :title id)
+            :on-mouse-leave #(put! zoom-channel false)}
+       [:div (tr-data :title id)
+        " " [:span.influence {:key "influence"
+                              :class (utils/faction-label id)}
+             (influence-dots (:factioncost id 3))]]
        (let [status (format-status (:format deck) id)]
          (cond (:banned status) banned-span
                (:restricted status) restricted-span
