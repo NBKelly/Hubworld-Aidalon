@@ -65,7 +65,7 @@
                            (bluffs-enabled? state)
                            (or
                              (and ;; KNOT TODAY
-                               (not= side (:engaged-side context))
+                               (= side (:engaged-side context))
                                (or (was-in-hand? (:card context))
                                    (was-in-deck? (:card context)))
                                (moment? (:card context))
