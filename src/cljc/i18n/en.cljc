@@ -15,6 +15,7 @@
    :format {:all "All"
             :casual "Casual"
             :any-format "Any Format"
+            :free-agent "Free Agent"
             :pre-release "Pre-Release"}
    :set {:all "All"
          :draft-cycle "Draft Cycle"

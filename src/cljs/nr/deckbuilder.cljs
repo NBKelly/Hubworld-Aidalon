@@ -10,7 +10,7 @@
     [nr.appstate :refer [app-state]]
     [nr.auth :refer [authenticated] :as auth]
     [nr.cardbrowser :refer [cards-channel factions filter-title image-url] :as cb]
-    [nr.deck-status :refer [deck-status-span]]
+    [nr.deck-status :refer [check-deck-status deck-status-span]]
     [nr.translations :refer [tr tr-faction tr-format tr-side tr-type tr-data]]
     [nr.utils :refer [alliance-dots banned-span cond-button
                       deck-points-card-span dots-html format->slug format-date-time
@@ -423,7 +423,7 @@
 (defn deck-influence-html
   "Returns hiccup-ready vector with dots colored appropriately to deck's influence."
   [deck]
-  (dots-html influence-dot (validator/affiliation-map deck)))
+  (dots-html influence-dot (validator/affiliation-used deck)))
 
 (defn distinct-by [f coll]
   (letfn [(step [xs seen]
@@ -744,8 +744,13 @@
         [:div count (str " " (tr [:deck-builder.cards "cards"]))
          (when-not (<= min-count count max-count)
            [:span.invalid (str " (" (tr [:deck-builder.expected "expected:"]) " " min-count ")")])])
-      [:div (str (tr [:deck-builder.affiliation "Affiliation"]) ": ")
-       (deck-influence-html deck)]
+      (when-not (= (keyword (:format deck)) :free-agent)
+        [:div (str (tr [:deck-builder.affiliation-available "Affiliation Available"]) ": ")
+         (dots-html influence-dot (validator/affiliation-map deck))])
+      (when (or (= (keyword (:format deck)) :free-agent)
+                (= (check-deck-status (:deck-status deck)) "invalid"))
+        [:div (str (tr [:deck-builder.affiliation-used "Affiliation Used"]) ": ")
+         (dots-html influence-dot (validator/affiliation-used deck))])
       ;; TODO - figure out how the inf works once enough info is out
       ;; (let [inf (validator/influence-count deck)
       ;;       id-limit (validator/id-inf-limit id)]
