@@ -3,8 +3,7 @@
    [clojure.string :as str]
    [game.core.card :refer [get-card
                            obstacle? moment?
-                           in-hand? in-deck? rezzed? installed?
-                           was-in-hand? was-in-deck?]]
+                           in-hand? in-deck? rezzed? installed?]]
    [game.core.payment :refer [->c can-pay?]]
    [game.utils :refer [to-keyword  same-card?]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
@@ -65,9 +64,9 @@
                            (bluffs-enabled? state)
                            (or
                              (and ;; KNOT TODAY
-                               (not= side (:engaged-side context))
-                               (or (was-in-hand? (:card context))
-                                   (was-in-deck? (:card context)))
+                               (= side (:engaged-side context))
+                               (or (in-hand? (:card context))
+                                   (in-deck? (:card context)))
                                (moment? (:card context))
                                (< (known-copies state side "Knot Today") 2))
                              (and ;; TENACITY
