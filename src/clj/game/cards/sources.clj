@@ -205,9 +205,16 @@
                            :choices {:req (req (and (my-card? target)
                                                     (in-discard? target)))
                                      :all true}
-                           :msg "shuffles 1 card from [their] Archives into [their] Commons"
+                           :msg "shuffle 1 card from [their] Archives into [their] Commons"
+                           :async true
                            :effect (req (move state side target :deck)
-                                        (shuffle! state side :deck))}}]}))
+                                        (shuffle! state side :deck)
+                                        (continue-ability
+                                          state side
+                                          {:msg "draw 1 card"
+                                           :async true
+                                           :effect (req (draw state side eid 1))}
+                                          card nil))}}]}))
 
 (defcard "Echopomp Revoker"
   (collect
@@ -317,8 +324,7 @@
    :reaction [{:reaction :complete-breach
                :prompt "Gain 2 [Credits]?"
                :type :ability
-               :req (req (and (= (:breach-server context) :commons)
-                              (= (:delver context) side)))
+               :req (req (= (:delver context) side))
                :ability {:cost [(->c :exhaust-self)]
                          :msg "gain 2 [Credits]"
                          :async true
