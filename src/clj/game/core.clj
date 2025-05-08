@@ -61,43 +61,7 @@
   `((fn [] (import-vars ~symbols))))
 
 (expose-vars
-  [game.core.access
-   access-bonus
-   access-bonus-count
-   access-card
-   access-cost
-   access-cost-bonus
-   access-end
-   access-helper-archives
-   access-helper-hq
-   access-helper-rd
-   access-helper-remote
-   access-non-agenda
-   breach-server
-   clean-access-args
-   choose-access
-   facedown-cards
-   faceup-accessible
-   get-all-content
-   get-all-hosted
-   get-only-card-to-access
-   installed-access-trigger
-   interactions
-   max-access
-   msg-handle-access
-   must-continue?
-   no-trash-or-steal
-   num-cards-central
-   num-cards-to-access
-   set-only-card-to-access
-   steal
-   steal-cost-bonus
-   turn-archives-faceup])
-
-(expose-vars
   [game.core.actions
-   advance
-   click-advance
    click-credit
    click-draw
    close-deck
@@ -111,7 +75,6 @@
    play-unbroken-subroutines
    remove-tag
    resolve-prompt
-   score
    select
    trash-resource
    view-deck])
@@ -237,13 +200,9 @@
 
 (expose-vars
   [game.core.def-helpers
-   breach-access-bonus
    combine-abilities
    corp-rez-toast
    defcard
-   do-brain-damage
-   do-meat-damage
-   do-net-damage
    make-recurring-ability
    reorder-choice
    trash-on-empty

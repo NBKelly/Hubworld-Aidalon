@@ -2,7 +2,6 @@
   (:require
     [cond-plus.core :refer [cond+]]
     [clojure.string :as string]
-    [game.core.agendas :refer [update-advancement-requirement]]
     [game.core.board :refer [all-installed get-remotes installable-servers server->zone all-installed-runner-type]]
     [game.core.card :refer [agenda? asset? condition-counter? convert-to-condition-counter  corp? event? get-card get-zone has-subtype? ice? installed? operation? program? resource? rezzed? upgrade?]]
     [game.core.card-defs :refer [card-def]]
@@ -211,8 +210,6 @@
                        (host state side host-card (assoc c :installed true))
                        (move state side c slot {:front front
                                                 :index index}))
-          _ (when (agenda? c)
-              (update-advancement-requirement state moved-card))
           moved-card (get-card state moved-card)]
       ;; Check to see if a second agenda/asset was installed.
       (wait-for
