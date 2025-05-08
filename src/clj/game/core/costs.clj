@@ -9,7 +9,6 @@
                            in-front-row? in-back-row?
                            in-archives-path? in-council-path?]]
    [game.core.card-defs :refer [card-def]]
-   [game.core.damage :refer [damage]]
    [game.core.eid :refer [complete-with-result make-eid]]
    [game.core.engine :refer [checkpoint queue-event resolve-ability]]
    [game.core.effects :refer [any-effects is-disabled-reg?]]
