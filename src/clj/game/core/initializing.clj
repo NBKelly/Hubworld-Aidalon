@@ -11,7 +11,6 @@
    [game.core.finding :refer [find-cid]]
    [game.core.gaining :refer [gain lose]]
    [game.core.ice :refer [add-sub]]
-   [game.core.memory :refer [init-mu-cost]]
    [game.core.payment :refer [add-cost-label-to-ability]]
    [game.core.props :refer [add-counter]]
    [game.core.update :refer [update!]]
@@ -127,9 +126,6 @@
      (register-default-events state side c)
      (register-static-abilities state side c)
      ;; Facedown cards can't be initialized
-     (when (and (program? card)
-                (not no-mu))
-       (init-mu-cost state c))
      (if (and resolve-effect (is-ability? cdef))
        (resolve-ability state side (assoc eid :source-type :ability) (dissoc cdef :cost :additional-cost) c nil)
        (effect-completed state side eid))

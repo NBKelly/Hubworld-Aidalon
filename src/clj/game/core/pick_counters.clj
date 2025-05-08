@@ -21,52 +21,6 @@
                                           :msg message
                                           :targets (keep #(:card (second %)) selected-cards)})))
 
-(defn pick-virus-counters-to-spend
-  "Pick virus counters to spend. For use with Freedom Khumalo and virus breakers, and any other relevant cards.
-  This function returns a map for use with resolve-ability or continue-ability.
-  The ability triggered returns either {:number n :msg msg} on completed effect, or :cancel on a cancel.
-  n is the number of virus counters selected, msg is the msg string of all the cards and the virus counters taken from each.
-  If called with no arguments, allows user to select as many counters as they like until 'Cancel' is pressed."
-  ([target-count] (pick-virus-counters-to-spend nil target-count (hash-map) 0))
-  ([specific-card target-count] (pick-virus-counters-to-spend specific-card target-count (hash-map) 0))
-  ([specific-card target-count selected-cards counter-count]
-   {:async true
-    :prompt (str "Choose a card with virus counters ("
-                 counter-count (str " of " target-count)
-                 " virus counters)")
-    :choices {:card #(and (if specific-card
-                            (or (same-card? % specific-card)
-                                (= "Hivemind" (:title %)))
-                            true)
-                          (installed? %)
-                          (runner? %)
-                          (pos? (get-counters % :virus)))}
-    :effect (req (let [target (update! state :runner (update-in target [:counter :virus] dec))
-                       selected-cards (update selected-cards (:cid target)
-                                              ;; Store card reference and number of counters picked
-                                              ;; Overwrite card reference each time
-                                              #(assoc % :card target :number (inc (:number % 0))))
-                       counter-count (inc counter-count)]
-                   (if (or (not target-count)
-                           (< counter-count target-count))
-                     (continue-ability state side
-                                       (pick-virus-counters-to-spend specific-card target-count selected-cards counter-count)
-                                       card nil)
-                     (let [message (enumerate-str (map #(let [{:keys [card number]} %
-                                                          title (:title card)]
-                                                      (str (quantify number "virus counter") " from " title))
-                                                   (vals selected-cards)))]
-                       (pick-counter-triggers state side eid selected-cards selected-cards :virus counter-count message)))))
-    :cancel-effect (if target-count
-                     (req (doseq [{:keys [card number]} (vals selected-cards)]
-                            (update! state :runner (update-in (get-card state card) [:counter :virus] + number)))
-                          (complete-with-result state side eid :cancel))
-                     (req (let [message (enumerate-str (map #(let [{:keys [card number]} %
-                                                               title (:title card)]
-                                                           (str (quantify number "virus counter") " from " title))
-                                                        (vals selected-cards)))]
-                           (complete-with-result state side eid {:number counter-count :msg message}))))}))
-
 (defn- trigger-spend-credits-from-cards
   [state side eid cards]
   (if (seq cards)

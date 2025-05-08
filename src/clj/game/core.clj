@@ -24,8 +24,6 @@
    [game.core.ice]
    [game.core.identities]
    [game.core.initializing]
-   [game.core.installing]
-   [game.core.memory]
    [game.core.moving]
    [game.core.optional]
    [game.core.payment]
@@ -38,7 +36,6 @@
    [game.core.props]
    [game.core.revealing]
    [game.core.rezzing]
-   [game.core.sabotage]
    [game.core.say]
    [game.core.servers]
    [game.core.set-aside]
@@ -50,7 +47,6 @@
    [game.core.toasts]
    [game.core.turns]
    [game.core.update]
-   [game.core.virus]
    [game.core.winning]
    [game.macros]
    [potemkin :refer [import-vars]]))
@@ -436,26 +432,6 @@
    update-all-card-labels])
 
 (expose-vars
-  [game.core.installing
-   corp-can-pay-and-install?
-   corp-install
-   corp-install-cost
-   corp-install-msg
-   install-as-condition-counter
-   install-locked?
-   runner-can-install?
-   runner-can-pay-and-install?
-   runner-install])
-
-(expose-vars
-  [game.core.memory
-   available-mu
-   caissa-mu+
-   mu+
-   update-mu
-   virus-mu+])
-
-(expose-vars
   [game.core.moving
    add-to-currently-drawing
    as-agenda
@@ -506,8 +482,7 @@
 
 (expose-vars
   [game.core.pick-counters
-   pick-credit-providing-cards
-   pick-virus-counters-to-spend])
+   pick-credit-providing-cards])
 
 (expose-vars
   [game.core.process-actions
@@ -637,13 +612,6 @@
   [game.core.update
    update!
    update-hosted!])
-
-(expose-vars
-  [game.core.virus
-   count-virus-programs
-   get-virus-counters
-   number-of-virus-counters
-   number-of-runner-virus-counters])
 
 (expose-vars
   [game.core.winning
