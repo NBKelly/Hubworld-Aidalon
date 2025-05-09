@@ -7,37 +7,6 @@
     [game.core.eid :refer [make-eid]]
     [game.core.update :refer [update!]]))
 
-(defn- advancement-requirement
-  [state {:keys [advancementcost] :as card}]
-  (when (agenda? card)
-    (->> [advancementcost
-          (when-let [advance-fn (:advancement-requirement (card-def card))]
-            (advance-fn state :corp (make-eid state) card nil))
-          (sum-effects state :corp :advancement-requirement card)]
-         (reduce (fnil + 0 0))
-         (max 0))))
-
-(defn update-advancement-requirement
-  "Recalculates the advancement requirement for the given agenda."
-  ([state agenda] (update-advancement-requirement state nil agenda))
-  ([state _ agenda]
-   (let [prev-req (:current-advancement-requirement agenda)
-         new-req (advancement-requirement state agenda)
-         changed? (not= prev-req new-req)]
-     (when changed?
-       (update! state :corp (assoc agenda :current-advancement-requirement new-req)))
-     changed?)))
-
-(defn update-all-advancement-requirements
-  ([state] (update-all-advancement-requirements state nil))
-  ([state _]
-   (reduce
-     (fn [changed? agenda]
-       (or (update-advancement-requirement state agenda)
-           changed?))
-     false
-     (filter agenda? (get-all-cards state)))))
-
 (defn agenda-points
   "Apply agenda-point modifications to calculate the number of points this card is worth
   to the given player."

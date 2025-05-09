@@ -1,6 +1,5 @@
 (ns game.core.turns
   (:require
-    [game.core.agendas :refer [update-all-advancement-requirements]]
     [game.core.board :refer [hubworld-all-installed]]
     [game.core.card :refer [facedown? get-card has-subtype? in-hand? installed?]]
     [game.core.drawing :refer [draw]]

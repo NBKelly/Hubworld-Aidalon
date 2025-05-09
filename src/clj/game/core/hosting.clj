@@ -6,7 +6,6 @@
     [game.core.eid :refer [make-eid]]
     [game.core.engine :refer [register-default-events unregister-events]]
     [game.core.initializing :refer [card-init]]
-    [game.core.memory :refer [init-mu-cost]]
     [game.core.update :refer [update! update-hosted!]]
     [game.utils :refer [remove-once same-card?]]))
 
@@ -74,10 +73,7 @@
                                          :no-mu no-mu})
            ;; Otherwise just register events and static abilities
            (do (register-default-events state side target)
-               (register-static-abilities state side target)
-               (when (and (program? target)
-                          (not no-mu))
-                 (init-mu-cost state target)))))
+               (register-static-abilities state side target))))
        (when-let [hosted-gained (:hosted-gained cdef)]
          (hosted-gained state side (make-eid state) (get-card state card) [target]))
        ;; Update all static abilities and floating effects

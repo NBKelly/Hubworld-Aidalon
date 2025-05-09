@@ -11,8 +11,6 @@
    [game.core.eid :refer [make-eid]]
    [game.core.engine :refer [can-trigger?]]
    [game.core.effects :refer [any-effects is-disabled-reg?]]
-   [game.core.installing :refer [corp-can-pay-and-install?
-                                 runner-can-pay-and-install?]]
    [game.core.payment :refer [can-pay? ->c]]
    [game.core.play-instants :refer [can-play-instant?]]
    [game.core.rezzing :refer [get-rez-cost]]

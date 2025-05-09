@@ -1,7 +1,6 @@
 (ns game.core.moving
   (:require
     [clojure.string :as string]
-    [game.core.agendas :refer [update-all-agenda-points]]
     [game.core.board :refer [all-active-installed]]
     [game.core.card :refer [active? agenda? asset? card-index condition-counter? convert-to-agenda corp? facedown? fake-identity? get-card get-title get-zone has-subtype? ice? in-hand? in-play-area? installed? program? resource? rezzed? runner? agent?]]
     [game.core.card-defs :refer [card-def]]
@@ -13,7 +12,6 @@
     [game.core.hosting :refer [remove-from-host]]
     [game.core.ice :refer [get-current-ice set-current-ice update-breaker-strength]]
     [game.core.initializing :refer [card-init deactivate reset-card]]
-    [game.core.memory :refer [init-mu-cost]]
     [game.core.prevention :refer [resolve-trash-prevention]]
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-wait-prompt]]
     [game.core.reactions :refer [cards-exiled-reaction cards-archived-reaction]]
@@ -79,9 +77,7 @@
                             (unregister-events state side h)
                             (register-default-events state side newh)
                             (unregister-static-abilities state side h)
-                            (register-static-abilities state side newh)
-                            (when (program? newh)
-                              (init-mu-cost state newh)))
+                            (register-static-abilities state side newh))
                           [newh]))
         hosted (seq (mapcat (if same-zone? update-hosted trash-hosted) (:hosted card)))
         ;; Set :seen correctly
@@ -678,7 +674,6 @@
   (let [card (deactivate state side card)
         card (convert-to-agenda card n)]
     (move state side card :scored {:force true})
-    (update-all-agenda-points state side)
     (check-win-by-agenda state side)))
 
 (defn forfeit
@@ -692,7 +687,6 @@
                (when msg
                  (system-msg state side (str "forfeits " (get-title card))))
                (move state (to-keyword (:side card)) card :rfg)
-               (update-all-agenda-points state side)
                (check-win-by-agenda state side)
                (queue-event state (if (= :corp side) :corp-forfeit-agenda :runner-forfeit-agenda) {:card card})
                (if suppress-checkpoint

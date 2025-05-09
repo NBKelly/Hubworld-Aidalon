@@ -24,8 +24,6 @@
    [game.core.ice]
    [game.core.identities]
    [game.core.initializing]
-   [game.core.installing]
-   [game.core.memory]
    [game.core.moving]
    [game.core.optional]
    [game.core.payment]
@@ -38,7 +36,6 @@
    [game.core.props]
    [game.core.revealing]
    [game.core.rezzing]
-   [game.core.sabotage]
    [game.core.say]
    [game.core.servers]
    [game.core.set-aside]
@@ -50,7 +47,6 @@
    [game.core.toasts]
    [game.core.turns]
    [game.core.update]
-   [game.core.virus]
    [game.core.winning]
    [game.macros]
    [potemkin :refer [import-vars]]))
@@ -61,43 +57,7 @@
   `((fn [] (import-vars ~symbols))))
 
 (expose-vars
-  [game.core.access
-   access-bonus
-   access-bonus-count
-   access-card
-   access-cost
-   access-cost-bonus
-   access-end
-   access-helper-archives
-   access-helper-hq
-   access-helper-rd
-   access-helper-remote
-   access-non-agenda
-   breach-server
-   clean-access-args
-   choose-access
-   facedown-cards
-   faceup-accessible
-   get-all-content
-   get-all-hosted
-   get-only-card-to-access
-   installed-access-trigger
-   interactions
-   max-access
-   msg-handle-access
-   must-continue?
-   no-trash-or-steal
-   num-cards-central
-   num-cards-to-access
-   set-only-card-to-access
-   steal
-   steal-cost-bonus
-   turn-archives-faceup])
-
-(expose-vars
   [game.core.actions
-   advance
-   click-advance
    click-credit
    click-draw
    close-deck
@@ -111,7 +71,6 @@
    play-unbroken-subroutines
    remove-tag
    resolve-prompt
-   score
    select
    trash-resource
    view-deck])
@@ -237,13 +196,9 @@
 
 (expose-vars
   [game.core.def-helpers
-   breach-access-bonus
    combine-abilities
    corp-rez-toast
    defcard
-   do-brain-damage
-   do-meat-damage
-   do-net-damage
    make-recurring-ability
    reorder-choice
    trash-on-empty
@@ -477,26 +432,6 @@
    update-all-card-labels])
 
 (expose-vars
-  [game.core.installing
-   corp-can-pay-and-install?
-   corp-install
-   corp-install-cost
-   corp-install-msg
-   install-as-condition-counter
-   install-locked?
-   runner-can-install?
-   runner-can-pay-and-install?
-   runner-install])
-
-(expose-vars
-  [game.core.memory
-   available-mu
-   caissa-mu+
-   mu+
-   update-mu
-   virus-mu+])
-
-(expose-vars
   [game.core.moving
    add-to-currently-drawing
    as-agenda
@@ -547,8 +482,7 @@
 
 (expose-vars
   [game.core.pick-counters
-   pick-credit-providing-cards
-   pick-virus-counters-to-spend])
+   pick-credit-providing-cards])
 
 (expose-vars
   [game.core.process-actions
@@ -678,13 +612,6 @@
   [game.core.update
    update!
    update-hosted!])
-
-(expose-vars
-  [game.core.virus
-   count-virus-programs
-   get-virus-counters
-   number-of-virus-counters
-   number-of-runner-virus-counters])
 
 (expose-vars
   [game.core.winning
