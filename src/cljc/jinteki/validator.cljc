@@ -63,6 +63,18 @@
         affiliations (sort (map #(->> % :card faction-label keyword) agents))]
     (frequencies affiliations)))
 
+(defn affiliation-used
+  [deck]
+  (letfn [(infhelper [infmap {:keys [card] :as line}]
+            (if (= (:type card) "Agent")
+              infmap
+              (let [fac (->> card faction-label keyword)]
+                (update infmap fac (fnil max (:factioncost card)) (:factioncost card)))))]
+    (reduce infhelper {}
+            (sort-by faction-label
+                     (concat (:cards deck)
+                             [{:card (:identity deck)}])))))
+
 (defn influence-map
   "Returns a map of faction keywords to influence values from the faction's cards."
   [deck]
@@ -84,6 +96,27 @@
   [card {:keys [side faction title] :as identity}]
   (not= (:type card) "Seeker"))
 
+(defn- affiliation-allowed?
+  [fmt deck]
+  (let [affiliation-limit (affiliation-map deck)
+        affiliation-used  (affiliation-used deck)
+        affiliation-used-count (apply + 0 (vals affiliation-used))
+        normally-legal? (and
+                          (= 6 (apply + 0 (vals affiliation-limit)))
+                          (every? (fn [[key val]]
+                                    (>= (get affiliation-limit key 0) val))
+                                  affiliation-used)
+                          true)]
+    (case fmt
+      :casual {:legal true}
+      ;; free agent - less than 6 total affiliation used
+      :free-agent {:legal (<= affiliation-used-count 6)
+                   :reason (when (> affiliation-used-count 6)
+                             "too much affiliation used: maximum 6")}
+      ;; otherwise, follow standard rules
+      {:legal normally-legal?
+       :reason (when (not normally-legal?) "affiliation is not within limits")})))
+
 (defn valid-deck?
   "Checks that a given deck follows deckbuilding rules"
   [{:keys [identity cards] :as deck}]
@@ -92,6 +125,7 @@
         min-deck-size (min-deck-size identity)
         max-deck-size (max-deck-size identity)
         agent-count (agent-count deck)
+
         card-count? (>= max-deck-size card-count min-deck-size)
         correct-agents? (= agent-count 6)
         influence-count (influence-count deck)
@@ -184,9 +218,10 @@
 
 (defn build-format-legality
   [valid fmt deck]
-  (let [mwl (legal-format? fmt deck)]
-    {:legal (and (:legal valid) (:legal mwl))
-     :reason (or (:reason valid) (:reason mwl))}))
+  (let [mwl (legal-format? fmt deck)
+        aff (affiliation-allowed? (keyword fmt) deck)]
+    {:legal (and (:legal valid) (:legal mwl) (:legal aff))
+     :reason (or (:reason valid) (:reason mwl) (:reason aff))}))
 
 (defn calculate-deck-status
   "Calculates all the deck's validity for the basic deckbuilding rules,
@@ -195,6 +230,7 @@
   (let [valid (valid-deck? deck)]
     {:format (:format deck)
      :casual valid
+     :free-agent (build-format-legality valid :free-agent deck)
      :pre-release (build-format-legality valid :pre-release deck)}))
 
 (defn trusted-deck-status

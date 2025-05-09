@@ -190,7 +190,7 @@
                                         :msg (msg "lose 1 heat ")
                                         :effect (req (lose-heat state side eid 1))}}}]})
 
-(defcard "Oroba Plaza"
+(defcard "Orobo Plaza"
   (let [abs [{:optional
               {:prompt "Steal 1 [Shard]"
                :label "Steal 1 [Shard] if heat >= 2"

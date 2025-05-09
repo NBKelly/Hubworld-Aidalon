@@ -75,11 +75,11 @@
     (click-prompt state :corp "Flooding Thoroughfare")
     (is (= 3 (barrier (pick-card state :corp :council :outer))) "Got +2 barrier")))
 
-(deftest oroba-plaza-test
+(deftest orobo-plaza-test
   (doseq [opt [:confront :discover]]
     (do-game
-      (new-game {:corp {:hand ["Oroba Plaza"] :heat 2}})
-      (play-from-hand state :corp "Oroba Plaza" :council :outer)
+      (new-game {:corp {:hand ["Orobo Plaza"] :heat 2}})
+      (play-from-hand state :corp "Orobo Plaza" :council :outer)
       (click-credit state :runner)
       (click-credit state :corp)
       (delve-server state :runner :council)

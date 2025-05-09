@@ -8,7 +8,7 @@
                               pass play play-ability play-corp-ability play-collect
                               play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               play-rush
-                              resolve-prompt score select stage-done bluff-done stage-select trash-resource view-deck]]
+                              resolve-prompt select stage-done bluff-done stage-select trash-resource view-deck]]
    [game.core.card :refer [get-card]]
    [game.core.change-vals :refer [change]]
    [game.core.checkpoint :refer [fake-checkpoint]]
@@ -86,7 +86,6 @@
    "remove-tag" #'remove-tag ;; OBSOLETE
    "forge" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
    "runner-ability" #'play-runner-ability
-   "score" #(score %1 %2 (make-eid %1) (get-card %1 (:card %3)) nil) ;; OBSOLETE
    "select" #'select
    "set-property" #'set-property
    "shift" #'cmd-shift

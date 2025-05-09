@@ -3,7 +3,7 @@
     [clj-uuid :as uuid]
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.string :as string]
-    [game.core.agendas :refer [update-advancement-requirement update-all-advancement-requirements update-all-agenda-points]]
+    [game.core.agendas :refer [ update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
     [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment? in-hand?]]
     [game.core.card-defs :refer [card-def]]
@@ -588,74 +588,3 @@
       (swap! state assoc-in [:corp :install-list] (conj (installable-servers state card) "Expend")) ;;april fools we can make this "cast as a sorcery"
       (swap! state assoc-in [:corp :install-list] (installable-servers state card)))
     (swap! state dissoc-in [:corp :install-list])))
-
-(defn advance
-  "Advance a corp card that can be advanced.
-   If you pass in a truthy value as the no-cost parameter, it will advance at no cost (for the card Success)."
-  ([state side {:keys [card]}] (advance state side (make-eid state) card nil))
-  ([state side card no-cost] (advance state side (make-eid state) card no-cost))
-  ([state side eid card no-cost]
-   (let [card (get-card state card)
-         eid (assoc eid :source-type :advance)]
-     (if (can-advance? state side card)
-       (wait-for (pay state side
-                      (make-eid state (assoc eid :action :corp-advance))
-                      card
-                      (->c :click (if-not no-cost 1 0))
-                      (->c :credit (if-not no-cost 1 0)))
-                 (if-let [payment-str (:msg async-result)]
-                   (do (system-msg state side (str (build-spend-msg payment-str "advance") (card-str state card)))
-                       (update-advancement-requirement state card)
-                       (wait-for
-                         (add-prop state side (get-card state card) :advance-counter 1)
-                         (play-sfx state side "click-advance")
-                         (effect-completed state side eid)))
-                   (effect-completed state side eid)))
-       (effect-completed state side eid)))))
-
-(defn resolve-score
-  "resolves the actual 'scoring' of an agenda (after costs/can-steal has been worked out)"
-  [state side eid card]
-  (let [moved-card (move state :corp card :scored)
-        c (card-init state :corp moved-card {:resolve-effect false
-                                             :init-data true})
-        _ (update-all-advancement-requirements state)
-        _ (update-all-agenda-points state)
-        c (get-card state c)
-        points (get-agenda-points c)]
-    (system-msg state :corp (str "scores " (:title c)
-                                 " and gains " (quantify points "agenda point")))
-    (implementation-msg state card)
-    (set-prop state :corp (get-card state c) :advance-counter 0)
-    (swap! state update-in [:corp :register :scored-agenda] #(+ (or % 0) points))
-    (play-sfx state side "agenda-score")
-    (when-let [on-score (:on-score (card-def c))]
-      (register-pending-event state :agenda-scored c on-score))
-    (queue-event state :agenda-scored {:card c
-                                       :points points})
-    (checkpoint state nil eid {:duration :agenda-scored})))
-
-(defn score
-  "Score an agenda."
-  ([state side eid card] (score state side eid card nil))
-  ([state side eid card {:keys [no-req ignore-turn]}]
-   (if-not (can-score? state side card {:no-req no-req :ignore-turn ignore-turn})
-     (effect-completed state side eid)
-     (let [cost (score-additional-cost-bonus state side card)
-           cost-strs (build-cost-string cost)
-           can-pay (can-pay? state side (make-eid state (assoc eid :additional-costs cost)) card (:title card) cost)]
-       (cond
-         (string/blank? cost-strs) (resolve-score state side eid card)
-         (not can-pay) (effect-completed state side eid)
-         :else (wait-for (pay state side (make-eid state
-                                                   (assoc eid
-                                                          :additional-costs cost
-                                                          :source card
-                                                          :source-type :corp-score))
-                              card cost)
-                         (let [payment-result async-result]
-                           (if (string/blank? (:msg payment-result))
-                             (effect-completed state side eid)
-                             (do
-                               (system-msg state side (str (:msg payment-result) " to score " (:title card)))
-                               (resolve-score state side eid card))))))))))

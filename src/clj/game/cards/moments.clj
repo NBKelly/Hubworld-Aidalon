@@ -3,10 +3,10 @@
    [clojure.string :as str]
    [game.core.barrier :refer [update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.breaching :refer [access-bonus discover-card]]
+   [game.core.breaching :refer [access-bonus discover-card discover-n-cards]]
    [game.core.card :refer [get-card
                            source? seeker? obstacle? moment?
-                           was-in-hand? in-hand? in-deck? was-in-deck? rezzed? installed?]]
+                           in-hand? in-deck? rezzed? installed?]]
    [game.core.def-helpers :refer [defcard stage-n-cards]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed]]
@@ -142,8 +142,8 @@
   {:reaction [{:location :hand
                :reaction :pre-discover
                :req (req (and (= side (:engaged-side context))
-                              (or (was-in-hand? (:card context))
-                                  (was-in-deck? (:card context)))
+                              (or (in-hand? (:card context))
+                                  (in-deck? (:card context)))
                               (moment? (:card context))))
                :type :moment
                :prompt (msg "Archive " (:title (:card context)) " and draw 1 card?")
@@ -197,7 +197,7 @@
                               (= (:delver context) side)))
                :ability {:cost [(->c :exile-reaction)]
                          :async true
-                         :effect (req (discover-card state side eid (first (shuffle (get-in @state [opponent :hand])))))}}]})
+                         :effect (req (discover-n-cards state side eid :council 1))}}]})
 
 (defcard "Print on Demand"
   {:on-play {:action true

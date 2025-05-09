@@ -2,7 +2,6 @@
   (:require
    [cljc.java-time.instant :as inst]
    [clojure.string :as string]
-   [game.core.actions :refer [score]]
    [game.core.board :refer [all-installed server->zone]]
    [game.core.breaching :refer [discover-card]]
    [game.core.card :refer [agenda? can-be-advanced? corp? get-card seeker?
@@ -12,7 +11,6 @@
    [game.core.delving :refer [confront-card]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [resolve-ability trigger-event]]
-   [game.core.flags :refer [is-scored?]]
    [game.core.identities :refer [disable-identity disable-card enable-card]]
    [game.core.initializing :refer [card-init deactivate make-card]]
    [game.core.moving :refer [move swap-installed trash]]

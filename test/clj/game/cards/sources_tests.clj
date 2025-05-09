@@ -185,7 +185,9 @@
     (click-credit state :runner)
     (forge state :corp (pick-card state :corp :council :inner))
     (delve-empty-server state :corp :council)
-    (click-prompts state :corp "Echofield Registry" "Yes" "Shardwinner")))
+    (is (changed? [(count (:hand (get-corp))) 1]
+          (click-prompts state :corp "Echofield Registry" "Yes" "Shardwinner"))
+        "Drew 1")))
 
 (deftest echopomp-revoker-test
   (collects? {:name "Echopomp Revoker"
@@ -302,17 +304,18 @@
         "+1 presence")))
 
 (deftest wall-wizard-test
-  (do-game
-    (new-game {:corp {:hand ["Wall Wizard"]}
-               :runner {:hand [(qty "Fun Run" 5)]}})
-    (play-from-hand state :corp "Wall Wizard" :council :inner)
-    (forge state :corp (pick-card state :corp :council :inner))
-    (click-credit state :runner)
-    (delve-empty-server state :corp :commons)
-    (is (changed? [(:credit (get-corp)) 2]
-          (click-prompts state :corp "Wall Wizard" "Yes"))
-        "Gained 2c")
-    (is (no-prompt? state :corp))))
+  (doseq [s [:commons :archives]]
+    (do-game
+      (new-game {:corp {:hand ["Wall Wizard"]}
+                 :runner {:hand [(qty "Fun Run" 5)]}})
+      (play-from-hand state :corp "Wall Wizard" :council :inner)
+      (forge state :corp (pick-card state :corp :council :inner))
+      (click-credit state :runner)
+      (delve-empty-server state :corp s)
+      (is (changed? [(:credit (get-corp)) 2]
+            (click-prompts state :corp "Wall Wizard" "Yes"))
+          "Gained 2c")
+      (is (no-prompt? state :corp)))))
 
 (deftest waterfront-soakhouse
   (collects? {:name "Waterfront Soakhouse"

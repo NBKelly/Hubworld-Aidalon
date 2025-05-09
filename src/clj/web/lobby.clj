@@ -10,7 +10,6 @@
    [game.core :as core]
    [game.utils :refer [server-card]]
    [jinteki.utils :refer [select-non-nil-keys side-from-str superuser?]]
-   [jinteki.preconstructed :refer [all-matchups]]
    [jinteki.validator :as validator]
    [medley.core :refer [find-first random-uuid]]
    [monger.collection :as mc]
@@ -70,22 +69,12 @@
   "Note: if the lobby isn't actually real, or has been nulled somehow, executing on the lobby thread is safe"
   `(cp/future (or (get-in ~lobby [:pool :pool]) lobby-pool) ~@expr))
 
-(defn validate-precon
-  [format client-precon client-gateway-type]
-  (let [target (if (= format "system-gateway") client-gateway-type client-precon)
-        precon (and target (keyword (str/lower-case target)))]
-    (when (or (and (= format "system-gateway")
-                   (contains? #{:beginner :intermediate} precon))
-              (and (= (str format) "preconstructed")
-                   (contains? all-matchups precon)))
-      precon)))
-
 (defn create-new-lobby
   [{uid :uid
     user :user
     {:keys [gameid now
             allow-spectator api-access format mute-spectators password room save-replay
-            precon gateway-type side singleton spectatorhands timer title open-decklists]
+            gateway-type side singleton spectatorhands timer title open-decklists]
      :or {gameid (random-uuid)
           now (inst/now)}} :options}]
   (let [player {:user user

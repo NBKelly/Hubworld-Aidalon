@@ -20,7 +20,6 @@
     [game.macros :refer [continue-ability req wait-for]]
     [game.utils :refer [dissoc-in distinct-by enumerate-str in-coll? remove-once same-card? server-cards side-str to-keyword]]
     [jinteki.utils :refer [other-side]]
-    [game.core.memory :refer [update-mu]]
     [game.core.to-string :refer [card-str]]))
 
 ;; resolve-ability docs

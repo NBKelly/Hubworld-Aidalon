@@ -1,12 +1,10 @@
 (ns game.core.def-helpers
   (:require
     [clojure.string :as str]
-    [game.core.access :refer [access-bonus]]
     [game.core.board :refer [all-installed]]
     [game.core.card :refer [active? can-be-advanced? corp? faceup? get-card get-counters has-subtype? in-discard? runner? in-hand? moment?]]
     [game.core.card-defs :as card-defs]
     [game.core.drawing :refer [draw]]
-    [game.core.damage :refer [damage]]
     [game.core.eid :refer [effect-completed make-eid]]
     [game.core.engine :refer [queue-event register-events resolve-ability trigger-event-sync unregister-event-by-uuid]]
     [game.core.effects :refer [is-disabled-reg? sum-effects]]
@@ -110,42 +108,6 @@
 
                :else
                (continue-ability state side (reorder-choice reorder-side wait-side original '() (count original) original dest) card nil)))}))
-
-(defn breach-access-bonus
-  "Access additional cards when breaching a server"
-  ([server bonus] (breach-access-bonus server bonus nil))
-  ([server bonus {:keys [duration msg] :as args}]
-   {:event :breach-server
-    :duration duration
-    :req (if (:req args)
-           (:req args)
-           (req (= server target)))
-    :msg msg
-    :effect (effect (access-bonus :runner server bonus))}))
-
-(defn do-net-damage
-  "Do specified amount of net-damage."
-  [dmg]
-  {:label (str "Do " dmg " net damage")
-   :async true
-   :msg (str "do " dmg " net damage")
-   :effect (effect (damage eid :net dmg {:card card}))})
-
-(defn do-meat-damage
-  "Do specified amount of meat damage."
-  [dmg]
-  {:label (str "Do " dmg " meat damage")
-   :async true
-   :msg (str "do " dmg " meat damage")
-   :effect (effect (damage eid :meat dmg {:card card}))})
-
-(defn do-brain-damage
-  "Do specified amount of core damage."
-  [dmg]
-  {:label (str "Do " dmg " core damage")
-   :async true
-   :msg (str "do " dmg " core damage")
-   :effect (effect (damage eid :brain dmg {:card card}))})
 
 (defn rfg-on-empty
   "Used in :event maps for effects like Malandragem"

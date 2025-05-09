@@ -121,10 +121,12 @@
 
 (def slug->format
   {"pre-release" "Pre-Release"
+   "free-agent" "Free Agent"
    "casual" "Casual"})
 
 (def format->slug
   {"Pre-Release" "pre-release"
+   "Free Agent" "free-agent"
    "Casual" "casual"})
 
 (defn regex-escape
