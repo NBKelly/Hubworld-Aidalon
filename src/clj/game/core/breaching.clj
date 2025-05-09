@@ -46,9 +46,9 @@
 (defn discover-continue
   [state side eid discovered-card]
   (let [can-interact? (and (or (not (moment? discovered-card))
-                               (= [:discard] (:previous-zone discovered-card))))
+                               (= [:discard] (:zone discovered-card))))
         should-secure? (agent? discovered-card)
-        interact-cost? (merge-costs (concat (when-not (= [:discard] (:previous-zone discovered-card)) [(->c :credit (get-presence discovered-card))])
+        interact-cost? (merge-costs (concat (when-not (= [:discard] (:zone discovered-card)) [(->c :credit (get-presence discovered-card))])
                                             (:cipher (card-def discovered-card))))]
     (if (or (not (get-card state discovered-card)))
       (discover-cleanup state side eid discovered-card)
@@ -146,30 +146,33 @@
   (sum-effects state side :access-bonus {:delver side :server kw}))
 
 (defn num-cards-central
-  [state side access-key access-amount]
-  (let [random-access-limit (access-bonus-count state side access-key)
-        heat-bonus (count-heat state (other-side side))
-        total-mod (access-bonus-count state side :total)]
-    (+ (or access-amount random-access-limit 0) heat-bonus total-mod)))
+  ([state side access-key access-amount]
+   (num-cards-central state side access-key access-amount true))
+  ([state side access-key access-amount use-heat?]
+   (let [random-access-limit (access-bonus-count state side access-key)
+         heat-bonus (if use-heat? (count-heat state (other-side side)) 0)
+         total-mod (access-bonus-count state side :total)]
+     (+ (or access-amount 0) (or random-access-limit 0) heat-bonus total-mod))))
 
 ;; compute the number of cards we're accessing
-(defn num-cards-to-access-commons [state side access-amount]  (num-cards-central state side :commons access-amount))
-(defn num-cards-to-access-council [state side access-amount]  (num-cards-central state side :council access-amount))
-(defn num-cards-to-access-archives [state side access-amount] (num-cards-central state side :archives access-amount))
+(defn num-cards-to-access-commons [state side access-amount use-heat?]  (num-cards-central state side :commons access-amount use-heat?))
+(defn num-cards-to-access-council [state side access-amount use-heat?]  (num-cards-central state side :council access-amount use-heat?))
+(defn num-cards-to-access-archives [state side access-amount use-heat?] (num-cards-central state side :archives access-amount use-heat?))
 
 (defn num-cards-to-access
-  [state side server access-amount]
+  [state side server access-amount use-heat?]
   (case server
-    :commons (num-cards-to-access-commons state side access-amount)
-    :council (num-cards-to-access-council state side access-amount)
-    :archives (num-cards-to-access-archives state side access-amount)))
+    :commons (num-cards-to-access-commons state side access-amount use-heat?)
+    :council (num-cards-to-access-council state side access-amount use-heat?)
+    :archives (num-cards-to-access-archives state side access-amount use-heat?)))
 
 (defn- resolve-breach-discovery-for-card
   "discovered cards are always set aside if not moved"
   [state side eid card remaining next-fn]
-  (let [c (last (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))]
-    (wait-for (discover-card state side c)
-              (next-fn state side eid (dec remaining)))))
+  (wait-for (discover-card state side card)
+            (when (get-card state card)
+              (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))
+            (next-fn state side eid (dec remaining))))
 
 ;; TODO -- BELOW, COMPLETE WITH RESULT
 (defn resolve-access-council
@@ -215,6 +218,22 @@
         (println (str "Attempt to breach unknown server: " server))
         (effect-completed state side eid))))
 
+(defn discover-n-cards
+  "Discover n cards from a server"
+  ([state side eid server n] (discover-n-cards state side eid server n nil))
+  ([state side eid server n args]
+   (system-msg state side (str "discovers " (quantify n "card") " from "
+                               (other-player-name state side) "'s " (str/capitalize (name server))))
+   (wait-for
+     (pre-discovery-reaction state side {:breach-server server :from-server server :delver side :defender (other-side side)})
+     (let [args (clean-access-args args)
+           access-amount (num-cards-to-access state side server 1 nil)]
+       (when (:delve @state)
+         (swap! state assoc-in [:delve :did-access] true))
+       (wait-for (resolve-access-server state side server access-amount)
+                 (swap! state dissoc :breach)
+                 (effect-completed state side eid))))))
+
 (defn breach-server
   "Starts the breach routines for the delve's server."
   ([state side eid server] (breach-server state side eid server nil))
@@ -227,7 +246,7 @@
        (swap! state assoc :breach {:breach-server server :from-server server :delver side :defender (other-side side)
                                    :discover-from-bottom-of-commons (:discover-from-bottom-of-commons async-result)})
        (let [args (clean-access-args args)
-             access-amount (num-cards-to-access state side server nil)]
+             access-amount (num-cards-to-access state side server nil true)]
          (when (:delve @state)
            (swap! state assoc-in [:delve :did-access] true))
          (wait-for (resolve-access-server state side server access-amount)

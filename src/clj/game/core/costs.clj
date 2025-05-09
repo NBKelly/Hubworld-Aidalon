@@ -785,7 +785,7 @@
 (defmethod value :steal-heat [cost] (:cost/amount cost))
 (defmethod label :steal-heat [cost] (str "steal " (value cost) " [heat]"))
 (defmethod payable? :steal-heat [cost state side eid card]
-  (>= (value cost) (get-in @state [(other-side side) :heat :base] 0)))
+  (<= (value cost) (get-in @state [(other-side side) :heat :base] 0)))
 (defmethod handler :steal-heat
   [cost state side eid card]
   (wait-for (lose-heat state (other-side side) (value cost) {:suppress-checkpoint true})
