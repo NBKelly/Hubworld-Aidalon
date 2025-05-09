@@ -232,14 +232,17 @@
               :credits 1})
   ;; +1 barrier aura
   (do-game
-    (new-game {:corp {:hand ["Prime Treasurer Geel: Munificent Financier" "Barbican Gate"]}})
+    (new-game {:corp {:hand ["Prime Treasurer Geel: Munificent Financier" "Barbican Gate"]}
+               :runner {:hand ["Barbican Gate"]}})
     (play-from-hand state :corp "Barbican Gate" :council :outer)
-    (click-credit state :runner)
+    (play-from-hand state :runner "Barbican Gate" :council :outer)
     (play-from-hand state :corp "Prime Treasurer Geel: Munificent Financier" :council :middle)
     (is (changed? [(barrier state :corp :council :outer) 1
-                   (barrier state :corp :council :middle) 0]
+                   (barrier state :corp :council :middle) 0
+                   (barrier state :runner :council :outer) 0]
           (forge state :corp (pick-card state :corp :council :middle))
-          (forge state :corp (pick-card state :corp :council :outer)))
+          (forge state :corp (pick-card state :corp :council :outer))
+          (forge state :runner (pick-card state :runner :council :outer)))
         "Only buffs other cards"))
   ;; discover: +4 creds (while installed)
   (doseq [[opt c q] [["Yes" 4 "gained 4"] ["No" 0 "gained 0"]]]

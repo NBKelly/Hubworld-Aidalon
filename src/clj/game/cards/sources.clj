@@ -273,7 +273,7 @@
                  :ability {:prompt "Choose a card to swap with Silkline Shuttle"
                            :choices {:req (req (and (installed? target)
                                                     (not (same-card? card target))
-                                                    (same-side? card target)
+                                                    (my-card? target)
                                                     (not (seeker? target))))}
                            :msg (msg "swap itself with " (hubworld-card-str state target))
                            :effect (req (swap-installed state side card target))}}]}))

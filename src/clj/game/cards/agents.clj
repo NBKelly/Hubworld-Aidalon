@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker? in-front-row?]]
+   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker? in-front-row? moment?]]
    [game.core.def-helpers :refer [collect]]
    [game.core.delving :refer [delve-approach]]
    [game.core.drawing :refer [draw]]
@@ -20,7 +20,7 @@
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
-   [game.utils :refer [same-card? to-keyword same-side?]]
+   [game.utils :refer [same-card? to-keyword]]
    [game.macros :refer [effect msg req wait-for continue-ability]]
    [jinteki.utils :refer [adjacent-zones other-player-name]]))
 
@@ -226,7 +226,8 @@
                                 (can-pay? state side eid card nil [(->c :exhaust-self)])))
                  :prompt "Stage a card?"
                  :ability {:choices {:req (req (and (in-hand? target)
-                                                    (same-side? card target)))}
+                                                    (not (moment? target))
+                                                    (my-card? target)))}
                            :async true
                            :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}}]}))
 
@@ -237,7 +238,8 @@
                          :value 1
                          :req (req (and (installed? target)
                                         (not (same-card? card target))
-                                        (same-side? card target)
+                                        (my-card? target)
+                                        (my-card? card)
                                         (or (agent? target) (obstacle? target))))}]
      :discover-abilities [{:label "Gain 4 [Credits] if installed"
                            :optional
