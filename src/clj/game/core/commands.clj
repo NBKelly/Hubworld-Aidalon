@@ -13,7 +13,7 @@
    [game.core.engine :refer [resolve-ability trigger-event]]
    [game.core.identities :refer [disable-identity disable-card enable-card]]
    [game.core.initializing :refer [card-init deactivate make-card]]
-   [game.core.moving :refer [move swap-installed trash]]
+   [game.core.moving :refer [move swap-installed trash exile]]
    [game.core.prompt-state :refer [remove-from-prompt-queue]]
    [game.core.prompts :refer [show-prompt show-stage-prompt show-bluff-prompt]]
    [game.core.props :refer [set-prop]]
@@ -286,6 +286,12 @@
                                              (make-card {:title "/enable-card command"}) nil)
             "/enable-api-access" command-enable-api-access
             "/error"      show-error-toast
+            "/exile"      #(resolve-ability %1 %2
+                                          {:prompt "Choose a card"
+                                           :async true
+                                           :effect (req (exile %1 %2 (make-eid %1) target))
+                                           :choices {:card (fn [t] (same-side? (:side t) %2))}}
+                                          (make-card {:title "/exile command"}) nil)
             "/handsize"   #(change %1 %2 {:key :hand-size
                                           :delta (- (constrain-value value -1000 1000)
                                                     (get-in @%1 [%2 :hand-size :total]))})
