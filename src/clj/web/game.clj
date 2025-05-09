@@ -15,6 +15,7 @@
    [web.app-state :as app-state]
    [web.lobby :as lobby]
    [web.stats :as stats]
+   [web.telemetry :as telemetry]
    [web.ws :as ws]))
 
 (defn game-diff-json
@@ -156,6 +157,7 @@
               (stats/game-started db lobby?)
               (lobby/send-lobby-state lobby?)
               (lobby/broadcast-lobby-list)
+              (telemetry/add-game-played)
               (send-state-to-participants :game/start lobby? (diffs/public-states (:state lobby?)))))))
       (catch Exception e
         (ws/chsk-send! uid [:game/error])

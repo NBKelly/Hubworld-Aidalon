@@ -19,6 +19,7 @@
                  :init (go)}
 
   :dependencies [[org.clojure/clojure "1.11.2"]
+                 [cljs-http "0.1.46"]
                  [org.clojure/clojurescript "1.11.132"
                   :exclusions [org.clojure/google-closure-library
                                org.clojure/data.json
