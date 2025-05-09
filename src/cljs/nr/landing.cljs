@@ -14,11 +14,13 @@
     [:li [:a {:href "https://docs.google.com/document/d/1AoUI8qg91jmqKJRkwI9cRBupjhBS8Jvy6O-Pti6mcig/edit?tab=t.0" :target "_blank"} "(Preview) Rules Glossary"]]]
 
    [:h4 "Supported Formats:"]
-   [:p "For the time being, there aren't quite enough cards in the pool to facilitate strict deckbuilding yet. As such, there are three formats you can select when building decks and playing games:"]
+   [:p "For the time being, there aren't quite enough cards in the pool to facilitate a full range of strict deckbuilding options yet. As such, there are three formats you can select when building decks and playing games:"]
    [:ul.list.compact
-    [:li [:span.casual "Casual: "] "No restrictions are enforced"]
+    [:li [:span.casual "Casual: "] "No restrictions are enforced (the demo decks will need this format)"]
     [:li [:span.free-agent "Free Agent: "] "Agent affiliation is not tied to color. You may use any 6 affiliation pips in your deck, regardless of your agent choice."]
-    [:li [:span.pre-release "Pre-Release: "] "Later to become " [:span.standard "'standard'"] " - all normal deckbuilding rules are enforced"]]
+    [:li [:span.pre-release "Pre-Release: "] "Later to become " [:span.standard "Standard"] " - all normal deckbuilding rules are enforced"]
+    [:li "The current Heirarchy for formats is "
+     [:span.pre-release "Pre-Release"] " ⊆ " [:span.free-agent "Free Agent"] " ⊆ " [:span.casual "Casual"]]]
 
    [:h4 "Deckbuilding, and up to date card information"]
    [:ul.list.compact
