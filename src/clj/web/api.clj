@@ -11,7 +11,7 @@
    [ring.middleware.params :refer [wrap-params]]
    [ring.middleware.session :refer [wrap-session]]
    [ring.middleware.stacktrace :refer [wrap-stacktrace]]
-   [ring.util.response :refer [resource-response]]
+   [ring.util.response :refer [resource-response response]]
    [reitit.middleware :as middleware]
    [web.admin :as admin]
    [web.api-keys :as api-keys]
@@ -23,6 +23,7 @@
    [web.pages :as pages]
    [web.stats :as stats]
    [web.tournament :as tournament]
+   [web.telemetry :as telemetry]
    [web.ws :as ws]))
 
 (add-encoder org.bson.types.ObjectId encode-str)
@@ -56,6 +57,7 @@
     [["/chsk" {:get ws/handshake-handler
                :post ws/post-handler
                :middleware [::forgery]}]
+     ["/api/games-count" {:get (wrap-json-response telemetry/api-games-count)}]
      ["/data" {:middleware [::forgery]}
       ["/cards"
        ["" {:get data/cards-handler}]

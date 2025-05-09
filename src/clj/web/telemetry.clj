@@ -8,10 +8,53 @@
    [web.app-state :refer [app-state]]
    [web.lobby :refer [lobby-update-uids pool-occupants-info fetch-delay-log!]]
    [web.ws :refer [connected-sockets connections_]]
+   [monger.core :as mg]
+   [monger.collection :as mc]
    [taoensso.encore :as enc]
-   [taoensso.timbre :as timbre]))
+   [taoensso.timbre :as timbre])
+  (:import [java.util Calendar]))
 
 (def log-stat-frequency (enc/ms :mins 5))
+
+(def games-played-all-time (atom 0))
+(def games-played-this-week (atom 0))
+(def games-played-today (atom 0))
+
+(def games-played-reset-frequency (enc/ms :mins 1))
+
+(defn api-games-count [_]
+  {:status 200
+   :body {:today @games-played-today
+          :this-week @games-played-this-week
+          :all-time @games-played-all-time}})
+
+(def ^:private conn (mg/connect))
+(def ^:private db   (mg/get-db conn "hubworld"))
+
+(defn add-game-played
+  "Increments the games played counters"
+  []
+  (swap! games-played-all-time inc)
+  (swap! games-played-this-week inc)
+  (swap! games-played-today inc))
+
+(defn- n-hours-ago
+  [n]
+  (let [cal (Calendar/getInstance)]
+    (.add cal Calendar/HOUR (- n))
+    (.getTime cal)))
+
+(defonce update-games-played
+  (go (while true
+        (<! (timeout games-played-reset-frequency))
+        (println "updating games played")
+        (reset! games-played-today
+                (mc/count db "game-logs" {"creation-date" {"$gte" (n-hours-ago 24)}}))
+        (reset! games-played-this-week
+                (mc/count db "game-logs" {"creation-date" {"$gte" (n-hours-ago (* 7 24))}}))
+        (reset! games-played-all-time (mc/count db "game-logs"))
+        )))
+
 
 (defn percentile [vector percentile]
   ;; see: https://scicloj.github.io/stats-with-clojure/stats_with_clojure.basic_statistics.html
