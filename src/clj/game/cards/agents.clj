@@ -336,6 +336,7 @@
                          :req (req (and (not (same-card? card target))
                                         (not (seeker? target))
                                         (installed? target)
+                                        (my-card? card)
                                         (my-card? target)))}]}))
 
 (defcard "Ulin Marr: Eccentric Architect"

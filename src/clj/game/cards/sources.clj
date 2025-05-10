@@ -232,6 +232,7 @@
      :static-abilities [{:type :rez-cost
                          :req (req (and (installed? target)
                                         (my-card? target)
+                                        (my-card? card)
                                         (adjacent? card target)))
                          :value -1}]}))
 
@@ -317,7 +318,9 @@
     {:shards 1}
     {:static-abilities [{:type :presence-value
                          :value 1
-                         :req (req (adjacent? card target))}]}))
+                         :req (req (and (my-card? card)
+                                        (my-card? target)
+                                        (adjacent? card target)))}]}))
 
 (defcard "Wall Wizard"
   {:refund 1
