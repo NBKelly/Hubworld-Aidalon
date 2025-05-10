@@ -69,7 +69,7 @@
             (if (= (:type card) "Agent")
               infmap
               (let [fac (->> card faction-label keyword)]
-                (update infmap fac (fnil max (:factioncost card)) (:factioncost card)))))]
+                (update infmap fac (fnil max 0) (or (:factioncost card) 0)))))]
     (reduce infhelper {}
             (sort-by faction-label
                      (concat (:cards deck)
