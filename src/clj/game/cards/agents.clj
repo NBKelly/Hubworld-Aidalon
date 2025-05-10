@@ -182,7 +182,8 @@
      :static-abilities [{:type :rez-cost
                          :req (req (and (installed? target)
                                         (my-card? target)
-                                        (not (same-card? card target))))
+                                        (not (same-card? card target))
+                                        (my-card? card)))
                          :value -1}]}))
 
 (defcard "Kryzar the Rat: Navigator of the Cortex Maze"
