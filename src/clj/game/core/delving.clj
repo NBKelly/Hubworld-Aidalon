@@ -108,8 +108,11 @@
                                       :async true
                                       :effect (req (system-msg state side (str (:latest-payment-str eid) " to break the barrier on " (:title confronted-card)))
                                                    (confrontation-continue state side eid confronted-card))}
-                        :no-ability {:effect (req (system-msg state (other-side side) " ends the delve")
-                                                  (end-the-delve state side nil))}}}
+                        :no-ability {:async true
+                                     :effect (req (system-msg state (other-side side) " ends the delve")
+                                                  (wait-for (confrontation-cleanup state side confronted-card)
+                                                            (end-the-delve state side nil)
+                                                            (effect-completed state side eid)))}}}
             nil nil)
           (confrontation-continue state side eid confronted-card)))))
 
@@ -266,8 +269,9 @@
   [state side eid success?]
   (if (:delve @state)
     (do (system-msg state side (if success? "completes the delve" "ends the delve"))
-        (end-the-delve state side success?)
-        (delve-ended? state side eid))
+        (wait-for (confrontation-cleanup state side nil)
+                  (end-the-delve state side success?)
+                  (delve-ended? state side eid)))
     (effect-completed state side eid)))
 
 (defn delve-bypass

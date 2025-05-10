@@ -208,6 +208,21 @@
     (click-prompt state :corp "Shardwinner")
     (stage-select state :corp :council :outer)))
 
+(deftest protecting-our-investment-test
+  (do-game
+    (new-game {:corp {:hand ["Protecting Our Investment" "Barbican Gate"]}})
+    (play-from-hand state :corp "Barbican Gate" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (let [gate (pick-card state :corp :council :outer)]
+      (forge state :corp gate)
+      (delve-server state :runner :council)
+      (delve-continue-impl state :runner)
+      (is (changed? [(barrier (refresh gate)) 3]
+            (click-prompts state :corp "Protecting Our Investment" "Yes")))
+      (is (changed? [(barrier (refresh gate)) -3]
+            (click-prompts state :runner "Your opponent gains 2 [Credits]" "No"))))))
+
 (deftest rapid-growth-test
   (do-game
     (new-game {:corp {:hand ["Rapid Growth" "Ulin Marr: Eccentric Architect" "Capricious Informant" "Shardwinner" "Fun Run"]}})
