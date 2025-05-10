@@ -171,6 +171,27 @@
           (forge state :corp (pick-card state :corp :council :outer)))
         "reduces owner forge cost by 1")))
 
+(deftest guildmaster-yanos-aura-quirks
+  (do-game
+    (new-game {:corp {:hand ["Guildmaster Yanos: Affable Gaffer" "Barbican Gate"]}
+               :runner {:hand ["Barbican Gate"] :credits 10}})
+    (play-from-hand state :corp "Guildmaster Yanos: Affable Gaffer" :council :outer)
+    (play-from-hand state :runner "Barbican Gate" :council :outer)
+    (play-from-hand state :corp "Barbican Gate" :commons :outer)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (is (changed? [(:credit (get-runner)) -1]
+          (forge state :runner (pick-card state :runner :council :outer)))
+        "Spent 1")
+    (is (= 9 (:credit (get-runner))) "9 credits")
+    (delve-server state :runner :council)
+    (delve-continue-impl state :runner)
+    (click-prompt state :runner "Yes")
+    (click-prompt state :runner "Pay 1 [Credits] and exhaust 1 card protecting your Council: Secure")
+    (click-card state :runner (pick-card state :runner :council :outer))
+    (is (changed? [(:credit (get-corp)) -1]
+          (forge state :corp (pick-card state :corp :commons :outer)))
+        "Spent 1")))
+
 ;; (deftest kryzar-free-stage
 ;;   (do-game
 ;;     (new-game {:corp {:hand ["Kryzar the Rat: Navigator of the Cortex Maze"
