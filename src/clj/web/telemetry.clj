@@ -20,7 +20,7 @@
 (def games-played-this-week (atom 0))
 (def games-played-today (atom 0))
 
-(def games-played-reset-frequency (enc/ms :mins 1))
+(def games-played-reset-frequency (enc/ms :mins 125))
 
 (defn api-games-count [_]
   {:status 200
