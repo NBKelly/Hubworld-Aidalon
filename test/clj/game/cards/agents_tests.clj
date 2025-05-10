@@ -58,13 +58,16 @@
 
 (deftest counselor-vreenax-increase-forge-cost
   (do-game
-    (new-game {:corp {:hand ["Counselor Vreenax: Planetary Exchequer"]}
+    (new-game {:corp {:hand ["Counselor Vreenax: Planetary Exchequer" "Disagreeable Inspector"]}
                :runner {:hand ["Disagreeable Inspector"]}})
     (play-from-hand state :corp "Counselor Vreenax: Planetary Exchequer" :council :inner)
-    (play-from-hand state :runner "Disagreeable Inspector" :council :inner)
+    (play-from-hand state :runner "Disagreeable Inspector" :council :outer)
+    (play-from-hand state :corp "Disagreeable Inspector" :council :outer)
     (forge state :corp (pick-card state :corp :council :inner))
-    (is (changed? [(:credit (get-runner)) -2]
-                  (forge state :runner (pick-card state :runner :council :inner)))
+    (is (changed? [(:credit (get-corp)) -1
+                   (:credit (get-runner)) -2]
+                  (forge state :corp (pick-card state :corp :council :outer))
+                  (forge state :runner (pick-card state :runner :council :outer)))
         "Rival forge cost increased by 1")))
 
 (deftest counselor-vreenax-cipher
@@ -156,14 +159,17 @@
   (collects? {:name "Guildmaster Yanos: Affable Gaffer"
               :credits 1})
   (do-game
-    (new-game {:corp {:hand ["Guildmaster Yanos: Affable Gaffer" "Shardwinner"]}})
+    (new-game {:corp {:hand ["Guildmaster Yanos: Affable Gaffer" "Shardwinner"]}
+               :runner {:hand ["Shardwinner"]}})
     (play-from-hand state :corp "Guildmaster Yanos: Affable Gaffer" :council :inner)
-    (click-credit state :runner)
+    (play-from-hand state :runner "Shardwinner" :council :outer)
     (play-from-hand state :corp "Shardwinner" :council :outer)
     (forge state :corp (pick-card state :corp :council :inner))
-    (is (changed? [(:credit (get-corp)) -2]
+    (is (changed? [(:credit (get-corp)) -2
+                   (:credit (get-runner)) -3]
+          (forge state :runner (pick-card state :runner :council :outer))
           (forge state :corp (pick-card state :corp :council :outer)))
-        "1c discount")))
+        "reduces owner forge cost by 1")))
 
 ;; (deftest kryzar-free-stage
 ;;   (do-game
@@ -330,7 +336,20 @@
     (delve-server state :runner :council)
     (delve-discover-impl state :runner)
     (click-card state :corp "Capricious Informant")
-    (is (:exhausted (pick-card state :runner :council :outer)) "Exhausted it")))
+    (is (:exhausted (pick-card state :runner :council :outer)) "Exhausted it"))
+  (do-game
+    (new-game {:corp {:hand ["“Spider” Rebbek: Dragon’s Hoard Pitboss" "Shardwinner"]}
+               :runner {:hand ["Shardwinner"]}})
+    (play-from-hand state :corp "“Spider” Rebbek: Dragon’s Hoard Pitboss" :council :inner)
+    (play-from-hand state :runner "Shardwinner" :council :outer)
+    (play-from-hand state :corp "Shardwinner" :council :outer)
+    (is (changed? [(presence state :corp :council :outer) 1
+                   (presence state :corp :council :inner) 0
+                   (presence state :runner :council :outer) 0]
+                  (forge state :corp (pick-card state :corp :council :inner))
+                  (forge state :corp (pick-card state :corp :council :outer))
+                  (forge state :runner (pick-card state :runner :council :outer)))
+        "Spider increases presence of other cards in your grid")))
 
 (deftest ulin-marr-eccentric-architect
   (collects? {:name "Ulin Marr: Eccentric Architect"

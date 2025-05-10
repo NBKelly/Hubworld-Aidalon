@@ -20,7 +20,7 @@
    [game.core.shifting :refer [shift-a-card]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
-   [game.utils :refer [same-card? to-keyword]]
+   [game.utils :refer [same-card? to-keyword on-same-side?]]
    [game.macros :refer [effect msg req wait-for continue-ability]]
    [jinteki.utils :refer [adjacent-zones other-player-name]]))
 
@@ -121,8 +121,9 @@
     {:shards 1}
     {:cipher [(->c :exile-total-shard-cost-from-council 3)]
      :static-abilities [{:type :rez-cost
-                         :req (req (and (installed? target)
-                                        (not= (:side target) (:side card))))
+                         :req (req (and (installed? card)
+                                        (installed? target)
+                                        (not (on-same-side? card target))))
                          :value 1}]}))
 
 (defcard "Coroner Goodman: Slab Sleuth"
@@ -180,8 +181,9 @@
     {:shards 1}
     {:cipher [(->c :exhaust-council 1)]
      :static-abilities [{:type :rez-cost
-                         :req (req (and (installed? target)
-                                        (my-card? target)
+                         :req (req (and (installed? card)
+                                        (installed? target)
+                                        (on-same-side? card target)
                                         (not (same-card? card target))))
                          :value -1}]}))
 
@@ -236,10 +238,10 @@
     {:shards 1}
     {:static-abilities [{:type :barrier-value
                          :value 1
-                         :req (req (and (installed? target)
+                         :req (req (and (installed? card)
+                                        (installed? target)
                                         (not (same-card? card target))
-                                        (my-card? target)
-                                        (my-card? card)
+                                        (on-same-side? card target)
                                         (or (agent? target) (obstacle? target))))}]
      :discover-abilities [{:label "Gain 4 [Credits] if installed"
                            :optional
@@ -334,8 +336,9 @@
                          :value 1
                          :req (req (and (not (same-card? card target))
                                         (not (seeker? target))
+                                        (installed? card)
                                         (installed? target)
-                                        (my-card? target)))}]}))
+                                        (on-same-side? card target)))}]}))
 
 (defcard "Ulin Marr: Eccentric Architect"
   (collect

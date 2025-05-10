@@ -86,6 +86,11 @@
   [side1 side2]
   (= (side-str side1) (side-str side2)))
 
+(defn on-same-side?
+  "Checks if two cards are on the same side."
+  [card1 card2]
+  (same-side? (:side card1) (:side card2)))
+
 (defn same-card?
   "Checks if the two cards are the same by :cid. Alternatively specify 1-function to use to check the card"
   ([card1 card2] (same-card? :cid card1 card2))
