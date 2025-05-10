@@ -418,6 +418,8 @@
   "Moves a card to the players :scored area, triggering events from the completion of the steal."
   [state side eid card]
   (let [c (move state side (dissoc card :advance-counter :new :exhausted :installed :rezzed) :scored {:force true})
+        _ (unregister-events state side card)
+        _ (unregister-static-abilities state side card)
         _ (when (card-flag? c :has-events-when-secured true)
             (register-default-events state side c)
             (register-static-abilities state side c))
