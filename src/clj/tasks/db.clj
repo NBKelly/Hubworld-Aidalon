@@ -27,19 +27,28 @@
   (let [{{:keys [db]} :mongodb/connection :as system} (connect)
         cnt (atom 0)]
     (try
-      (doseq [deck (mc/find-maps db "decks" nil)]
-        (let [deck-id (:_id deck)]
-          (swap! cnt inc)
-          (when (zero? (mod @cnt 1000))
-            (print ".")
-            (flush))
-          (let [status (get-deck-status deck)]
-            (mc/update db "decks"
-                       {:_id (->object-id deck-id)}
-                       {"$set" {"status" status}}))))
-      (newline)
-      (println "Updated" @cnt "decks")
-      (catch Exception e (println "Something got hecked" (.getMessage e)))
+      (let [ct (mc/count db "decks")
+            denom (cond
+                    (< ct 10) 1
+                    (< ct 100) 5
+                    (< ct 1000) 50
+                    :else 1000)]
+        (println "Updating" ct "decks...")
+        (doseq [deck (mc/find-maps db "decks" nil)]
+          (let [deck-id (:_id deck)]
+            (swap! cnt inc)
+            (when (zero? (mod @cnt denom))
+              (print ".")
+              (flush))
+            (let [status (get-deck-status deck)]
+              (mc/update db "decks"
+                         {:_id (->object-id deck-id)}
+                         {"$set" {"status" status}}))))
+        (newline)
+        (println "Updated" @cnt "decks"))
+      (catch Exception e
+        (println "Something got hecked" (.getMessage e))
+        (println e))
       (finally (disconnect system)))))
 
 (defn- get-all-users
