@@ -1138,7 +1138,7 @@
   (some->> (hubworld-all-installed state side)
            (filter #(or (rezzed? %) (seeker? %)))
            (filter unique?)
-           (group-by #(:alias (card-def %)))
+           (group-by :alias)
            (reduce-kv
              (fn [acc _title cards]
                (if (< 1 (count cards))
