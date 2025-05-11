@@ -114,7 +114,7 @@
       msg
       "<br/>"
       "<button type=\"button\" class=\"reportbtn\" style=\"margin-top: 5px\" "
-      "onclick=\"window.open('https://github.com/mtgred/netrunner/issues/new?body="
+      "onclick=\"window.open('https://github.com/nbkelly/hubworld-aidalon/issues/new?body="
       (build-report-url error)
       "');\">Report on GitHub</button></div>")))
 

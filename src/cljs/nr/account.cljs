@@ -301,8 +301,6 @@
                             {:name (tr [:pronouns.xe "Xe/xem"]) :ref "xe"}
                             {:name (tr [:pronouns.xi "Xi/xir"]) :ref "xi"}]]
                 [:option {:value (:ref option) :key (:ref option)} (:name option)]))]]
-           ;; [:div "If your personal pronouns are not represented, you can request them "
-           ;;  [:a {:href "https://github.com/mtgred/netrunner/issues"} "here"]]]
           [:section
            [:h3 (tr [:settings.language "Language"])]
            [:select {:value (:language @s "en")
@@ -376,55 +374,6 @@
                              :checked (:player-stats-icons @s)
                              :on-change #(swap! s assoc-in [:player-stats-icons] (.. % -target -checked))}]
              (tr [:settings.player-stats-icons "Use icons for player stats"])]]
-           ;; [:div
-           ;;  [:label [:input {:type "checkbox"
-           ;;                   :value true
-           ;;                   :checked (:stacked-cards @s)
-           ;;                   :on-change #(swap! s assoc-in [:stacked-cards] (.. % -target -checked))}]
-           ;;   (tr [:settings.stacked-cards "Card stacking (on by default)"])]]
-           ;; [:div
-           ;;  [:label [:input {:type "checkbox"
-           ;;                   :value true
-           ;;                   :checked (:ghost-trojans @s)
-           ;;                   :on-change #(swap! s assoc-in [:ghost-trojans] (.. % -target -checked))}]
-           ;;   (tr [:settings.display-encounter-info "Display ghosts for hosted programs"])]]
-           ;; [:div
-           ;;  [:label [:input {:type "checkbox"
-           ;;                   :value true
-           ;;                   :checked (:display-encounter-info @s)
-           ;;                   :on-change #(swap! s assoc-in [:display-encounter-info] (.. % -target -checked))}]
-           ;;   (tr [:settings.display-encounter-info "Always display encounter info dialog"])]]
-           ;; [:div
-           ;;  [:label [:input {:type "checkbox"
-           ;;                   :value true
-           ;;                   :checked (:sides-overlap @s)
-           ;;                   :on-change #(swap! s assoc-in [:sides-overlap] (.. % -target -checked))}]
-           ;;   (tr [:settings.sides-overlap "Runner and Corp board may overlap"])]]
-           ;; [:div
-           ;;  [:label [:input {:type "checkbox"
-           ;;                   :value true
-           ;;                   :checked (:log-timestamps @s)
-           ;;                   :on-change #(swap! s assoc-in [:log-timestamps] (.. % -target -checked))}]
-           ;;   (tr [:settings.log-timestamps "Show log timestamps"])]]
-
-           ;; [:br]
-           ;; [:h4 (tr [:settings.runner-layout "Runner layout from Corp perspective"])]
-           ;; [:div
-           ;;  [:div.radio
-           ;;   [:label [:input {:name "runner-board-order"
-           ;;                    :type "radio"
-           ;;                    :value "jnet"
-           ;;                    :checked (= "jnet" (:runner-board-order @s))
-           ;;                    :on-change #(swap! s assoc :runner-board-order (.. % -target -value))}]
-           ;;    (tr [:settings.runner-classic "Runner rig layout is classic jnet (Top to bottom: Programs, Hardware, Resources)"])]]
-
-           ;;  [:div.radio
-           ;;   [:label [:input {:name "runner-board-order"
-           ;;                    :type "radio"
-           ;;                    :value "irl"
-           ;;                    :checked (= "irl" (:runner-board-order @s))
-           ;;                    :on-change #(swap! s assoc :runner-board-order (.. % -target -value))}]
-           ;;    (tr [:settings.runner-reverse "Runner rig layout is reversed (Top to bottom: Resources, Hardware, Programs)"])]]]
 
            [:br]
            [:h4 (tr [:settings.log-size "Log size"])]

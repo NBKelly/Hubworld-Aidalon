@@ -33,18 +33,6 @@
           [:h4 "Software Development Team"]
           [:ul.list.compact
            [:li "nbkelly: Founder, project manager, lead developer"]]
-           ;; [:li "mtgred: Founder, original sole developer. Retired."]
-           ;; [:li "NoahTheDuke: Project maintainer, lead developer."]
-           ;; [:li "nbkelly, butzopower, francescopellegrini: Current active contributors."]
-           ;; [:li [:a {:href "https://github.com/mtgred/netrunner/graphs/contributors" :target "_blank"} "Many past contributors"]]]
-
-          ;; [:h4 "Content Creators"]
-          ;; [:ul.list.compact
-          ;;  [:li "0thmxma, Sanjay, quarg, znsolomon, hbarsquared, yankeeflatline, rumirumirumirumi: Corp and Runner quotes for start-of-game splash screen."]
-          ;;  [:li "PopTartNZ: High-resolution card images."]
-          ;;  [:li "Rhahi: Labelling and other QoL functionality ported with permission from "
-          ;;   [:a {:href "https://addons.mozilla.org/en-US/firefox/addon/cyberfeeder/" :target "_blank"} "Cyberfeeder"] " Firefox plugin"]
-          ;;  [make-artists alt-info]]
 
           ;; [:h4 "UI Translators"]
           ;; [:ul.list.compact
@@ -63,27 +51,21 @@
            [:li [:b "Server:"] " Clojure. Ring and Compojure running on http-kit. Sente for websocket communications."]
            [:li [:b "Front-end client:"] " ClojureScript. Reagent (React). "]]
 
-          ;; [:p "The code is open source and available on "
-          ;;  [:a {:href "https://github.com/mtgred/netrunner" :target "_blank"} "Github"] "."]
+          [:p "The code is open source and available on "
+           [:a {:href "https://github.com/nbkelly/hubworld-aidalon" :target "_blank"} "Github"] "."]
 
-          ;; [:p "Bug reports and feature suggestions can be submitted "
-          ;;  [:a {:href "https://github.com/mtgred/netrunner/issues" :target "_blank"} "here"] "."]
+          [:p "Bug reports and feature suggestions can be submitted "
+           [:a {:href "https://github.com/nbkelly/hubworld-aidalon/issues" :target "_blank"} "here"] "."]
 
           ;; [:p "Card automation "
           ;;  [:a {:href "https://docs.google.com/spreadsheets/d/1ICv19cNjSaW9C-DoEEGH3iFt09PBTob4CAutGex0gnE/pubhtml"
           ;;       :target "_blank"} "status"] "."]
 
-          ;; [:h3 "Donations"]
-          ;; [:p "Donations are appreciated and help finance fast servers. You can support the project financially with PayPal or Bitcoin. Alternate art cards will be enabled on your account as a token of gratitude. Please specify your username with your donation."]
-          ;; [:ul.list.compact
-          ;;  [:li "PayPal: mtgred@gmail.com or " [:a {:href "https://www.paypal.me/mtgred" :title "PayPal" :target "_blank"} "paypal.me/mtgred"]]
-          ;;  [:li "Bitcoin: " [:span.bitcoin "1MRRtCsZYGdgwvRo4NMhmo14q7KJNtAiKL" [:img.qr {:src "/img/bitcoin.png" :alt "Bitcoin QR Code"}]]]]
-
-          ;; [:p "Many thanks to all the donors. Your contributions and kind words are greatly appreciated. You help finance fast servers."]
+          [:h3 "Donations"]
+          [:p "I don't intend to make money from this project. Current hosting costs are ~20usd/month. I'm paying for that regardless, but if you feel like buying me a cup of coffee, you can do so here:"]
           [:ul.list.compact
-           (for [d @donors]
-             ^{:key d}
-             [:li d])]
+           [:li "ko-fi: " [:a {:href "https://ko-fi.com/nbkelly" :title "Ko-Fi" :target "_blank"} "https://ko-fi.com/nbkelly"]]]
+
           [:h3 "Disclaimer"]
           [:p "Hubworld: Aidalon is a trademark of Earthborne Games."]
           [:p "This is website is not affiliated with Earthborne Games."]
