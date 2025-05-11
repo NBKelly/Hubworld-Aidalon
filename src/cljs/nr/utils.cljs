@@ -144,15 +144,19 @@
   codes, and the span fragment that should replace it"
   (letfn [(span-of [icon] [:span {:class (str "anr-icon " icon) :title (str " " icon) :aria-label (str icon) :role "img" }])
           (regex-of [icon-code] (re-pattern (str "(?i)" (regex-escape icon-code))))]
-    (->> {"[credit]" "credit"
+    (->> {"[credit]"  "credit"
           "[credits]" "credit"
-          "[c]" "credit"
-          "[recurring credit]" "recurring-credit"
-          "[recurring credits]" "recurring-credit"
-          "[recurring-credit]" "recurring-credit"
-          "[recurring-credits]" "recurring-credit"
+          "[c]"       "credit"
+          "[shard]"   "credit"
+          "[shards]"  "credit"
+          ;; "[recurring credit]" "recurring-credit"
+          ;; "[recurring credits]" "recurring-credit"
+          ;; "[recurring-credit]" "recurring-credit"
+          ;; "[recurring-credits]" "recurring-credit"
           "[click]" "click"
           "[clicks]" "click"
+          "[action]" "click"
+          "[actions]" "click"
           "[heat]" "heat"
           "[barrier]" "barrier-str"
           "[archives]" "archives"
@@ -162,31 +166,35 @@
           "[reaction]" "reaction"
           "[instant]" "instant"
           "[discovery]" "discovery"
-          "1[memory unit]" "mu1"
-          "1[mu]" "mu1"
-          "2[memory unit]" "mu2"
-          "2[mu]" "mu2"
-          "3[memory unit]" "mu3"
-          "3[mu]" "mu3"
-          "[memory unit]" "mu"
-          "[mu]" "mu"
-          "[link]" "link"
-          "[l]" "link"
-          "[subroutine]" "subroutine"
+          ;;"[presence]" "presence"
+          ;; "[card]" "card"
+          ;; "[cards]" "card"
+          ;; "1[memory unit]" "mu1"
+          ;; "1[mu]" "mu1"
+          ;; "2[memory unit]" "mu2"
+          ;; "2[mu]" "mu2"
+          ;; "3[memory unit]" "mu3"
+          ;; "3[mu]" "mu3"
+          ;; "[memory unit]" "mu"
+          ;; "[mu]" "mu"
+          ;; "[link]" "link"
+          ;; "[l]" "link"
+          ;; "[subroutine]" "subroutine"
           "[trash]" "trash"
           "[t]" "trash"
-          "[adam]" "adam"
-          "[anarch]" "anarch"
-          "[apex]" "apex"
+          ;; "[adam]" "adam"
+          ;; "[anarch]" "anarch"
+          ;; "[apex]" "apex"
           "[criminal]" "criminal"
-          "[hb]" "haas-bioroid"
-          "[haas-bioroid]" "haas-bioroid"
-          "[jinteki]" "jinteki"
-          "[nbn]" "nbn"
-          "[shaper]" "shaper"
-          "[sunny]" "sunny"
-          "[weyland]" "weyland-consortium"
-          "[weyland-consortium]" "weyland-consortium"}
+          ;; "[hb]" "haas-bioroid"
+          ;; "[haas-bioroid]" "haas-bioroid"
+          ;; "[jinteki]" "jinteki"
+          ;; "[nbn]" "nbn"
+          ;; "[shaper]" "shaper"
+          ;; "[sunny]" "sunny"
+          ;; "[weyland]" "weyland-consortium"
+          ;;"[weyland-consortium]" "weyland-consortium"}
+          }
       (map (fn [[k v]] [(regex-of k) (span-of v)]))
       (sort-by (comp count str first) >))))
 
@@ -322,8 +330,7 @@
 (defn render-player-highlight
   ([message corp runner] (render-player-highlight message corp runner nil))
   ([message corp runner timestamp]
-  (render-input message (player-highlight-patterns corp runner timestamp)))
-  )
+  (render-input message (player-highlight-patterns corp runner timestamp))))
 
 (defn player-highlight-option-class []
   (case (get-in @app-state [:options :log-player-highlight])
