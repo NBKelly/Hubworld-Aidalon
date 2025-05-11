@@ -238,9 +238,7 @@
                :location :hand
                :prompt "Give engaged card +3 [barrier] until the end of the confrontation?"
                :req (req (and (not= side (:engaged-side context))
-                              (installed? (:card context))
-                              (obstacle? (:card context))
-                              (my-card? (:card context))))
+                              ((every-pred installed? obstacle? my-card?) (:card context))))
                :ability {:cost [(->c :exile-reaction)]
                          :msg (msg "give " (:title (:card context)) " + 3 [barrier] until the end of the confrontation")
                          :effect (req (let [target-card (:card context)]
