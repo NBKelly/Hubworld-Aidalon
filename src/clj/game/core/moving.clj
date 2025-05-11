@@ -502,6 +502,9 @@
                        (effect-completed state nil eid)
                        (checkpoint state nil eid {:duration exile-event})))))))))))))
 
+(defmethod engine/move* :exile-cards [state side eid _action cards args]
+  (exile-cards state side eid cards args))
+
 (defn exile
   ([state side eid card] (exile state side eid card nil))
   ([state side eid card args] (exile-cards state side eid [card] args)))

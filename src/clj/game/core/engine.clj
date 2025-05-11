@@ -4,9 +4,9 @@
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.string :as string]
     [cond-plus.core :refer [cond+]]
-    [game.core.board :refer [clear-empty-remotes get-all-cards all-installed all-installed-runner
-                             all-installed-runner-type all-active-installed]]
-    [game.core.card :refer [active? facedown? faceup? get-card get-cid get-title ice? in-discard? in-hand? installed? rezzed? program? console? unique?]]
+    [game.core.board :refer [get-all-cards all-installed all-installed-runner
+                             hubworld-all-installed all-active-installed]]
+    [game.core.card :refer [active? facedown? faceup? get-card get-cid get-title in-discard? in-hand? installed? rezzed?  unique? seeker?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [get-effect-maps unregister-lingering-effects is-disabled? is-disabled-reg? update-disabled-cards]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid]]
@@ -16,7 +16,6 @@
     [game.core.prompts :refer [clear-wait-prompt show-prompt show-select show-wait-prompt show-bluff-prompt]]
     [game.core.say :refer [system-msg system-say]]
     [game.core.update :refer [update!]]
-    [game.core.winning :refer [check-win-by-agenda]]
     [game.macros :refer [continue-ability req wait-for]]
     [game.utils :refer [dissoc-in distinct-by enumerate-str in-coll? remove-once same-card? server-cards side-str to-keyword]]
     [jinteki.utils :refer [other-side]]
@@ -500,7 +499,7 @@
 (defn- default-locations
   [card]
   (case (to-keyword (:type card))
-    :agenda #{:scored}
+    ;;:agenda #{:scored}
     (:source :obstacle :agent) #{:paths}
     :counter #{:hosted}
     (:moment) #{:current :play-area}
@@ -1136,13 +1135,15 @@
 
 (defn get-old-uniques
   [state side]
-  (some->> (all-active-installed state side)
+  (some->> (hubworld-all-installed state side)
+           (filter #(or (rezzed? %) (seeker? %)))
            (filter unique?)
-           (group-by :title)
+           (group-by #(:alias (card-def %)))
            (reduce-kv
              (fn [acc _title cards]
                (if (< 1 (count cards))
-                 (conj! acc (butlast cards))
+                 ;; seekers cannot be exiled
+                 (conj! acc (filter (complement seeker?) (butlast cards)))
                  acc))
              (transient []))
            persistent!
@@ -1158,23 +1159,19 @@
   [state _ eid]
   (let [corp-uniques (get-old-uniques state :corp)
         runner-uniques (get-old-uniques state :runner)
-        consoles (->> (get-in @state [:runner :rig :hardware])
-                      (filter console?))
-        consoles (when (< 1 (count consoles))
-                   (butlast consoles))
-        cards-to-trash (-> (concat corp-uniques runner-uniques consoles)
+        cards-to-trash (-> (concat corp-uniques runner-uniques)
                            distinct
                            seq)]
     (if cards-to-trash
       (wait-for (move* state nil (make-eid state eid)
-                       :trash-cards cards-to-trash
+                       :exile-cards cards-to-trash
                        {:game-trash true
                         :unpreventable true})
                 (doseq [card cards-to-trash]
                   (system-say state (to-keyword (:side card))
-                              (str (card-str state card) " is trashed.")))
-                (effect-completed state nil eid))
-      (effect-completed state nil eid))))
+                              (str (card-str state card) " is exiled.")))
+                (effect-completed state nil eid)))
+    (effect-completed state nil eid)))
 
 (defn- enforce-conditions-impl
   [state _ eid cards]
@@ -1218,9 +1215,7 @@
        (unregister-expired-durations state nil (make-eid state eid) (conj durations duration) context-maps)
        ;; update the disabled-card registry here
        (update-disabled-cards state)
-       ;; c: Check winning or tying by agenda points
-       ;;(check-win-by-agenda state)
-       ;; d: uniqueness/console check
+       ;; d: uniqueness check
        (wait-for
          (check-unique-and-consoles state nil (make-eid state eid))
          ;; e: restrictions on card abilities or game rules, MU
