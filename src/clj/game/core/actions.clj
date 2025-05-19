@@ -3,7 +3,6 @@
     [clj-uuid :as uuid]
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.string :as string]
-    [game.core.agendas :refer [ update-all-agenda-points]]
     [game.core.board :refer [installable-servers]]
     [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment? in-hand?]]
     [game.core.card-defs :refer [card-def]]
