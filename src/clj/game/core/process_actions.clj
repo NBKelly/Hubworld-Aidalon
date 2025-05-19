@@ -2,13 +2,14 @@
   (:require
    [clojure.string :as str]
    [game.core.actions :refer [click-advance click-credit click-draw click-delve
-                              close-deck do-purge generate-install-list cmd-shift
+                              close-deck generate-install-list cmd-shift
                               flash
-                              move-card expend-ability
+                              move-card
                               pass play play-ability play-corp-ability play-collect
                               play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               play-rush
-                              resolve-prompt select stage-done bluff-done stage-select trash-resource view-deck]]
+                              resolve-prompt select stage-done bluff-done stage-select trash-resource view-deck
+                              shifted-cleanup]]
    [game.core.card :refer [get-card]]
    [game.core.change-vals :refer [change]]
    [game.core.checkpoint :refer [fake-checkpoint]]
@@ -73,16 +74,15 @@
    "draw" #'click-draw
 
    "exhaust" #(exhaust %1 %2 (make-eid %1) (:card %3) {:no-event true})
-   "end-turn" (fn [state side _] (end-turn-consent state side (make-eid state)))
+   "end-turn" (fn [state side _] (do (shifted-cleanup state)
+                                     (end-turn-consent state side (make-eid state))))
    "generate-install-list" #'generate-install-list ;; OBSOLETE - but keep
    "indicate-action" #'indicate-action
    "keep" #'keep-hand
    "move" #'move-card
    "mulligan" #'mulligan
    "play" #'play
-   "expend" #'expend-ability ;; OBSOLETE
    "pass" #'pass
-   "purge" #'do-purge ;; OBSOLETE
    "remove-tag" #'remove-tag ;; OBSOLETE
    "forge" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
    "runner-ability" #'play-runner-ability

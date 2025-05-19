@@ -61,7 +61,6 @@
    click-credit
    click-draw
    close-deck
-   do-purge
    generate-install-list
    move-card
    play-ability
@@ -516,7 +515,6 @@
    show-prompt
    show-prompt-with-dice
    show-select
-   show-trace-prompt
    show-wait-prompt])
 
 (expose-vars

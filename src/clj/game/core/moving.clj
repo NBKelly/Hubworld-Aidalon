@@ -570,8 +570,8 @@
                (same-side? a b))
       (let [a (dissoc (get-card state a) :seen)
             b (dissoc (get-card state b) :seen)
-            a-new (assoc a :zone (:zone b))
-            b-new (assoc b :zone (:zone a))]
+            a-new (assoc a :zone (:zone b) :shifted true)
+            b-new (assoc b :zone (:zone a) :shifted true)]
         (swap! state assoc-in (cons side (:zone a)) [b-new])
         (swap! state assoc-in (cons side (:zone b)) [a-new])
         (doseq [new-card [a-new b-new]]
@@ -592,7 +592,7 @@
   (let [pred? (every-pred installed?)]
     (when (pred? a)
       (let [a (dissoc (get-card state a) :seen)
-            a-new (assoc a :zone [:paths server slot])]
+            a-new (assoc a :zone [:paths server slot] :shifted true)]
         (swap! state assoc-in [side :paths server slot] [a-new])
         (swap! state assoc-in (concat [side] (:zone a)) [])
         (unregister-events state side a-new)

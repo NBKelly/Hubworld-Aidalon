@@ -366,7 +366,6 @@
           :stop-auto-pass "Opstay autoyay-assingpay ioritypray"
           :auto-pass "Autoyay-asspay ioritypriay"
           :jack-out "Ackjay Outyay"
-          :trace "Acetray"
           :credits "editscray"
           :card "Ardcay"
           :time-taken (fn [[t]] (str "Imetay akentay: " t " inutesmay"))

@@ -5,7 +5,6 @@
    [game.core :as core]
    [game.core.card :refer :all]
    [game.core.commands :refer [parse-command]]
-   [game.core.mark :refer :all]
    [game.test-framework :refer :all]
    [jinteki.utils :refer [command-info]]))
 

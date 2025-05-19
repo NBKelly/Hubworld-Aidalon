@@ -3,8 +3,7 @@
     [clj-uuid :as uuid]
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.string :as string]
-    [game.core.agendas :refer [ update-all-agenda-points]]
-    [game.core.board :refer [installable-servers]]
+    [game.core.board :refer [installable-servers hubworld-all-installed]]
     [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment? in-hand?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus rez-cost]]
@@ -17,7 +16,6 @@
     [game.core.initializing :refer [card-init]]
     [game.core.moving :refer [move archive-or-exile trash]]
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs build-cost-string ->c]]
-    [game.core.expend :refer [expend expendable?]]
     [game.core.play-instants :refer [play-instant can-play-instant?]]
     [game.core.prompt-state :refer [remove-from-prompt-queue]]
     [game.core.prompts :refer [cancel-bluff cancel-stage cancel-shift resolve-select show-stage-prompt show-shift-prompt resolve-stage resolve-shift clear-wait-prompt]]
@@ -53,6 +51,17 @@
     (or (= nil prompt-type)
         (= :run prompt-type))))
 
+(defn shifted-cleanup
+  [state]
+  (doseq [s [:corp :runner]
+          c (filterv (complement seeker?) (concat (hubworld-all-installed state s)
+                                                  (get-in @state [s :hand])
+                                                  (get-in @state [s :discard])
+                                                  (get-in @state [s :exile])
+                                                  (get-in @state [s :scored])))]
+    (when (:shifted c)
+      (update! state s (dissoc c :shifted)))))
+
 ;;; Neutral actions
 (defn- do-play-ability [state side eid {:keys [card ability ability-idx targets ignore-cost]}]
   (let [source {:source card
@@ -68,13 +77,15 @@
       (update-click-state state ability)
       (if (:action ability)
         (let [stripped-card (select-keys card [:cid :type :title])]
+          (shifted-cleanup state)
           (wait-for
             (trigger-event-simult state side :action-played nil {:ability-idx ability-idx :card stripped-card :player side})
             (wait-for
               (resolve-ability state side ability card targets)
               (when-not (:delve @state) (swap! state update :active-player other-side))
               (trigger-event-simult state side eid :action-resolved nil {:ability-idx ability-idx :card stripped-card :player side}))))
-        (resolve-ability state side eid ability card targets)))))
+        (do (reset-delve-continue! state (other-side side))
+            (resolve-ability state side eid ability card targets))))))
 
 (defn play-ability
   "Triggers a card's ability using its zero-based index into the card's card-def :abilities vector."
@@ -95,7 +106,6 @@
        (toast state side (str "You cannot play abilities while other abilities are resolving.")
               "warning"))
      (when-not cannot-play
-       (reset-delve-continue! state (other-side side))
        (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))))
 
 (defn play-collect
@@ -119,20 +129,8 @@
            (toast state side (str "You cannot play abilities while other abilities are resolving.")
                   "warning"))
          (when-not cannot-play
-           (reset-delve-continue! state (other-side side))
            (do-play-ability state side eid (assoc args :ability-idx ability-idx :ability ability))))
        (if eid (effect-completed state side eid) nil)))))
-
-(defn expend-ability
-  "Called when the player clicks a card from hand."
-  [state side {:keys [card]}]
-  (if (no-blocking-or-prevent-prompt? state side)
-    (let [card (get-card state card)
-          eid (make-eid state {:source card :source-type :ability})
-          expend-ab (expend (:expend (card-def card)))]
-      (resolve-ability state side eid expend-ab card nil))
-    (toast state side (str "You cannot play abilities while other abilities are resolving.")
-              "warning")))
 
 (defn play-rush
   "Called when the player plays a card from hand as a rush"
@@ -381,7 +379,6 @@
     (cond
       ;; Integer prompts
       (or (= choices :credit)
-          (= :trace (:prompt-type prompt))
           (:counter choices)
           (:number choices))
       (if (number? choice)
@@ -536,12 +533,6 @@
   (play-ability state side {:card (get-in @state [:corp :basic-action-card])
                             :ability 5}))
 
-(defn do-purge
-  "Purge viruses."
-  [state side _]
-  (play-ability state side {:card (get-in @state [:corp :basic-action-card])
-                            :ability 6}))
-
 (defn click-advance
   "Click to advance installed card."
   [state side {:keys [card] :as context}]
@@ -584,7 +575,5 @@
 (defn generate-install-list
   [state _ {:keys [card]}]
   (if-let [card (get-card state card)]
-    (if (expendable? state card)
-      (swap! state assoc-in [:corp :install-list] (conj (installable-servers state card) "Expend")) ;;april fools we can make this "cast as a sorcery"
-      (swap! state assoc-in [:corp :install-list] (installable-servers state card)))
+    (swap! state assoc-in [:corp :install-list] (installable-servers state card))
     (swap! state dissoc-in [:corp :install-list])))

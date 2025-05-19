@@ -12,7 +12,6 @@
    [game.core.eid :as eid]
    [game.core.ice :refer [active-ice?]]
    [game.core.initializing :refer [make-card]]
-   [game.core.threat :refer [threat-level]]
    [game.test-framework.asserts]
    [game.utils :as utils]
    [game.utils-test :refer [error-wrapper is']]

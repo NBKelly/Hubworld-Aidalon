@@ -227,6 +227,9 @@
    {:name "/save-replay"
     :usage "/save-replay"
     :help "Save a replay of the game"}
+   {:name "/shift"
+    :usage "/shift"
+    :help "shift a card in your grid"}
    {:name "/show-hand"
     :usage "/show-hand"
     :help "Shows your hand in the chat log (does not proc reveal triggers)"}
