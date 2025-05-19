@@ -18,6 +18,7 @@
    [game.core.prompts :refer [show-prompt show-stage-prompt show-bluff-prompt]]
    [game.core.props :refer [set-prop]]
    [game.core.say :refer [system-msg system-say unsafe-say]]
+   [game.core.shifting :refer [shift-a-card]]
    [game.core.set-up :refer [build-card]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [card-str]]
@@ -223,6 +224,17 @@
        :effect (req (stage-a-card state side eid (make-card {:title "/stage command"}) target))}
       nil nil)))
 
+(defn command-shift
+  [state side]
+  (let [f (side-fn side)]
+    (resolve-ability
+      state side
+      {:prompt "Choose a card to shift"
+       :choices {:card (every-pred f installed? (complement seeker?))}
+       :async true
+       :effect (req (shift-a-card state side eid (make-card {:title "/shift command"}) target nil))}
+      nil nil)))
+
 (defn command-swap-sides
   [state side]
   (swap! state dissoc-in [side :command-info :ignore-swap-sides])
@@ -324,6 +336,7 @@
                                             (make-card {:title "/rfg command"}) nil)
             "/roll"       #(command-roll %1 %2 value)
             "/save-replay" command-save-replay
+            "/shift"      command-shift
             "/show-hand" #(resolve-ability %1 %2
                                            {:effect (effect (system-msg (str
                                                                           (if (= :corp %2)
