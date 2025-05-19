@@ -232,7 +232,7 @@
       {:prompt "Choose a card to shift"
        :choices {:card (every-pred f installed? (complement seeker?))}
        :async true
-       :effect (req (shift-a-card state side eid (make-card {:title "/shift command"}) target nil))}
+       :effect (req (shift-a-card state side eid (assoc (make-card {:title "/shift command"}) :side side) target nil))}
       nil nil)))
 
 (defn command-swap-sides
