@@ -263,3 +263,19 @@
     (is (changed? [(:credit (get-corp)) 1] ;; we spent 1 on twice as bad...
           (click-prompts state :corp "Yes" "Twice as Bad" "Yes"))
         "Gained 2 for 2 encounters")))
+
+(deftest twice-as-bad-test-silent-interrogator
+  (do-game
+    (new-game {:corp {:hand ["Likely a Trap" "Twice as Bad" "Silent Interrogator"]}
+               :runner {:deck [(qty "Fun Run" 15)]}})
+    (play-from-hand state :corp "Silent Interrogator" :council :outer)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (delve-bypass-impl state :runner)
+    (click-prompt state :corp "Likely a Trap")
+    (click-prompt state :corp "Yes")
+    (click-prompt state :runner "Yes")
+    (is (changed? [(count (:deck (get-runner))) -8] ;; milled 8
+          (click-prompts state :corp "Yes" "Twice as Bad" "Yes"))
+        "Gained 2 for 2 encounters")))

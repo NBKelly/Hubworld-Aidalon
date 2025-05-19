@@ -337,7 +337,7 @@
                               (let [r (or (-> context :ability :req)
                                           (-> context :ability :optional :req))]
                                 (or (not r)
-                                    (r state side eid card targets)))))
+                                    (r state side eid (:discovered-card context) targets)))))
                :ability {:async true
                          :cost [(->c :exile-reaction)]
                          :msg (msg "resolve '" (:label (:ability context)) "' again")
