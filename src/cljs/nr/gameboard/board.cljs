@@ -623,7 +623,7 @@
 (defn card-view
   [{:keys [zone code type abilities counter exhausted rezzed
            subtypes barrier current-barrier presence current-presence selected hosted
-           side facedown card-target icon new ghost runner-abilities subroutines
+           side facedown card-target icon new shifted ghost runner-abilities subroutines
            subtype-target corp-abilities]
     :as card} flipped disable-click]
   (let [title (get-title card)]
@@ -636,6 +636,7 @@
                                                 (and (not (any-prompt-open? side)) (playable? card)) "playable"
                                                 (and (not (any-prompt-open? side)) (:flashable card)) "playable"
                                                 ghost "ghost"
+                                                shifted "shifted"
                                                 new "new")
                                           (when exhausted " exhausted"))
                               :tab-index (when (and (not disable-click)

@@ -60,8 +60,8 @@
                   (let [_ (when (:unforged-events cdef)
                             (unregister-events state side card))
                         card (if disabled
-                               (update! state side (assoc card :rezzed :this-turn))
-                               (card-init state side (assoc card :rezzed :this-turn) {:resolve-effect false :init-data true}))]
+                               (update! state side (assoc card :rezzed :this-turn :new true))
+                               (card-init state side (assoc card :rezzed :this-turn :new true) {:resolve-effect false :init-data true}))]
                     (doseq [h (:hosted card)]
                       (update! state side (-> h
                                               (update-in [:zone] #(map to-keyword %))

@@ -165,6 +165,7 @@
    :seen
    :selected
    :side
+   :shifted
    :strength
    :subroutines
    :subtype-target
@@ -181,6 +182,7 @@
    :counter
    :exhausted
    :extra-advance-counter
+   :shifted
    :host
    :hosted
    :icon

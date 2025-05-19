@@ -22,7 +22,8 @@
   (swap! app-state assoc :gameid "local-replay") ;set for main.cljs
   (populate-replay-timeline state)
   (if (:replay-jump-to state)
-    (replay-jump-to (:replay-jump-to state))
+    (do (js/console.log (str "should be jumping to: " (:replace-jump-to state)))
+        (replay-jump-to (:replay-jump-to state)))
     (replay-jump 0)))
 
 (defn generate-replay-link [origin]

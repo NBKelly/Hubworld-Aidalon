@@ -3,7 +3,7 @@
     [clj-uuid :as uuid]
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.string :as string]
-    [game.core.board :refer [installable-servers]]
+    [game.core.board :refer [installable-servers hubworld-all-installed]]
     [game.core.card :refer [get-agenda-points get-card installed? rezzed? exhausted? seeker? moment? in-hand?]]
     [game.core.card-defs :refer [card-def]]
     [game.core.cost-fns :refer [break-sub-ability-cost card-ability-cost card-ability-cost score-additional-cost-bonus rez-cost]]
@@ -51,6 +51,17 @@
     (or (= nil prompt-type)
         (= :run prompt-type))))
 
+(defn shifted-cleanup
+  [state]
+  (doseq [s [:corp :runner]
+          c (filterv (complement seeker?) (concat (hubworld-all-installed state s)
+                                                  (get-in @state [s :hand])
+                                                  (get-in @state [s :discard])
+                                                  (get-in @state [s :exile])
+                                                  (get-in @state [s :scored])))]
+    (when (:shifted c)
+      (update! state s (dissoc c :shifted)))))
+
 ;;; Neutral actions
 (defn- do-play-ability [state side eid {:keys [card ability ability-idx targets ignore-cost]}]
   (let [source {:source card
@@ -66,6 +77,7 @@
       (update-click-state state ability)
       (if (:action ability)
         (let [stripped-card (select-keys card [:cid :type :title])]
+          (shifted-cleanup state)
           (wait-for
             (trigger-event-simult state side :action-played nil {:ability-idx ability-idx :card stripped-card :player side})
             (wait-for
