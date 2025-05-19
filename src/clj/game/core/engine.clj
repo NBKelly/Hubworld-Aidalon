@@ -1112,12 +1112,36 @@
              (fn [acc _title cards]
                (if (< 1 (count cards))
                  ;; seekers cannot be exiled
-                 (conj! acc (filter (complement seeker?) (butlast cards)))
+                 (conj! acc (filter (complement seeker?) cards))
                  acc))
              (transient []))
            persistent!
            seq
            (apply concat)))
+
+(defn pick-unique-to-exile
+  [state side eid [[alias cards :as entry] & rest]]
+  (if-not entry
+    (effect-completed state side eid)
+    (resolve-ability
+      state side eid
+      {:prompt (str "Choose a copy of " alias " to preserve")
+       :waiting-prompt true
+       :choices {:max 1
+                 :all true
+                 :req (req (some #(same-card? % target) cards))}
+       :async true
+       :effect (req (let [others (filterv #(not (same-card? % target)) cards)]
+                      (wait-for
+                        (move* state nil (make-eid state eid)
+                               :exile-cards others
+                               {:game-trash true
+                                :unpreventable true})
+                        (doseq [card others]
+                          (system-say state (to-keyword (:side card))
+                                      (str (card-str state card) " is exiled.")))
+                        (pick-unique-to-exile state side eid rest))))}
+      nil nil)))
 
 (defn check-unique-and-consoles
   "d. If 2 or more unique (◆) cards with the same name are active, for each such name,
@@ -1125,50 +1149,10 @@
   or more console cards are installed under the control of the same player, for each
   such player, all of those cards except the one that became active most recently are
   trashed."
-  [state _ eid]
-  (let [corp-uniques (get-old-uniques state :corp)
-        runner-uniques (get-old-uniques state :runner)
-        cards-to-trash (-> (concat corp-uniques runner-uniques)
-                           distinct
-                           seq)]
-    (if cards-to-trash
-      (wait-for (move* state nil (make-eid state eid)
-                       :exile-cards cards-to-trash
-                       {:game-trash true
-                        :unpreventable true})
-                (doseq [card cards-to-trash]
-                  (system-say state (to-keyword (:side card))
-                              (str (card-str state card) " is exiled.")))
-                (effect-completed state nil eid)))
+  [state side eid]
+  (if-let [uniques-to-trash (seq (distinct (get-old-uniques state side)))]
+    (pick-unique-to-exile state side eid (group-by :alias uniques-to-trash))
     (effect-completed state nil eid)))
-
-(defn- enforce-conditions-impl
-  [state _ eid cards]
-  (if (seq cards)
-    (let [fc (first cards)]
-      (wait-for
-        (resolve-ability
-          state (to-keyword (:side fc))
-          (when-not (is-disabled-reg? state fc)
-            (:enforce-conditions (card-def fc)))
-          fc nil)
-        (enforce-conditions-impl state nil eid (rest cards))))
-    (effect-completed state nil eid)))
-
-(defn enforce-conditions
-  [state _ eid]
-  (if-let [cards (seq (filter
-                        #(:enforce-conditions (card-def %))
-                        (concat (all-installed state :corp)
-                                [(get-in @state [:corp :identity])]
-                                (all-active-installed state :runner))))]
-    (enforce-conditions-impl state nil eid cards)
-    (effect-completed state nil eid)))
-
-(defn check-restrictions
-  [state _ eid]
-  ;; memory limit check
-  (enforce-conditions state nil eid))
 
 (defn checkpoint
   "10.3. Checkpoints: A CHECKPOINT is a process wherein objects that have entered an
@@ -1186,10 +1170,9 @@
        (update-disabled-cards state)
        ;; d: uniqueness check
        (wait-for
-         (check-unique-and-consoles state nil (make-eid state eid))
-         ;; e: restrictions on card abilities or game rules, MU
+         (check-unique-and-consoles state :corp (make-eid state eid))
          (wait-for
-           (check-restrictions state nil (make-eid state eid))
+           (check-unique-and-consoles state :runner (make-eid state eid))
            ;; f: stuff on agendas moved from score zone
            ;; g: stuff on installed cards that were trashed
            ;; h: empty servers

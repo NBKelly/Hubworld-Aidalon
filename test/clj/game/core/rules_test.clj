@@ -17,6 +17,8 @@
     (forge state :corp (pick-card state :corp :council :inner))
     (is (= 0 (count (get-scored state :runner))) "Not exiled")
     (forge state :corp (pick-card state :corp :council :outer))
+    (click-card state :corp (pick-card state :corp :council :inner))
+    (is (not (pick-card state :corp :council :outer)))
     (is (= 1 (count (get-scored state :runner))) "Exiled to the opponent's score area!")))
 
 (deftest stage-a-card
