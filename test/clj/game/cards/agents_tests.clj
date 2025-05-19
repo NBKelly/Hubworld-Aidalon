@@ -289,17 +289,33 @@
               :cards 1})
   (doseq [s [:corp :runner]]
     (do-game
-      (new-game {:corp {:deck [(qty "Recruiter Nilero: Effusive Inducer" 10)]}})
+      (new-game {:corp {:hand ["Rory & Bug: “We Fetch It, You Catch It!”" "Recruiter Nilero: Effusive Inducer" (qty "Barbican Gate" 4)]
+                        :deck [(qty "Recruiter Nilero: Effusive Inducer" 10)] :credits 10}
+                 :runner {:hand ["Barbican Gate"]
+                          :deck [(qty "Barbican Gate" 3)]}})
       (play-from-hand state :corp "Recruiter Nilero: Effusive Inducer" :archives :inner)
       (forge state :corp (pick-card state :corp :archives :inner))
       (is (= 7 (hand-size :corp)) "7 hand size for corp")
       (is (= 5 (hand-size :runner)) "5 hand size for runner")
       (click-credit state :runner)
-      (click-credit state :corp)
+      (play-from-hand state :corp "Rory & Bug: “We Fetch It, You Catch It!”" :archives :middle)
+      (forge state :corp (pick-card state :corp :archives :middle))
+      (card-ability state :corp (pick-card state :corp :archives :middle) 1)
+      (stage-select state :corp :archives :inner)
+      (is (= 7 (hand-size :corp)) "7 hand size for corp, even after swap")
+      (is (= 5 (hand-size :runner)) "5 hand size for runner")
       (delve-empty-server state :runner :commons {:give-heat? true})
       (is (changed? [(count (get-hand state s)) 2]
             (click-card state :corp (get-id state s)))
-          (str "side: " s " drew 2")))))
+          (str "side: " s " drew 2"))
+      (when (= s :corp)
+        (click-credit state :corp)
+        (click-credit state :runner)
+        (is (= 6 (count (:hand (get-corp)))) "6 in hand")
+        (end-turn state :corp)
+        (end-turn state :runner)
+        (is (no-prompt? state :runner))
+        (is (no-prompt? state :corp))))))
 
 (deftest rory-and-bug-moves
   (do-game

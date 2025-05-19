@@ -387,7 +387,6 @@
           :stop-auto-pass "自動通過処理を停止"
           :auto-pass "自動通過処理"
           :jack-out "ジャックアウト"
-          :trace "トレース"
           :credits "クレジット"
           :card "カード"
           :time-taken (fn [[t]] (str "経過した時間: " t "分"))

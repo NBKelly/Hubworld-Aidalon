@@ -1,6 +1,5 @@
 (ns game.core.change-vals
   (:require
-    [game.core.agendas :refer [update-all-agenda-points]]
     [game.core.effects :refer [register-lingering-effect]]
     [game.core.engine :refer [trigger-event]]
     [game.core.gaining :refer [base-mod-size deduct gain]]

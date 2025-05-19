@@ -26,7 +26,6 @@
    options
    per-run
    per-turn
-   psi
    queued-events
    reason
    rid
@@ -41,7 +40,6 @@
    stack
    start-date
    stats
-   trace
    trash
    turn
    turn-events

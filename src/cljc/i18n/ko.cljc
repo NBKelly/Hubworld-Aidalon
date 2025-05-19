@@ -366,6 +366,5 @@
           :stop-auto-pass "자동-통과 우선 중지"
           :auto-pass "자동-통과 우선"
           :jack-out "잭 아웃"
-          :trace "추적"
           :credits "크레딧"
           :card "카드"}})

@@ -23,7 +23,9 @@
   ([state side eid source-card card-to-shift {:keys [cost other-side? no-wait-prompt?] :as args}]
    (show-shift-prompt
      state side eid source-card (adjacent-zones card-to-shift)
-     (str "Shift " (hubworld-card-str state card-to-shift) " where?")
+     (if-not other-side?
+       (str "Shift " (:title card-to-shift) " where?")
+       (str "Shift " (hubworld-card-str state card-to-shift {:visible (not other-side?) :opponent? other-side?}) " where?"))
      {:cost cost
       :msg (msg (let [server (:server context)
                       slot (:slot context)

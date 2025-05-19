@@ -147,8 +147,7 @@
 (defn- prompt-button-from-card?
   [clicked-card {:keys [card msg prompt-type choices] :as prompt-state}]
   (when-not (or (some #{:counter :card-title :number} choices)
-                (= choices "credit")
-                (= prompt-type "trace"))
+                (= choices "credit"))
     (some (fn [{:keys [_ uuid value]}]
             (when (= (:cid value) (:cid clicked-card)) uuid))
           choices)))
@@ -624,7 +623,7 @@
 (defn card-view
   [{:keys [zone code type abilities counter exhausted rezzed
            subtypes barrier current-barrier presence current-presence selected hosted
-           side facedown card-target icon new ghost runner-abilities subroutines
+           side facedown card-target icon new shifted ghost runner-abilities subroutines
            subtype-target corp-abilities]
     :as card} flipped disable-click]
   (let [title (get-title card)]
@@ -637,6 +636,7 @@
                                                 (and (not (any-prompt-open? side)) (playable? card)) "playable"
                                                 (and (not (any-prompt-open? side)) (:flashable card)) "playable"
                                                 ghost "ghost"
+                                                shifted "shifted"
                                                 new "new")
                                           (when exhausted " exhausted"))
                               :tab-index (when (and (not disable-click)
@@ -1743,53 +1743,6 @@
     [delve-div-attacker delve side]
     [delve-div-defender delve side]))
 
-(defn trace-div
-  [{:keys [base strength player link bonus choices corp-credits runner-credits unbeatable beat-trace] :as prompt-state}]
-  (r/with-let [!value (r/atom 0)]
-    [:div
-     (when base
-       ;; This is the initial trace prompt
-       (if (nil? strength)
-         (if (= "corp" player)
-           ;; This is a trace prompt for the corp, show runner link + credits
-           [:div.info (tr [:side.runner "Runner"]) ": " link [:span {:class "anr-icon link"}]
-            " + " runner-credits [:span {:class "anr-icon credit"}]]
-           ;; Trace in which the runner pays first, showing base trace strength and corp credits
-           [:div.info (tr [:game.trace "Trace"]) ": " (if bonus (+ base bonus) base)
-            " + " corp-credits [:span {:class "anr-icon credit"}]])
-         ;; This is a trace prompt for the responder to the trace, show strength
-         (if (= "corp" player)
-           [:div.info "vs Trace: " strength]
-           [:div.info "vs Runner: " strength [:span {:class "anr-icon link"}]])))
-     [:div.credit-select
-      ;; Inform user of base trace / link and any bonuses
-      (when base
-        (if (nil? strength)
-          (if (= "corp" player)
-            (let [strength (if bonus (+ base bonus) base)]
-              [:span (str strength " + ")])
-            [:span link " " [:span {:class "anr-icon link"}] (str " + " )])
-          (if (= "corp" player)
-            [:span link " " [:span {:class "anr-icon link"}] (str " + " )]
-            (let [strength (if bonus (+ base bonus) base)]
-              [:span (str strength " + ")]))))
-      [:select#credit {:value @!value
-                       :on-change #(reset! !value (.. % -target -value))
-                       :onKeyUp #(when (= "Enter" (.-key %))
-                                   (-> "#trace-submit" js/$ .click)
-                                   (.stopPropagation %))}
-       (doall (for [i (range (inc choices))]
-                [:option {:value i :key i} i]))] (str " " (tr [:game.credits "credits"]))]
-     (when (or unbeatable beat-trace)
-       (let [beat-str (if unbeatable
-                        (tr [:game.unbeatable "Make Unbeatable"])
-                        (tr [:game.beat-trace "Beat Trace"]))]
-         [:button#trace-unbeatable
-          {:on-click #(reset! !value (or unbeatable beat-trace))}
-          [:div (str beat-str " (" (or unbeatable beat-trace)) [:span {:class "anr-icon credit"}] ")"]]))
-     [:button#trace-submit {:on-click #(send-command "choice" {:choice (-> "#credit" js/$ .val str->int)})}
-      (tr [:game.ok "OK"])]]))
-
 (defn now-unix-ms [] (-> (inst/now) (inst/to-epoch-milli)))
 
 (defn calculate-progress [start-time end-time]
@@ -1870,10 +1823,6 @@
           [:button#number-submit {:on-click #(send-command "choice"
                                                            {:choice (-> "#credit" js/$ .val str->int)})}
            (tr [:game.ok "OK"])]])
-
-       ;; trace prompts require their own logic
-       (= prompt-type "trace")
-       [trace-div prompt-state]
 
        ;; stage/shift prompts just provide a done button
        (or (= prompt-type "stage") (= prompt-type "shift"))

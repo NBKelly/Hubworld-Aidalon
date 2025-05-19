@@ -136,7 +136,7 @@
   (wait-for
     (draw state side 1 {:suppress-checkpoint true}) ;; TODO - this draw can deck you
     (system-msg state side "draws 1 card")
-    (if (> (count (get-in @state [side :hand])) (get-in @state [side :identity :draw-limit]))
+    (if (> (count (get-in @state [side :hand])) (hand-size state side))
       (discard-to-size state side (hand-size state side) eid)
       (effect-completed state side eid))))
 
