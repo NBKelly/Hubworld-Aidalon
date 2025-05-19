@@ -150,36 +150,6 @@
 ; COMPLEX ABILITY WRAPPERS
 ; These are wrappers around more complex/cumbersome functionality. They all call into a flow that would
 ; be cumbersome to write out every time in a "normal" ability map.
-; :psi -- map of :req, :equal, :not-equal
-;   Handles psi games.
-;   :req -- 5-fn
-;     Optional. Works same as :req in an ability map.
-;   :equal -- ability map
-;     At least one of :equal and :not-equal are required.
-;     Async ability that is executed if the players reveal the same number of credits.
-;   :not-equal -- ability map
-;     At least one of :equal and :not-equal are required.
-;     Async ability that is executed if the players reveal the a differen number of credits.
-; :trace -- map of :req, :label, :base, :successful, :unsuccessful, :kicker, :kicker-min
-;   Handles traces.
-;   :req -- 5-fn
-;     Optional. Works same as :req in an ability map.
-;   :label -- 5-fn
-;     Optional. Works same as :label in an ability map.
-;   :base -- integer or 5-fn
-;     Required. Must return an integer, which sets the "base" initial value for the trace.
-;   :successful -- ability map
-;     At least one of :successful and :unsuccessful are required.
-;     Async ability that is executed if the trace is successful.
-;   :unsuccessful -- ability map
-;     At least one of :successful and :unsuccessful are required.
-;     Async ability that is executed if the trace is unsuccessful.
-;   :kicker -- ability map
-;     Optional. Async ability that is executed if the corp's trace strength is equal to or greater
-;     than :kicker-min.
-;   :kicker-min -- integer
-;     Required if :kicker is defined. The number the corp's strength must be equal to or greater
-;     to execute the :kicker ability.
 ; :optional -- map of :req, :prompt, :player, :yes-ability, :no-ability, :end-effect, :autoresolve
 ;   Shows a "Yes/No" prompt to handle the user deciding whether to resolve the ability.
 ;   :req -- 5-fn
@@ -624,7 +594,6 @@
    :post-draw-cards 9
    :pre-breach 9
    true 10
-   :trace 11
    :corp-lose-tag 11
    :last 999 ;; pretty mary wants to trigger last always
    })

@@ -242,17 +242,7 @@
    :other-side?
    ;; bluffs
    :start-time
-   :end-time
-   ;; traces
-   :player
-   :base
-   :bonus
-   :strength
-   :unbeatable
-   :beat-trace
-   :link
-   :corp-credits
-   :runner-credits])
+   :end-time])
 
 (defn prompt-summary
   [prompt same-side?]
@@ -454,7 +444,6 @@
    :log
    :mark
    :options
-   :psi
    :reason
    :room
    :run
@@ -464,7 +453,6 @@
    :sfx-current-id
    :start-date
    :stats
-   :trace
    :turn
    :typing
    :winning-user

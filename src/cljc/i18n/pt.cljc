@@ -384,7 +384,6 @@
           :stop-auto-pass "Para de passar prioridade"
           :auto-pass "Passar prioridade automaticamente"
           :jack-out "Ejetar"
-          :trace "Rastrear"
           :credits "creditos"
           :card "Carta"
           :time-taken (fn [[t]] (str "Tempo consumido: " t " minutos"))

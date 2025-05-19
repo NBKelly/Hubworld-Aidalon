@@ -384,7 +384,6 @@
           :stop-auto-pass "Désactiver le passage automatique"
           :auto-pass "Activer le passage automatique"
           :jack-out "Débrancher"
-          :trace "Traque"
           :credits "Crédits"
           :card "Carte"
           :time-taken (fn [[t]] (str "Temps écoulé: " t " minutes"))

@@ -384,7 +384,6 @@
           :stop-auto-pass "Wyłączenie priorytetu auto-mijania"
           :auto-pass "Priorytet auto-mijania"
           :jack-out "Wylogowanie się"
-          :trace "Namiar"
           :credits "kred."
           :card "Karta"
           :time-taken (fn [[t]] (str "Czas gry: " t " min."))

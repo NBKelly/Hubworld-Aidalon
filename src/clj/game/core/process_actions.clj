@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [game.core.actions :refer [click-advance click-credit click-draw click-delve
-                              close-deck do-purge generate-install-list cmd-shift
+                              close-deck generate-install-list cmd-shift
                               flash
-                              move-card expend-ability
+                              move-card
                               pass play play-ability play-corp-ability play-collect
                               play-runner-ability play-subroutine play-unbroken-subroutines remove-tag
                               play-rush
@@ -80,9 +80,7 @@
    "move" #'move-card
    "mulligan" #'mulligan
    "play" #'play
-   "expend" #'expend-ability ;; OBSOLETE
    "pass" #'pass
-   "purge" #'do-purge ;; OBSOLETE
    "remove-tag" #'remove-tag ;; OBSOLETE
    "forge" #(rez %1 %2 (make-eid %1) (:card %3) (dissoc %3 :card))
    "runner-ability" #'play-runner-ability

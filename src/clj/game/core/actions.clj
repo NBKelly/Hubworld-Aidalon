@@ -368,7 +368,6 @@
     (cond
       ;; Integer prompts
       (or (= choices :credit)
-          (= :trace (:prompt-type prompt))
           (:counter choices)
           (:number choices))
       (if (number? choice)
