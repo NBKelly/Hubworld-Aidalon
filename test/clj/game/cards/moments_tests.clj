@@ -264,6 +264,15 @@
           (click-prompts state :corp "Yes" "Twice as Bad" "Yes"))
         "Gained 2 for 2 encounters")))
 
+(deftest twice-as-bad-card-in-archives
+  (do-game
+    (new-game {:runner {:discard ["Barbican Gate"] :hand ["Twice as Bad"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (delve-empty-server state :corp :archives {:give-heat? true})
+    (is (changed? [(:credit (get-runner)) 1] ;; we spent 1 on twice as bad
+          (click-prompts state :runner "Yes" "Twice as Bad" "Yes")))))
+
 (deftest twice-as-bad-test-silent-interrogator
   (do-game
     (new-game {:corp {:hand ["Likely a Trap" "Twice as Bad" "Silent Interrogator"]}
