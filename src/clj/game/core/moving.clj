@@ -6,7 +6,7 @@
     [game.core.card-defs :refer [card-def]]
     [game.core.effects :refer [is-disabled-reg? register-static-abilities unregister-static-abilities]]
     [game.core.eid :refer [complete-with-result effect-completed make-eid make-result]]
-    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event trigger-event-sync unregister-events]]
+    [game.core.engine :as engine :refer [checkpoint dissoc-req register-pending-event queue-event register-default-events register-events should-trigger? trigger-event trigger-event-sync unregister-events payment-reaction]]
     [game.core.finding :refer [get-scoring-owner]]
     [game.core.flags :refer [can-trash? card-flag? untrashable-while-resources? untrashable-while-rezzed? zone-locked?]]
     [game.core.hosting :refer [remove-from-host]]
@@ -350,11 +350,17 @@
     (= side :corp) :corp-exile
     (= side :runner) :runner-exile))
 
+(defmethod engine/payment-reaction :archive [state side eid _ values]
+  (cards-archived-reaction state side eid {:cards (vec values)}))
+
+(defmethod engine/payment-reaction :exile [state side eid _ values]
+  (cards-exiled-reaction state side eid {:cards (vec values)}))
+
 (defn trash-cards
   "Attempts to trash each given card, and then once all given cards have been either
   added or not added to the trash list, all of those cards are trashed"
   ([state side eid cards] (trash-cards state side eid cards nil))
-  ([state side eid cards {:keys [accessed cause cause-card keep-server-alive game-trash suppress-checkpoint is-exile?] :as args}]
+  ([state side eid cards {:keys [accessed cause cause-card keep-server-alive game-trash suppress-checkpoint suppress-reaction is-exile?] :as args}]
    (if (empty? (filter identity cards))
      (effect-completed state side eid)
      (wait-for (resolve-trash-prevention state side cards args)
@@ -396,11 +402,15 @@
                                                          :cause cause
                                                          :cause-card (trim-cause-card cause-card)
                                                          :accessed accessed}))
-                       (wait-for
-                         (cards-archived-reaction state side {:cards (map :old-card moved-cards)})
+                       (if suppress-reaction
                          (if suppress-checkpoint
                            (effect-completed state nil eid)
-                           (checkpoint state nil eid {:duration trash-event})))))))))))
+                           (checkpoint state nil eid {:duration trash-event}))
+                         (wait-for
+                           (cards-archived-reaction state side {:cards (map :old-card moved-cards)})
+                           (if suppress-checkpoint
+                             (effect-completed state nil eid)
+                             (checkpoint state nil eid {:duration trash-event}))))))))))))
 
 (defmethod engine/move* :trash-cards [state side eid _action cards args]
   (trash-cards state side eid cards args))
@@ -449,7 +459,7 @@
   "Attempts to trash each given card, and then once all given cards have been either
   added or not added to the trash list, all of those cards are trashed"
   ([state side eid cards] (trash-cards state side eid cards nil))
-  ([state side eid cards {:keys [accessed cause cause-card keep-server-alive game-trash suppress-checkpoint] :as args}]
+  ([state side eid cards {:keys [accessed cause cause-card keep-server-alive game-trash suppress-checkpoint suppress-reaction] :as args}]
    (if (empty? (filter identity cards))
      (effect-completed state side eid)
      (let [to-secure (filter agent? cards)
@@ -496,11 +506,15 @@
                                                      :cause cause
                                                      :cause-card (trim-cause-card cause-card)
                                                      :accessed accessed}))
-                   (wait-for
-                     (cards-exiled-reaction state side {:cards (map :old-card moved-cards)})
+                   (if suppress-reaction
                      (if suppress-checkpoint
                        (effect-completed state nil eid)
-                       (checkpoint state nil eid {:duration exile-event})))))))))))))
+                       (checkpoint state nil eid {:duration exile-event}))
+                     (wait-for
+                       (cards-exiled-reaction state side {:cards (map :old-card moved-cards)})
+                       (if suppress-checkpoint
+                         (effect-completed state nil eid)
+                         (checkpoint state nil eid {:duration exile-event}))))))))))))))
 
 (defmethod engine/move* :exile-cards [state side eid _action cards args]
   (exile-cards state side eid cards args))
@@ -524,6 +538,13 @@
   ([state from-side eid to-side n] (mill state from-side eid to-side n nil))
   ([state from-side eid to-side n args]
    (let [cards (take n (get-in @state [to-side :deck]))]
+     (trash-cards state from-side eid cards (assoc args :unpreventable true)))))
+
+(defn mill-bottom
+  "Force the discard of n cards from the deck by trashing them"
+  ([state from-side eid to-side n] (mill state from-side eid to-side n nil))
+  ([state from-side eid to-side n args]
+   (let [cards (take n (reverse (get-in @state [to-side :deck])))]
      (trash-cards state from-side eid cards (assoc args :unpreventable true)))))
 
 (defn discard-from-hand
@@ -570,8 +591,8 @@
                (same-side? a b))
       (let [a (dissoc (get-card state a) :seen)
             b (dissoc (get-card state b) :seen)
-            a-new (assoc a :zone (:zone b) :shifted true)
-            b-new (assoc b :zone (:zone a) :shifted true)]
+            a-new (assoc a :zone (:zone b))
+            b-new (assoc b :zone (:zone a))]
         (swap! state assoc-in (cons side (:zone a)) [b-new])
         (swap! state assoc-in (cons side (:zone b)) [a-new])
         (doseq [new-card [a-new b-new]]
@@ -592,7 +613,7 @@
   (let [pred? (every-pred installed?)]
     (when (pred? a)
       (let [a (dissoc (get-card state a) :seen)
-            a-new (assoc a :zone [:paths server slot] :shifted true)]
+            a-new (assoc a :zone [:paths server slot])]
         (swap! state assoc-in [side :paths server slot] [a-new])
         (swap! state assoc-in (concat [side] (:zone a)) [])
         (unregister-events state side a-new)

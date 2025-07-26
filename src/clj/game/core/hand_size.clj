@@ -38,18 +38,10 @@
                       (req state side eid card targets)))
                value)))
 
-(defn corp-hand-size+
-  ([value] (corp-hand-size+ (constantly true) value))
+(defn opponent-hand-size+
+  ([value] (opponent-hand-size+ (constantly true) value))
   ([req value]
    (hand-size+ (fn [state side eid card targets]
-                 (and (= :corp side)
-                      (req state side eid card targets)))
-               value)))
-
-(defn runner-hand-size+
-  ([value] (runner-hand-size+ (constantly true) value))
-  ([req value]
-   (hand-size+ (fn [state side eid card targets]
-                 (and (= :runner side)
+                 (and (not= side (keyword (clojure.string/lower-case (:side card))))
                       (req state side eid card targets)))
                value)))
