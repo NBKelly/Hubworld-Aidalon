@@ -6,16 +6,19 @@
    [game.core.engine :refer [resolve-ability]]
    [game.core.moving :refer [move trash swap-installed shift-installed]]
    [game.core.prompts :refer [show-shift-prompt]]
+   [game.core.reactions :refer [cards-shifted-reaction]]
    [game.core.say :refer [system-msg]]
    [game.core.to-string :refer [hubworld-card-str]]
    [game.macros :refer [msg req wait-for]]
    [jinteki.utils :refer [other-side adjacent-zones]]))
 
 (defn shift
-  [state side card target-server target-slot args]
+  [state side eid card target-server target-slot args]
   (if-let [card-to-swap (get-in @state [side :paths target-server target-slot 0])]
-    (swap-installed state side card card-to-swap)
-    (shift-installed state side card target-server target-slot)))
+    (do (swap-installed state side card card-to-swap)
+        (cards-shifted-reaction state side eid {:cards [card card-to-swap]}))
+    (do (shift-installed state side card target-server target-slot)
+        (cards-shifted-reaction state side eid {:cards [card]}))))
 
 (defn shift-a-card
   ([state side eid source-card card-to-shift]
@@ -23,9 +26,7 @@
   ([state side eid source-card card-to-shift {:keys [cost other-side? no-wait-prompt?] :as args}]
    (show-shift-prompt
      state side eid source-card (adjacent-zones card-to-shift)
-     (if-not other-side?
-       (str "Shift " (:title card-to-shift) " where?")
-       (str "Shift " (hubworld-card-str state card-to-shift {:visible (not other-side?) :opponent? other-side?}) " where?"))
+     (str "Shift " (hubworld-card-str state card-to-shift) " where?")
      {:cost cost
       :msg (msg (let [server (:server context)
                       slot (:slot context)
@@ -36,7 +37,6 @@
       :async true
       :effect (req (let [server (:server context)
                          slot (:slot context)]
-                     (shift state (if other-side? (other-side side) side) card-to-shift server slot nil))
-                   (effect-completed state side eid))}
+                     (shift state (if other-side? (other-side side) side) eid card-to-shift server slot nil)))}
      {:waiting-prompt (not no-wait-prompt?)
       :other-side? other-side?})))
