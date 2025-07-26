@@ -1,13 +1,13 @@
 (ns game.core.breaching
   (:require
    [game.core.card :refer [agent? moment?
-                           exhausted? rezzed? in-discard?
+                           exhausted? rezzed? in-discard? in-deck?
                            get-card]]
    [game.core.card-defs :refer [card-def]]
    [game.core.choose-one :refer [choose-one-helper]]
    [game.core.eid :refer [effect-completed make-eid]]
    [game.core.engine :refer [checkpoint register-default-events register-pending-event resolve-ability trigger-event trigger-event-simult trigger-event-sync unregister-floating-events queue-event]]
-   [game.core.effects :refer [register-static-abilities sum-effects register-lingering-effect unregister-lingering-effects gather-effects]]
+   [game.core.effects :refer [register-static-abilities get-effects sum-effects register-lingering-effect unregister-lingering-effects]]
    [game.core.flags :refer [card-flag?]]
    [game.core.gaining :refer [gain-credits]]
    [game.core.moving :refer [exile move secure-agent]]
@@ -32,6 +32,11 @@
   [state side eid discovered-card]
   (when-let [c (get-card state discovered-card)]
     (update! state side (dissoc c :seen)))
+  (unregister-lingering-effects state side :end-of-engagement)
+  (unregister-lingering-effects state (other-side side) :end-of-engagement)
+  (when-not (:current-discovery @state)
+    (swap! state assoc :discover-dissoc true))
+  (swap! state dissoc-in [:current-discovery])
   (checkpoint state side eid {:durations [:end-of-discovery]}))
 
 (defn maybe-refund
@@ -49,8 +54,11 @@
                                (= [:discard] (:zone discovered-card))))
         should-secure? (agent? discovered-card)
         interact-cost? (merge-costs (concat (when-not (= [:discard] (:zone discovered-card)) [(->c :credit (get-presence discovered-card))])
+                                            (if (agent? discovered-card)
+                                              (get-effects state side :secure-additional-cost discovered-card)
+                                              (get-effects state side :scrap-additional-cost discovered-card))
                                             (:cipher (card-def discovered-card))))]
-    (if (or (not (get-card state discovered-card)))
+    (if (or (not (get-card state discovered-card)) (not (:current-discovery @state)))
       (discover-cleanup state side eid discovered-card)
       (wait-for
         (resolve-ability
@@ -86,9 +94,9 @@
 
 ;; discovery abilities are fired one at a time, from top to bottom
 (defn- resolve-discover-abilities
-    ;; todo - see if we get access dissoc'd
+  ;; todo - see if we get access dissoc'd
   [state side eid card abs]
-  (if (or (not (get-card state card)))
+  (if (or (not (get-card state card)) (not (:current-discovery @state)))
     (discover-cleanup state side eid card)
     (if (seq abs)
       (let [ab (first abs)
@@ -113,6 +121,7 @@
   (if-not (get-card state card)
     (discover-cleanup state side eid card)
     (let [card (update! state side (assoc card :seen true))]
+      (swap! state assoc-in [:current-discovery] card)
       (wait-for (pre-discover-reaction state side {:card card
                                                    :engaged-side side})
                 (system-msg state side (str "discovers " (:title card)))
@@ -170,8 +179,9 @@
   "discovered cards are always set aside if not moved"
   [state side eid card remaining next-fn]
   (wait-for (discover-card state side card)
-            (when (get-card state card)
+            (when (and (get-card state card) (not (:discover-dissoc @state)))
               (add-to-set-aside state (other-side side) (get-in @state [:breach :set-aside-eid]) card {:corp-can-see true :runner-can-see true}))
+            (swap! state dissoc :discover-dissoc)
             (next-fn state side eid (dec remaining))))
 
 ;; TODO -- BELOW, COMPLETE WITH RESULT

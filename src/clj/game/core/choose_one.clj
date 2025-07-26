@@ -77,6 +77,7 @@
          (merge
            base-map
            {:choices (req (into [] (map #(choices-fn % state side eid card targets) xs)))
+            :not-distinct true
             :waiting-prompt (or (:waiting-prompt args) (not no-wait-msg))
             :prompt (str (or (:prompt args) "Choose one")
                          ;; if we are resolving multiple

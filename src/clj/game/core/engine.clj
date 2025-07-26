@@ -1197,25 +1197,46 @@
     (wait-for (handler (first costs) state side (make-eid state eid) card)
               (pay-next state side eid (rest costs) card (conj msgs async-result)))))
 
-(defn pay
-  [state side eid card & costs]
-  (let [costs (flatten costs)
-        costs (can-pay? state side eid card (:title card) costs)]
+(defmulti payment-reaction (fn [_ _ _ t _] t))
+
+(defn handle-payment-reaction
+  [state side eid [t payment-result & rem]]
+  (wait-for
+    (payment-reaction state side t (mapcat :paid/targets payment-result))
+    (if (seq rem)
+      (handle-payment-reaction state side eid rem)
+      (effect-completed state side eid))))
+
+(defn handle-payment-reactions
+  [state side eid payment-result]
+  (let [by-type
+        (reduce into [] (select-keys (group-by :paid/type payment-result) [:archive :exile]))]
+    (if (seq by-type)
+      (handle-payment-reaction state side eid by-type)
+      (effect-completed state side eid))))
+
+ (defn pay
+   [state side eid card & costs]
+   (let [costs (flatten costs)
+         costs (can-pay? state side eid card (:title card) costs)]
     (when (some keyword? costs)
       (throw (ex-info "Please convert to wrapped cost" {:args costs})))
     (if (nil? costs)
       (complete-with-result state side eid nil)
       (wait-for (pay-next state side (make-eid state eid) costs card [])
                 (let [payment-result async-result]
-                  (wait-for (checkpoint state nil (make-eid state eid) nil)
-                            (complete-with-result
-                              state side eid
-                              {:msg (->> payment-result
-                                         (keep :paid/msg)
-                                         (enumerate-str))
-                               :cost-paid (->> payment-result
-                                               (keep #(not-empty (dissoc % :paid/msg)))
-                                               (reduce
-                                                 (fn [acc paid]
-                                                   (assoc acc (:paid/type paid) paid))
-                                                 {}))})))))))
+                  (wait-for
+                    (checkpoint state nil (make-eid state eid) {:duration :cost-paid})
+                    (wait-for
+                      (handle-payment-reactions state side payment-result)
+                      (complete-with-result
+                        state side eid
+                        {:msg (->> payment-result
+                                   (keep :paid/msg)
+                                   (enumerate-str))
+                         :cost-paid (->> payment-result
+                                         (keep #(not-empty (dissoc % :paid/msg)))
+                                         (reduce
+                                           (fn [acc paid]
+                                             (assoc acc (:paid/type paid) paid))
+                                           {}))}))))))))
