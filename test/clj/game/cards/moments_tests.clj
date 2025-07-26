@@ -7,6 +7,15 @@
    [game.test-framework :refer :all]
    [game.core.payment :refer [->c]]))
 
+(deftest back-alley-deal
+  (do-game
+    (new-game {:corp {:hand ["Back-alley Deal"]
+                      :deck [(qty "Fun Run" 5)]}})
+    (is (changed? [(:credit (get-corp)) 4
+                   (count (:hand (get-corp))) 0
+                   (get-heat state :corp) 1]
+          (play-from-hand state :corp "Back-alley Deal")))))
+
 (deftest calling-in-favors-test
   (do-game
     (new-game {:corp {:hand ["Calling in Favors"]
@@ -39,6 +48,28 @@
           (click-prompts state :corp "Cornering the Market" "Yes"))
         "Gained 3c")
     (is (no-prompt? state :corp))))
+
+(deftest exo-export-levies
+  (do-game
+    (new-game {:corp {:hand ["Exo-Export Levies"]
+                      :discard ["Shardwinner"]}})
+    (is (changed? [(:credit (get-corp)) 4]
+          (play-from-hand state :corp "Exo-Export Levies")
+          (click-card state :corp "Shardwinner")))))
+
+(deftest eyes-in-the-sky
+  (do-game
+    (new-game {:corp {:hand ["Eyes in the Sky"]}
+	       :runner {:hand ["Barbican Gate"]}})
+    (click-credit state :corp)
+    (play-from-hand state :runner "Barbican Gate" :council :outer)
+    (forge state :runner (pick-card state :runner :council :outer))
+    (delve-server state :corp :council)
+    (delve-continue-impl state :corp)
+    (click-prompts state :corp "Eyes in the Sky" "Yes")
+    (click-prompt state :runner "Your opponent bypasses Barbican Gate")
+    (is (no-prompt? state :corp))
+    (is (no-prompt? state :runner))))
 
 (deftest forced-liquidation-test
   (do-game

@@ -25,6 +25,13 @@
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [jinteki.utils :refer [other-side count-heat other-player-name]]))
 
+(defcard "Back-alley Deal"
+  {:on-play {:additional-cost [(->c :click 1) (->c :gain-heat 1)]
+             :msg "gain 4 [Credits] and draw 1 card"
+             :async true
+             :effect (req (wait-for (gain-credits state side 4 {:suppress-checkpoint true})
+                                    (draw state side eid 1)))}})
+
 (defcard "Calling in Favors"
   {:on-play {:additional-cost [(->c :click 2)]
              :action true
@@ -95,6 +102,39 @@
                :ability {:cost [(->c :exile-reaction)]
                          :msg (msg "prevent '" (or (:label (:ability context)) "(a confrontation ability)") "' from resolving")
                          :effect (req (swap! state assoc-in [:reaction :pre-confrontation-ability :ability-prevented] true))}}]})
+
+(defcard "Exo-Export Levies"
+  {:on-play {:additional-cost [(->c :click 1) (->c :exile-from-archives 1)]
+             :action true
+             :msg "gain 4 [Credits]"
+             :async true
+             :effect (req (gain-credits state side eid 4))}})
+
+(defcard "Eyes in the Sky"
+  {:reaction [{:type :moment
+               :reaction :pre-confrontation
+               :location :hand
+               :prompt "Bypass card unless opponent loses 3 [Credits]?"
+               :req (req (and
+                           (= side (:engaged-side context))
+                           (not (any-effects state side (:card context) true? :cannot-be-bypassed))
+                           ((every-pred installed? (complement my-card?)) (:card context))))
+               :ability {:cost [(->c :exile-reaction)]
+                         :async true
+                         :effect (req (continue-ability
+                                        state opponent
+                                        (if (can-pay? state opponent eid card nil [(->c :credit 3)])
+                                          (choose-one-helper
+                                            [(cost-option [(->c :credit 3)] opponent)
+                                             {:option (str "Your opponent bypasses " (:title (:card context)))
+                                              :ability {:display-side side
+                                                        :async true
+                                                        :msg (str "bypass " (:card context))
+                                                        :effect (req (delve-bypass state opponent eid nil))}}])
+                                          {:async true
+                                           :msg (str "bypass " (:card context))
+                                           :effect (req (delve-bypass state side eid nil))})
+                                        card nil))}}]})
 
 (defcard "Forced Liquidation"
   {:reaction [{:location :hand
