@@ -1,6 +1,6 @@
 (ns game.core.shuffling
   (:require
-   [game.core.card :refer [corp? in-discard?]]
+   [game.core.card :refer [corp? in-discard? in-deck?]]
    [game.core.eid :refer [effect-completed]]
    [game.core.engine :refer [trigger-event]]
    [game.core.moving :refer [move move-zone]]
@@ -18,6 +18,10 @@
                (= :corp side)
                (= :deck kw))
       (swap! state assoc-in [:run :shuffled-during-access :rd] true))
+    (when (and (in-deck? (:current-discovery @state))
+               (= kw :deck)
+               (= side (-> @state :current-discovery :side clojure.string/lower-case keyword)))
+      (swap! state dissoc :current-discovery))
     (swap! state update-in [:stats side :shuffle-count] (fnil + 0) 1)
     (swap! state update-in [side kw] shuffle)))
 
