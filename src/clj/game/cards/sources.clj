@@ -8,12 +8,13 @@
                            in-front-row?
                            in-hand? in-discard? installed?
                            moment?  seeker? agent? obstacle?]]
-   [game.core.def-helpers :refer [collect defcard shift-self-abi take-credits]]
+   [game.core.def-helpers :refer [collect defcard gain-n-credits shift-self-abi take-credits]]
    [game.core.delving :refer [card-for-current-slot end-the-delve! delve-encounter delve-complete-encounter]]
    [game.core.drawing :refer [draw]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed]]
    [game.core.gaining :refer [gain-credits gain-clicks lose]]
+   [game.core.hand-size :refer [me-hand-size+ opponent-hand-size+]]
    [game.core.heat :refer [lose-heat]]
    [game.core.moving :refer [move trash swap-installed archive]]
    [game.core.payment :refer [->c can-pay?]]
@@ -225,6 +226,10 @@
                   :async true
                   :effect (req (end-the-delve! state side eid nil))}]}))
 
+(defcard "Hoarder’s Array"
+  (collect {:cards 1})
+  {:static-abilities [(me-hand-size+ 1)]})
+
 (defcard "Job Board"
   (collect
     {:cards 1}
@@ -266,6 +271,11 @@
                  :max-uses 1
                  :ability {:msg "gain an additional [Click]"
                            :effect (req (gain-clicks state side 1))}}]}))
+
+(defcard "Private Exo-Bridge"
+  (collect {:cards 1})
+  {:abilities [(gain-n-credits 3 {:cost [(->c :exhaust-self)(->c :archive-from-council 1)]
+                                  :action true})]})
 
 (defcard "Silkline Shuttle"
   (collect

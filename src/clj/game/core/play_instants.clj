@@ -12,6 +12,7 @@
     [game.core.moving :refer [exile move trash]]
     [game.core.payment :refer [build-spend-msg can-pay? merge-costs ->c]]
     [game.core.revealing :refer [reveal]]
+    [game.core.reactions :refer [instant-resolved-reaction]]
     [game.core.say :refer [play-sfx system-msg implementation-msg]]
     [game.core.update :refer [update!]]
     [game.macros :refer [continue-ability msg req wait-for]]
@@ -64,13 +65,15 @@
                                         (swap! state assoc-in [:corp :register :terminal] true))
                                       ;; this is explicit support for nuvem,
                                       ;; which wants 'after the op finishes resolving' as an event
-                                      (queue-event state resolved-event {:card card :event resolved-event})
-                                      (checkpoint state nil eid {:duration resolved-event}))
+                                      (wait-for (instant-resolved-reaction state side {:card card :player side :flash flash})
+                                                (queue-event state resolved-event {:card card :event resolved-event})
+                                                (checkpoint state nil eid {:duration resolved-event})))
                             (do (when (has-subtype? card "Terminal")
                                   (lose state side :click (-> @state side :click))
                                   (swap! state assoc-in [:corp :register :terminal] true))
-                                (queue-event state resolved-event {:card card :event resolved-event})
-                                (checkpoint state nil eid {:duration resolved-event}))))))))
+                                (wait-for (instant-resolved-reaction state side {:card card :player side :flash flash})
+                                          (queue-event state resolved-event {:card card :event resolved-event})
+                                          (checkpoint state nil eid {:duration resolved-event})))))))))
 
 (defn play-instant-costs
   [state side card {:keys [ignore-cost base-cost no-additional-cost cached-costs cost-bonus]}]

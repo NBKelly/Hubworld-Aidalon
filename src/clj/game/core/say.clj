@@ -41,10 +41,21 @@
         user-pronoun (cond
                        (= side :corp) corp-pronoun
                        (= side :runner) runner-pronoun
-                       :else "their")]
+                       :else "their")
+        side-name (cond
+                    (= side :corp) (or (get-in @state [:corp :user :username]) "(unknown)")
+                    (= side :runner) (or (get-in @state [:runner :user :username]) "(unknown)")
+                    :else "(unknown side)")
+        other-side-name (cond
+                          (= side :runner) (or (get-in @state [:corp :user :username]) "(unknown)")
+                          (= side :corp) (or (get-in @state [:runner :user :username]) "(unknown)")
+                          :else "(unknown side)")]
     (-> text
         (str/replace #"(\[pronoun\])|(\[their\])" user-pronoun)
         (str/replace #"\[corp-pronoun\]" corp-pronoun)
+        (str/replace #"\[name\]" side-name)
+        (str/replace #"\[opponent\]" other-side-name)
+        (str/replace #"\[opponents\]" (str other-side-name "'s"))
         (str/replace #"\[oppo\]" other-side-pronoun)
         (str/replace #"\[runner-pronoun\]" runner-pronoun))))
 

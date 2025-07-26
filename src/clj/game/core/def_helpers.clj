@@ -8,8 +8,8 @@
     [game.core.eid :refer [effect-completed make-eid]]
     [game.core.engine :refer [queue-event register-events resolve-ability trigger-event-sync unregister-event-by-uuid]]
     [game.core.effects :refer [is-disabled-reg? sum-effects]]
-    [game.core.gaining :refer [gain-credits]]
-    [game.core.moving :refer [move trash]]
+    [game.core.gaining :refer [gain gain-credits lose-credits]]
+    [game.core.moving :refer [move trash mill mill-bottom]]
     [game.core.payment :refer [build-cost-string can-pay? ->c]]
     [game.core.play-instants :refer [async-rfg]]
     [game.core.prompts :refer [clear-wait-prompt]]
@@ -22,7 +22,7 @@
     [game.core.toasts :refer [toast]]
     [game.macros :refer [continue-ability effect msg req wait-for]]
     [game.utils :refer [enumerate-str remove-once same-card? server-card to-keyword  quantify]]
-    [jinteki.utils :refer [other-side]]))
+    [jinteki.utils :refer [other-side other-player-name]]))
 
 (defn combine-abilities
   "Combines two or more abilities to a single one. Labels are joined together with a period between parts."
@@ -263,6 +263,30 @@
                       ;; shouldn't be possible
                       :else (effect-completed state side eid))))}))
 
+(defn gain-n-credits
+  ([n] (gain-n-credits n nil))
+  ([n args]
+   (merge
+     {:label (str "Gain " n " [Credits]")
+      :async true
+      :msg (msg "gain " n " [Credits]")
+      :effect (req (gain-credits state side eid n))}
+     args)))
+
+(defn steal-n-credits
+  ([n] (steal-n-credits n nil))
+  ([n args]
+   (merge
+     {:label (str "Steal " n " [Credits]")
+      :req (req (pos? (get-in @state [opponent :credit])))
+      :msg (msg (let [c (min n (get-in @state [opponent :credit]))]
+                  (str "steal " n " [Credits] from " (other-player-name state side))))
+      :async true
+      :effect (req (let [c (min n (get-in @state [opponent :credit]))]
+                     (wait-for (lose-credits state opponent c {:suppress-checkpoint true})
+                               (gain-credits state side eid c))))}
+     args)))
+
 (defn collect
   "Makes a card which collects n shards and n cards"
   [{:keys [shards cards]} cdef]
@@ -303,6 +327,12 @@
                       card nil)
                     (effect-completed state side eid))))})
 
+(defn give-n-heat
+  [n args]
+  (merge
+    {:msg (msg "give " (other-player-name state side) " " n " [Heat]")
+     :effect (req (gain state (other-side side) :heat n))}
+    args))
 
 (defn with-revealed-hand
   "Resolves an ability while a player has their hand revealed (so you can click cards in their hand)
@@ -341,11 +371,48 @@
                                  (unregister-ev-callback)
                                  (effect-completed state side eid)))))})))
 
+(defn force-a-player-to-draw
+  [n]
+  {:label (str "Choose a player to draw " (quantify n "card"))
+   :prompt (str "Choose a player to draw " (quantify n "card"))
+   :waiting-prompt true
+   :choices {:req (req (or (same-card? target (get-in @state [:corp :identity]))
+                           (same-card? target (get-in @state [:runner :identity]))))}
+   :msg (msg (let [target-side (keyword (str/lower-case (:side target)))]
+               (str
+                 (when-not (= target-side side)
+                   (str "force " (other-player-name state side) " to "))
+                 (str "draw " (quantify n "card")))))
+   :async true
+   :effect (req (let [target-side (keyword (str/lower-case (:side target)))]
+                  (draw state target-side eid n)))})
+
+(defn cache [n cdef]
+  (assoc cdef :on-forge {:async true
+                         :silent (req true)
+                         :effect (req (add-counter state side eid card :credit n))}))
+
+(defn mill-ab
+  "Mill n cards from the top/bottom of the opponents network"
+  [amt direction ab]
+  (merge
+    {:async true
+     :msg (msg "archive the " (name direction) " " (quantify amt "card") " of [opponents] Network")
+     :effect (req ((case direction :top mill :bottom mill-bottom) state side eid opponent amt))}
+    ab))
+
 (defmacro defcard
-  [title ability]
+  "Define a card to be returned from card-def. The definition consists of the
+  title (a string), 0 or more transformers and a body (an expression, usually
+  a map). Each tranformer should be a symbol or a list, symbols are wrapped
+  in lists and then the last transformer has the body inserted at the end,
+  then the second last has the result inserted as its last item and so on."
+  {:arglists '([title ability] [title transformers* ability])}
+  [title body & more]
   `(do (swap! card-defs-cache dissoc ~title)
        (defmethod card-defs/defcard-impl ~title [~'_]
          (or (get @card-defs-cache ~title)
-             (let [ability# (add-default-abilities ~title ~ability)]
+             (let [ability# (->> ~@(reverse (cons body more))
+                                 (add-default-abilities ~title))]
                (swap! card-defs-cache assoc ~title ability#)
                ability#)))))

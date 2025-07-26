@@ -33,7 +33,7 @@
 
 (defn stage-a-card
   ([state side eid source-card card-to-stage] (stage-a-card state side eid source-card card-to-stage nil))
-  ([state side eid source-card card-to-stage {:keys [cost]}]
+  ([state side eid source-card card-to-stage {:keys [rushed cost] :as args}]
    (show-stage-prompt
      state side eid source-card
      (str "Stage " (:title card-to-stage) " where?")
@@ -49,14 +49,14 @@
                            :waiting-prompt true
                            :yes-ability {:async true
                                          :msg (msg (if (rezzed? old-card) (str "Exile " (:title old-card)) (str "Archive " (card-str state old-card)))
-                                                   " and stage " (card-str state card-to-stage) " in it's place")
+                                                   " and stage " (if rushed (:title card-to-stage) (card-str state card-to-stage)) " in it's place")
                                          :cost cost
                                          :effect (req (wait-for
                                                         (archive-or-exile state side old-card {:unpreventable true :suppress-checkpoint true})
-                                                        (stage state side eid card-to-stage server slot)))}}}
-                         {:msg (msg "stage " (card-str state card-to-stage) " in the " (name slot) " of [their] " (str/capitalize (name server)) " path")
+                                                        (stage state side eid card-to-stage server slot (dissoc args :cost))))}}}
+                         {:msg (msg "stage " (if rushed (:title card-to-stage) (card-str state card-to-stage)) " in the " (name slot) " row of [their] " (str/capitalize (name server)) " path")
                           :async true
                           :cost cost
-                          :effect (req (stage state side eid card-to-stage server slot))})
+                          :effect (req (stage state side eid card-to-stage server slot (dissoc args :cost)))})
                        source-card nil)))}
      {:waiting-prompt true})))

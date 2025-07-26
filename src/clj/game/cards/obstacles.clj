@@ -4,21 +4,31 @@
    [game.core.barrier :refer [update-card-barrier]]
    [game.core.board :refer [hubworld-all-installed]]
    [game.core.card :refer [in-front-row? in-middle-row?
-                           agent? seeker? obstacle?
+                           agent? seeker? obstacle? moment?
                            rezzed? installed?]]
-   [game.core.def-helpers :refer [collect]]
    [game.core.choose-one :refer [choose-one-helper cost-option]]
+   [game.core.def-helpers :refer [cache collect gain-n-credits defcard]]
+   [game.core.delving :refer [end-the-delve delve-approach reset-delve-continue!]]
    [game.core.drawing :refer [draw]]
-   [game.core.def-helpers :refer [defcard]]
+   [game.core.eid :refer [effect-completed make-eid]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.gaining :refer [gain-credits lose-credits]]
    [game.core.heat :refer [gain-heat lose-heat]]
    [game.core.moving :refer [archive trash-cards]]
    [game.core.payment :refer [->c can-pay?]]
+   [game.core.rezzing :refer [rez can-pay-to-rez?]]
    [game.core.shifting :refer [shift-a-card]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer [same-card? to-keyword]]
    [jinteki.utils :refer [adjacent? other-side other-player-name count-heat]]))
+
+(defn gain-credits-on-encounter
+  [n]
+  {:label (str "Gain " n " [Credits]")
+   :optional {:prompt (str "Gain " n " [Credits]?")
+              :waiting-prompt true
+              :yes-ability  (gain-n-credits n)}})
+
 
 (defcard "Asset Protection Hub"
   {:refund 1
@@ -79,6 +89,11 @@
                          :effect (req
                                    (shift-a-card state side eid card target {:other-side? (not (my-card? target)) :no-wait-prompt? true}))}]})
 
+(defcard "Echofield Lockup"
+  {:discover-abilities [(assoc-in (gain-credits-on-encounter 3) [:optional :req]
+                                  (req (>= (count (get-in @state [side :discard])) 3)))]
+   :presence-bonus (req (if (>= (count (get-in @state [side :discard])) 3) 3 0))})
+
 (defcard "Emperor Drejj"
   {:reaction [{:reaction :forge
                :type :ability
@@ -137,6 +152,53 @@
                                          :duration :end-of-delve})
                                       (update-card-barrier state side card))}}]})
 
+(defcard "Hired Lookout"
+  {:refund 1
+   :confront-abilities [{:optional
+                         {:prompt "Make your opponent exhaust a card or end the delve?"
+                          :yes-ability {:async true
+                                        :effect (req (continue-ability
+                                                       state side
+                                                       (choose-one-helper
+                                                         {:player opponent}
+                                                         [(cost-option [(->c :exhaust-back-row 1)] opponent)
+                                                          {:option "The delve ends"
+                                                           :ability {:display-side side
+                                                                     :effect (req (end-the-delve state opponent nil))}}])
+                                                       card nil))}}}]})
+
+(defcard "Narrow Catwalk"
+  (let [maybe-archive-moment
+        {:optional
+         {:prompt "Look at the top card of your opponent's Commons?"
+          :label "Look at the top card"
+          :req (req (seq (get-in @state [opponent :deck])))
+          :yes-ability {:async true
+                        :prompt (msg "The top card is: " (get-in @state [opponent :deck 0 :title]))
+                        :choices (req [(if (moment? (get-in @state [opponent :deck 0]))
+                                        "Archive It"
+                                        "Noted")])
+                        :msg (msg (if (= target "Noted")
+                                    "look at the top card of [opponents] Commons"
+                                    (str "archive " (:title (get-in @state [opponent :deck 0])) " from the top of [opponents] Commons")))
+                        :effect (req (if (= target "Noted")
+                                       (effect-completed state side eid)
+                                       (archive state side eid (first (get-in @state [opponent :deck])))))}}}]
+    {:discover-abilities [maybe-archive-moment]
+     :confront-abilities [maybe-archive-moment]}))
+
+(defcard "Priority Expressway"
+  (cache 2)
+  {:confront-abilities [{:optional
+                         {:label "Gain 2 [Credits]"
+                          :prompt "Gain 2 [Credits]?"
+                          :req (req (can-pay? state side eid card nil [(->c :cached 1)]))
+                          :yes-ability (gain-n-credits 2 {:cost [(->c :cached 1)]})}}]})
+
+(defcard "Prized Gulk"
+  {:confront-abilities [(gain-credits-on-encounter 1)]
+   :discover-abilities [(gain-credits-on-encounter 1)]})
+
 (defcard "Probabilities Exchange"
   {:confront-abilities [{:label "Opponent shuffles a card from grid into Commons"
                          :optional
@@ -151,6 +213,35 @@
                                                         :msg :cost}
                                                        card nil))}}}]
    :cipher [(->c :exhaust-front-row 1)]})
+
+(defcard "Pushy Salesperson"
+  {:confront-abilities [{:optional
+                         {:prompt "Make your opponent exhaust a card or end the delve?"
+                          :yes-ability {:async true
+                                        :effect (req (continue-ability
+                                                       state side
+                                                       (choose-one-helper
+                                                         {:player opponent}
+                                                         [(cost-option [(->c :exhaust-commons 1)] opponent)
+                                                          {:option "The delve ends"
+                                                           :ability {:display-side side
+                                                                     :effect (req (end-the-delve state opponent nil))}}])
+                                                       card nil))}}}]
+   :discover-abilities [{:optional
+                         {:prompt "Forge Pushy Salesperson, paying 4 [Credits] less?"
+                          :req (req (and (installed? card)
+                                         (not (rezzed? card))
+                                         (can-pay-to-rez? state side eid card {:cost-bonus -4})))
+                          :yes-ability {:async true
+                                        :effect (req (wait-for
+                                                       (rez state side card {:cost-bonus -4})
+                                                       (if-let [forged-card (:card async-result)]
+                                                         (do (swap! state dissoc :current-discovery)
+                                                             (reset-delve-continue! state side)
+                                                             (reset-delve-continue! state opponent)
+                                                             (swap! state assoc-in [:delve :discover-aborted] true)
+                                                             (delve-approach state opponent eid))
+                                                         (effect-completed state side eid))))}}}]})
 
 (defcard "Salvage Rats"
   {:rush true
@@ -172,6 +263,9 @@
                                               (->> (get-in @state [(other-side side) :deck])
                                                    reverse
                                                    (take 4))))}}}]})
+
+(defcard "Street Parade"
+  {:rush true})
 
 (defcard "Transit Station"
   {:barrier-bonus  (req (if (in-middle-row? card) 2 0))

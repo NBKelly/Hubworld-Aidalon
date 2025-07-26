@@ -348,10 +348,8 @@
 
 (expose-vars
   [game.core.hand-size
-   corp-hand-size+
    hand-size
    hand-size+
-   runner-hand-size+
    sum-hand-size-effects
    update-hand-size])
 

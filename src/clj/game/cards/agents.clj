@@ -2,11 +2,12 @@
   (:require
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-installed]]
-   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker? in-front-row? moment?]]
-   [game.core.def-helpers :refer [collect]]
+   [game.core.card :refer [in-hand? in-rfg? installed? agent? source? obstacle? rezzed? seeker? in-front-row? moment? get-card]]
+   [game.core.def-helpers :refer [collect gain-n-credits]]
    [game.core.delving :refer [delve-approach]]
    [game.core.drawing :refer [draw]]
-   [game.core.def-helpers :refer [defcard stage-n-cards shift-self-abi]]
+   [game.core.def-helpers :refer [defcard mill-ab stage-n-cards shift-self-abi]]
+   [game.core.engine :refer [resolve-ability]]
    [game.core.effects :refer [register-lingering-effect]]
    [game.core.eid :refer [effect-completed]]
    [game.core.exhausting :refer [unexhaust exhaust]]
@@ -16,11 +17,13 @@
    [game.core.payment :refer [->c can-pay?]]
    [game.core.presence :refer [update-card-presence]]
    [game.core.prompts :refer [show-shift-prompt]]
+   [game.core.revealing :refer [reveal-loud]]
    [game.core.rezzing :refer [derez]]
    [game.core.shifting :refer [shift-a-card]]
+   [game.core.shuffling :refer [shuffle!]]
    [game.core.staging :refer [stage-a-card]]
    [game.core.to-string :refer [hubworld-card-str]]
-   [game.utils :refer [same-card? to-keyword on-same-side?]]
+   [game.utils :refer [enumerate-str same-card? to-keyword on-same-side?]]
    [game.macros :refer [effect msg req wait-for continue-ability]]
    [jinteki.utils :refer [adjacent-zones other-player-name]]))
 
@@ -165,6 +168,42 @@
                   :async true
                   :effect (req (gain-credits state side eid 3))}]}))
 
+(defcard "Dralber the Fence: No Questions Asked"
+  (collect {:shards 1})
+  {:reaction [{:reaction :instant-resolved
+               :prompt "Gain 2 [Credits]?"
+               :req (req (= side (:player context)))
+               :ability (gain-n-credits 2 {:cost [(->c :exhaust-self)]})}]
+   :discover-abilities [{:label "Shuffle a moment from your Scrap into your Commons"
+                         :show-exile true
+                         :req (req (some moment? (get-in @state [side :rfg])))
+                         :choices {:req (req (and (my-card? target)
+                                                  (moment? target)
+                                                  (in-rfg? target)))}
+                         :msg (msg "shuffle " (:title target) " from [their] Scrap into [their] Commons")
+                         :effect (req (move state side target :deck)
+                                      (shuffle! state side :deck))}]})
+
+(defcard "Frost: Pax Lictor"
+  (collect {:cards 1})
+  {:abilities [{:action true
+                :cost [(->c :click 1)(->c :exhaust-self)]
+                :label "Mill two of your opponent's cards"
+                :async true
+                :msg "archive the top 2 cards of [opponents] Commons"
+                :effect (req (mill state side eid opponent 2))}
+               {:action true
+                :cost [(->c :click 1)(->c :exhaust-self)]
+                :label "Mill two of your own cards"
+                :async true
+                :msg "archive the top 2 cards of [their] Commons"
+                :effect (req (mill state side eid side 2))}]
+   :discover-abilities [{:optional
+                         {:label "Archive the top card of your opponent's Commons"
+                          :prompt "Archive the top card of your opponent's Commons?"
+                          :yes-ability (mill-ab 1 :top nil)}}]})
+
+
 (defcard "Gargala Larga: Imperator of Growth"
   (collect
     {:shards 1}
@@ -232,6 +271,41 @@
                                                     (my-card? target)))}
                            :async true
                            :effect (req (stage-a-card state side eid card target {:cost [(->c :exhaust-self)]}))}}]}))
+
+(defcard "Nosmara: Undercover Agent"
+  (collect {:shards 1})
+  {:discover-abilities [{:label "Look at the top 2 cards of your opponent's Commons"
+                         :optional
+                         {:prompt "Look at the top 2 cards of your opponent's Commons?"
+                          :req (req (seq (get-in @state [opponent :deck])))
+                          :waiting-prompt true
+                          :yes-ability {:prompt (msg "The top of your oppoonent's Commons is (first card on top): " (enumerate-str (map :title (take 2 (get-in @state [opponent :deck])))))
+                                        :choices ["Noted"]
+                                        :waiting-prompt true}}}]
+   :abilities [{:label "Redirect delve to an adjacent slot"
+                :prompt "Choose an adjacent slot"
+                :async true
+                :fake-cost [(->c :exhaust-self)]
+                :req (req (and (:delve @state)
+                               (->> @state :delve :defender (= side))
+                               (can-pay? state side eid card nil [(->c :exhaust-self)])))
+                :effect (req
+                          (let [{:keys [server position]} (:delve @state)]
+                            (show-shift-prompt
+                              state side eid card (adjacent-zones server position)
+                              (str "Redirect the delve where?")
+                              {:cost [(->c :exhaust-self)]
+                               :msg (msg (let [server (:server context)
+                                               slot (:slot context)]
+                                           (str "redirect the delve to the " (name slot) " position of " (str/capitalize (name server)) " (The delve is now in the Approach step)")))
+                               :async true
+                               :effect (req (let [server (:server context)
+                                                  slot (:slot context)]
+                                              (swap! state assoc-in [:delve :server] server)
+                                              (swap! state assoc-in [:delve :position] slot)
+                                              (delve-approach state side eid)))}
+                              {:waiting-prompt true
+                               :other-side? true})))}]})
 
 (defcard "Prime Treasurer Geel: Munificent Financier"
   (collect
@@ -365,3 +439,37 @@
                                            (not (seeker? target))))}
                   :msg (msg "swap " (hubworld-card-str state (first targets)) " and " (hubworld-card-str state (second targets)))
                   :effect (req (swap-installed state side (first targets) (second targets)))}]}))
+
+(defcard "Vulu-Malu: Two Minds in One"
+  (collect {:cards 1})
+  {:reaction [{:reaction :post-discover-ability
+               :prompt (msg "Repeat '" (:label (:ability context)) "'")
+               :type :ability
+               :req (req (and (= side (:defender context))
+                              (:ability context)
+                              (get-card state (:discovered-card context))
+                              (let [r (or (-> context :ability :req)
+                                          (-> context :ability :optional :req))]
+                                (or (not r)
+                                    (r state side eid card targets)))))
+               :ability {:async true
+                         :cost [(->c :exhaust-self)]
+                         :msg (msg "resolve '" (:label (:ability context)) "' again")
+                         :effect (req (resolve-ability state side eid
+                                                       (or (-> context :ability :optional :yes-ability)
+                                                           (-> context :ability))
+                                                       (:discovered-card context) nil))}}]
+   :discover-abilities [{:optional
+                         {:prompt "Tutor a card?"
+                          :label "Tutor a card"
+                          :waiting-prompt true
+                          :req (req (seq (get-in @state [side :deck])))
+                          :yes-ability {:prompt "Choose a card"
+                                        :choices (req (sort-by :title
+                                                               (get-in @state [side :deck])))
+                                        :async true
+                                        :effect (req (wait-for
+                                                       (reveal-loud state side card {:and-then ", add it to [their] Council, and shuffle [their] Commons"} target)
+                                                       (move state side target :hand)
+                                                       (shuffle! state side :deck)
+                                                       (effect-completed state side eid)))}}}]})

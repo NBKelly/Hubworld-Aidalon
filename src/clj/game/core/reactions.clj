@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [game.core.board :refer [hubworld-all-active]]
    [game.core.bluffs :refer [bluffs]]
-   [game.core.card :refer [get-card installed? rezzed? seeker? same-card? in-hand?]]
+   [game.core.card :refer [get-card installed? rezzed? seeker? same-card? in-hand? moment?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.choose-one :refer [choose-one-helper]]
    [game.core.cost-fns :refer [card-ability-cost play-cost]]
@@ -55,6 +55,8 @@
 ;;
 ;;  Note: The `:req` fn of the given :ability is used for computing if the button should
 ;;        show up, as well as wether or not you can pay the cost.
+
+(declare instant-resolved-reaction)
 
 (defn- tweak-ab-cost
   [state side eid card ab]
@@ -134,7 +136,11 @@
   (let [abi {:async true
              :effect (req (swap! state assoc-in [:reaction key :priority-passes] 0)
                           (swap! state update-in [:reaction key :uses (->> reaction :card :cid)] (fnil inc 0))
-                          (resolve-ability state side eid (:ability reaction) card [(get-in @state [:reaction key])]))}]
+                          (wait-for
+                            (resolve-ability state side (:ability reaction) card [(get-in @state [:reaction key])])
+                            (if (moment? (:card reaction))
+                              (instant-resolved-reaction state side eid {:card (:card reaction) :player side})
+                              (effect-completed state side eid))))}]
     (resolve-ability
       state side (assoc eid :source (:card reaction) :source-type :ability)
       (if (:prompt reaction)
@@ -193,6 +199,17 @@
                 (resolve-reaction-effects-with-priority state (other-side side) eid key reaction-fn args)))))
 
 ;; ====== REACTION TYPES ======
+
+;; PLAYING CARDS
+
+(defn instant-resolved-reaction
+  [state side eid {:keys [card player] :as args}]
+  (push-reaction! state :instant-resolved args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :instant-resolved resolve-reaction-for-side
+    {:prompt {player              #(str "You resolved " (-> % :card :title:title))
+              (other-side player) #(str "Your opponent resolved " (-> % :card :title:title))}
+     :waiting "your opponent to resolve moment-resolved reactions"}))
 
 ;; FORGING CARDS
 
@@ -253,6 +270,15 @@
     {:prompt {engaged-side              #(str "You are confronting " (:title (:card %)))
               (other-side engaged-side) #(str "Your opponent is confronting " (:title (:card %)))}
      :waiting "your opponent to resolve pre-confrontation reactions"}))
+
+(defn post-confrontation-reaction
+  [state side eid {:keys [delver card] :as args}]
+  (push-reaction! state :post-confrontation args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :post-confrontation resolve-reaction-for-side
+    {:prompt {delver              #(str "You finished confronting " (if card (:title (:card %)) "a card"))
+              (other-side delver) #(str "Your opponent finished confronting " (if card (:title (:card %)) "a card"))}
+     :waiting "your opponent to resolve post-confrontation reactions"}))
 
 (defn pre-confrontation-ability-reaction
   [state side eid {:keys [defender card] :as args}]
@@ -321,6 +347,15 @@
     {:prompt {:corp   (fn [_] "Cards were archived")
               :runner (fn [_] "Cards were archived")}
      :waiting "your opponent to resolve cards-archived reactions"}))
+
+(defn cards-shifted-reaction
+  [state side eid args]
+  (push-reaction! state :cards-shifted args)
+  (resolve-reaction-effects-with-priority
+    state nil eid :cards-shifted resolve-reaction-for-side
+    {:prompt {:corp   (fn [_] "Cards were shifted")
+              :runner (fn [_] "Cards were shifted")}
+     :waiting "your opponent to resolve cards-shifted reactions"}))
 
 ;; REFRESH PHASE / TURN
 

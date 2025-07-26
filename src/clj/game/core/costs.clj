@@ -7,7 +7,7 @@
                            rezzed? in-discard? installed?
                            seeker? agent?
                            in-front-row? in-back-row?
-                           in-archives-path? in-council-path?]]
+                           in-archives-path? in-council-path? in-commons-path?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.eid :refer [complete-with-result make-eid]]
    [game.core.engine :refer [checkpoint queue-event resolve-ability]]
@@ -16,9 +16,10 @@
    [game.core.flags :refer [is-scored?]]
    [game.core.gaining :refer [deduct lose]]
    [game.core.heat :refer [gain-heat lose-heat]]
-   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill move trash trash-cards exile exile-cards swap-installed]]
+   [game.core.moving :refer [discard-from-hand flip-facedown forfeit mill mill-bottom move trash trash-cards exile exile-cards swap-installed]]
    [game.core.payment :refer [handler label payable? value stealth-value]]
    [game.core.pick-counters :refer [pick-credit-providing-cards pick-credit-reducers]]
+   [game.core.presence :refer [get-presence]]
    [game.core.props :refer [add-counter add-prop]]
    [game.core.revealing :refer [reveal reveal-and-queue-event]]
    [game.core.rezzing :refer [derez]]
@@ -238,8 +239,8 @@
   (wait-for (trash state side card {:cause :ability-cost
                                     :unpreventable true
                                     :suppress-checkpoint true})
-            (complete-with-result state side eid {:paid/msg (str "trashes " (:printed-title card))
-                                                  :paid/type :trash-can
+            (complete-with-result state side eid {:paid/msg (str "archives " (:printed-title card))
+                                                  :paid/type :archive
                                                   :paid/value 1
                                                   :paid/targets [card]})))
 
@@ -345,44 +346,14 @@
                              (corp? %)))}
      :async true
      :effect (req (wait-for (trash-cards state side targets {:cause :ability-cost
+                                                             :suppress-reaction true
                                                              :suppress-checkpoint true
                                                              :unpreventable true})
                             (complete-with-result
                               state side eid
                               {:paid/msg (str "trashes " (quantify (count async-result) "installed card")
                                              " (" (enumerate-str (map #(card-str state %) targets)) ")")
-                               :paid/type :trash-other-installed
-                               :paid/value (count async-result)
-                               :paid/targets targets})))}
-    card nil))
-
-;; TrashInstalledCard - this may target the source card (itself)
-(defmethod value :trash-installed [cost] (:cost/amount cost))
-(defmethod label :trash-installed [cost]
-  (str "trash " (quantify (value cost) "installed card")))
-(defmethod payable? :trash-installed
-  [cost state side eid card]
-  (<= 0 (- (count (all-installed state side)) (value cost))))
-(defmethod handler :trash-installed
-  [cost state side eid card]
-  (continue-ability
-    state side
-    {:prompt (str "Choose " (quantify (value cost) "installed card") " to trash")
-     :choices {:all true
-               :max (value cost)
-               :card #(and (installed? %)
-                           (if (= side :runner)
-                             (runner? %)
-                             (corp? %)))}
-     :async true
-     :effect (req (wait-for (trash-cards state side targets {:cause :ability-cost
-                                                             :suppress-checkpoint true
-                                                             :unpreventable true})
-                            (complete-with-result
-                              state side eid
-                              {:paid/msg (str "trashes " (quantify (count async-result) "installed card")
-                                             " (" (enumerate-str (map #(card-str state %) targets)) ")")
-                               :paid/type :trash-installed
+                               :paid/type :archive
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
@@ -414,7 +385,8 @@
 (defmethod handler :trash-entire-hand
   [cost state side eid card]
   (let [cards (get-in @state [side :hand])]
-    (wait-for (trash-cards state side cards {:unpreventable true :suppress-checkpoint true :cause :ability-cost})
+    (wait-for (trash-cards state side cards {:unpreventable true
+                                             :suppress-checkpoint true :cause :ability-cost})
               (complete-with-result
                 state side eid
                 {:paid/msg (str "trashes all (" (count async-result) ") cards in "
@@ -461,7 +433,7 @@
   [cost state side eid card]
   (wait-for (exhaust state side card {:unpreventable true :suppress-checkpoint true :no-msg true})
             (complete-with-result state side eid {:paid/msg (str "exhausts " (:title card))
-                                                  :paid/type :exhaust-self
+                                                  :paid/type :exhaust
                                                   :paid/value 1
                                                   :paid/targets [card]})))
 
@@ -476,7 +448,7 @@
   (wait-for (exhaust state side (get-in @state [side :identity])
                      {:unpreventable true :suppress-checkpoint true :no-msg true})
             (complete-with-result state side eid {:paid/msg (str "exhausts " (get-in @state [side :identity :title]))
-                                                  :paid/type :exhaust-seeker
+                                                  :paid/type :exhaust
                                                   :paid/value 1
                                                   :paid/targets [(get-in @state [side :identity])]})))
 
@@ -542,7 +514,41 @@
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " forged card")
                                               " (" (enumerate-str (map :title targets)) ")")
-                               :paid/type :exhaust-forged
+                               :paid/type :exhaust
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+;; exhaust any number of UNFORGED cards - this may target the source card (itself)
+(defmethod value :exhaust-unforged [cost] (:cost/amount cost))
+(defmethod label :exhaust-unforged [cost] (str "exhaust " (quantify (value cost) "unforged card")))
+(defmethod payable? :exhaust-unforged
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) (complement rezzed?))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-unforged
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "unforged card") " to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (not (rezzed? %))
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " unforged card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
@@ -578,7 +584,7 @@
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " forged card")
                                               " (" (enumerate-str (map :title targets)) ")")
-                               :paid/type :exhaust-forged-with-4-barrier
+                               :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
@@ -611,7 +617,74 @@
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " card")
                                               " (" (enumerate-str (map :title targets)) ")")
-                               :paid/type :exhaust-council
+                               :paid/type :exhaust
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :exhaust-other-council [cost] (:cost/amount cost))
+(defmethod label :exhaust-other-council [cost] (str "exhaust " (quantify (value cost) "other card") " protecting your Council"))
+(defmethod payable? :exhaust-other-council
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) in-council-path? #(not (same-card? card %)))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-other-council
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your Council path to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (in-council-path? %)
+                           (not (same-card? card %))
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :exhaust-commons [cost] (:cost/amount cost))
+(defmethod label :exhaust-commons [cost] (str "exhaust " (quantify (value cost) "card") " protecting your Commons"))
+(defmethod payable? :exhaust-commons
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) in-commons-path?)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-commons
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your Commons path to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (in-commons-path? %)
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
@@ -645,7 +718,7 @@
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " card")
                                               " (" (enumerate-str (map :title targets)) ")")
-                               :paid/type :exhaust-archives
+                               :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
@@ -679,7 +752,40 @@
                               state side eid
                               {:paid/msg (str "exhausts " (quantify (count async-result) " card")
                                               " (" (enumerate-str (map :title targets)) ")")
-                               :paid/type :exhaust-front-row
+                               :paid/type :exhaust
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :exhaust-back-row [cost] (:cost/amount cost))
+(defmethod label :exhaust-back-row [cost] (str "exhaust " (quantify (value cost) "card") " protecting your back row"))
+(defmethod payable? :exhaust-back-row
+  [cost state side eid card]
+  (<= 0 (- (count (filter (every-pred (complement :exhausted) in-back-row?)
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-back-row
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your back row to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (in-back-row? %)
+                           (not= "Seeker" (:type %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust
                                :paid/value (count async-result)
                                :paid/targets targets})))}
     card nil))
@@ -697,7 +803,7 @@
                                     :unpreventable true
                                     :suppress-checkpoint true})
             (complete-with-result state side eid {:paid/msg (str "exiles " (:printed-title card))
-                                                  :paid/type :exile-reaction
+                                                  :paid/type :exile
                                                   :paid/value 1
                                                   :paid/targets [card]})))
 
@@ -727,7 +833,7 @@
                               {:paid/msg (str "exiles " (quantify (value cost) "card")
                                               " from [their] archives ("
                                               (enumerate-str (map :title targets)) ")")
-                               :paid/type :exile-from-archives
+                               :paid/type :exile
                                :paid/value (value cost)
                                :paid/targets targets})))}
     card nil))
@@ -755,7 +861,7 @@
                                           {:paid/msg (str "exiles " (quantify (count to-exile) "card")
                                                           " from [their] council with total shard cost of "
                                                           exile-value " [Credits] (" (enumerate-str (map :title to-exile)) ")")
-                                           :paid/type :exile-total-shard-cost-from-council
+                                           :paid/type :exile
                                            :paid/value (value cost)
                                            :paid/targets to-exile}))
                               (continue-ability state side (choose-more
@@ -806,7 +912,24 @@
               state side eid
               {:paid/msg (str "archives " (quantify (count async-result) "card")
                               " from the top of [their] Commons")
-               :paid/type :archive-from-deck
+               :paid/type :archive
+               :paid/value (count async-result)
+               :paid/targets async-result})))
+
+(defmethod value :archive-from-under-deck [cost] (:cost/amount cost))
+(defmethod label :archive-from-under-deck [cost]
+  (str "archive " (quantify (value cost) "card") " from the bottom of your Commons"))
+(defmethod payable? :archive-from-under-deck
+  [cost state side eid card]
+  (<= 0 (- (count (get-in @state [side :deck])) (value cost))))
+(defmethod handler :archive-from-under-deck
+  [cost state side eid card]
+  (wait-for (mill-bottom state side side (value cost) {:suppress-checkpoint true})
+            (complete-with-result
+              state side eid
+              {:paid/msg (str "archives " (quantify (count async-result) "card")
+                              " from the bottom of [their] Commons")
+               :paid/type :archive
                :paid/value (count async-result)
                :paid/targets async-result})))
 
@@ -828,7 +951,11 @@
                  :max (value cost)
                  :card select-fn}
        :async true
-       :effect (req (wait-for (trash-cards state side targets {:unpreventable true :seen false :cause :ability-cost :suppress-checkpoint true})
+       :effect (req (wait-for (trash-cards state side targets {:unpreventable true
+                                                               :seen false
+                                                               :cause :ability-cost
+                                                               :suppress-reaction true
+                                                               :suppress-checkpoint true})
                               (complete-with-result
                                 state side eid
                                 {:paid/msg (str "archives " (quantify (count async-result) "card")
@@ -836,7 +963,7 @@
                                                           (pos? (count async-result)))
                                                  (str " (" (enumerate-str (map #(card-str state %) targets)) ")"))
                                                " from " hand)
-                                 :paid/type :trash-from-hand
+                                 :paid/type :archive
                                  :paid/value (count async-result)
                                  :paid/targets async-result})))}
       nil nil)))
@@ -961,3 +1088,186 @@
                      :paid/value (count targets)
                      :paid/targets targets}))}
     nil nil))
+
+;; TrashInstalledCard - this may target the source card (itself)
+(defmethod value :archive-unforged [cost] (:cost/amount cost))
+(defmethod label :archive-unforged [cost]
+  (str "archive " (quantify (value cost) "unforged card")))
+(defmethod payable? :archive-unforged
+  [cost state side eid card]
+  (<= 0 (- (count (filter #(and (not (seeker? %))
+                                (not (rezzed? %)))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :archive-unforged
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "unforged card") " to archive")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (installed? target)
+                              (not (rezzed? target))
+                              (not (seeker? target))
+                              (my-card? target)))}
+     :async true
+     :effect (req (wait-for (trash-cards state side targets {:cause :ability-cost
+                                                             :suppress-reaction true
+                                                             :suppress-checkpoint true
+                                                             :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "archives " (quantify (count async-result) "unforged card")
+                                             " (" (enumerate-str (map #(card-str state %) targets)) ")")
+                               :paid/type :archive
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :archive-forged [cost] (:cost/amount cost))
+(defmethod label :archive-forged [cost]
+  (str "archive " (quantify (value cost) "forged card")))
+(defmethod payable? :archive-forged
+  [cost state side eid card]
+  (<= 0 (- (count (filter #(and (not (seeker? %))
+                                (rezzed? %))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :archive-forged
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "forged card") " to archive")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (installed? target)
+                              (rezzed? target)
+                              (not (seeker? target))
+                              (my-card? target)))}
+     :async true
+     :effect (req (wait-for (trash-cards state side targets {:cause :ability-cost
+                                                             :suppress-reaction true
+                                                             :suppress-checkpoint true
+                                                             :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "archives " (quantify (count async-result) "forged card")
+                                             " (" (enumerate-str (map #(card-str state %) targets)) ")")
+                               :paid/type :archive
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :exhaust-forged-with-4-presence [cost] (:cost/amount cost))
+(defmethod label :exhaust-forged-with-4-presence [cost] (str "exhaust " (quantify (value cost) "forged card") " with 4 or more [presence]"))
+(defmethod payable? :exhaust-forged-with-4-presence
+  [cost state side eid card]
+  (<= 0 (- (count (filter #(and (rezzed? %)
+                                (not (:exhausted %))
+                                (not (seeker? %))
+                                (<= 4 (get-presence %)))
+                          (hubworld-all-installed state side)))
+           (value cost))))
+(defmethod handler :exhaust-forged-with-4-presence
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "forged card") " with 4 or more [presence] to exhaust")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (rezzed? %)
+                           (not= "Seeker" (:type %))
+                           (<= 4 (get-presence %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (exhaust state side targets {:suppress-checkpoint true
+                                                         :no-msg true
+                                                         :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "exhausts " (quantify (count async-result) " forged card")
+                                              " (" (enumerate-str (map :title targets)) ")")
+                               :paid/type :exhaust
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+;; TrashInstalledCard - this may target the source card (itself)
+(defmethod value :archive-installed [cost] (:cost/amount cost))
+(defmethod label :archive-installed [cost]
+  (str "archive " (quantify (value cost) "installed card")))
+(defmethod payable? :archive-installed
+  [cost state side eid card]
+  (<= 1 (- (count (hubworld-all-installed state side)) (value cost))))
+(defmethod handler :archive-installed
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Choose " (quantify (value cost) "installed card") " to archive")
+     :choices {:all true
+               :max (value cost)
+               :card #(and (installed? %)
+                           (not (seeker? %))
+                           (if (= side :runner)
+                             (runner? %)
+                             (corp? %)))}
+     :async true
+     :effect (req (wait-for (trash-cards state side targets {:cause :ability-cost
+                                                             :suppress-reaction true
+                                                             :suppress-checkpoint true
+                                                             :unpreventable true})
+                            (complete-with-result
+                              state side eid
+                              {:paid/msg (str "archives " (quantify (count async-result) "installed card")
+                                             " (" (enumerate-str (map #(card-str state %) targets)) ")")
+                               :paid/type :archive
+                               :paid/value (count async-result)
+                               :paid/targets targets})))}
+    card nil))
+
+(defmethod value :uninstall-installed [cost] (:cost/amount cost))
+(defmethod label :uninstall-installed [cost]
+  (str "add " (quantify (value cost) "card") " from your grid into your Council"))
+(defmethod payable? :uninstall-installed
+  [cost state side eid card]
+  (<= 0 (- (count (filter (complement seeker?) (hubworld-all-installed state side))) (value cost))))
+(defmethod handler :uninstall-installed
+  [cost state side eid card]
+  (continue-ability
+    state side
+    {:prompt (str "Add " (quantify (value cost) "card") " from your grid into your Council")
+     :choices {:all true
+               :max (value cost)
+               :req (req (and (my-card? target)
+                              (installed? target)
+                              (not (seeker? target))))}
+     :async true
+     :effect (req (doseq [t targets]
+                    (move state side t :hand))
+                  (complete-with-result
+                    state side eid
+                    {:paid/msg (str "adds " (enumerate-str (map #(hubworld-card-str state %) targets)) " into their Council")
+                     :paid/type :uninstall-installed
+                     :paid/value (count targets)
+                     :paid/targets targets}))}
+    nil nil))
+
+;; AgendaCounter
+(defmethod value :cached [cost] (:cost/amount cost))
+(defmethod label :cached [cost]
+  (str (value cost) "cached [Credits]"))
+(defmethod payable? :cached
+  [cost state side eid card]
+  (<= 0 (- (get-counters card :credit) (value cost))))
+(defmethod handler :cached
+  [cost state side eid card]
+  (wait-for (add-counter state side card :credit (- (value cost)) {:suppress-checkpoint true})
+            ;;(queue-event state :agenda-counter-spent {:value (value cost)})
+            (complete-with-result
+              state side eid
+              {:paid/msg (str "removes " (value cost) " [Credits] from on " (:title card))
+               :paid/type :cached
+               :paid/value (value cost)})))
