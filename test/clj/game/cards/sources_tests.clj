@@ -203,6 +203,16 @@
     (click-prompts state :corp "Shardwinner" "Capricious Informant")
     (is (not (:delve @state)) "Delve over")))
 
+(deftest hoarders-array-test
+  (collects? {:name "Hoarder’s Array"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:deck [(qty "Hoarder’s Array" 10)]}})
+    (play-from-hand state :corp "Hoarder’s Array" :archives :inner)
+    (forge state :corp (pick-card state :corp :archives :inner))
+    (is (= 6 (hand-size :corp)) "6 hand size for corp")
+    (is (= 5 (hand-size :runner)) "5 hand size for runner")))
+
 (deftest job-board-test
   (collects? {:name "Job Board"
               :cards 1})
@@ -253,6 +263,19 @@
     (click-prompt state :corp "Pax Observatory")
     (is (= 4 (:click (get-corp))) "Gained a click")
     (is (no-prompt? state :corp) "No lingering prompt")))
+
+(deftest private-exo-bridge
+  (collects? {:name "Private Exo-Bridge"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand ["Shardwinner" "Private Exo-Bridge"]}})
+    (play-from-hand state :corp "Private Exo-Bridge" :council :outer)
+    (click-credit state :runner)
+    (forge state :corp (pick-card state :corp :council :outer))
+    (is (changed? [(:credit (get-corp)) 3]
+          (card-ability state :corp (pick-card state :corp :council :outer) 1)
+          (click-card state :corp "Shardwinner"))
+        "Gained 3")))
 
 (deftest silkline-shuttle
   (collects? {:name "Silkline Shuttle"
