@@ -7,10 +7,12 @@
    [game.core.card :refer [get-card
                            source? seeker? obstacle? moment?
                            in-hand? in-deck? rezzed? installed?]]
+   [game.core.choose-one :refer [choose-one-helper cost-option]]
    [game.core.def-helpers :refer [defcard stage-n-cards]]
+   [game.core.delving :refer [delve-bypass]]
    [game.core.drawing :refer [draw]]
    [game.core.eid :refer [effect-completed]]
-   [game.core.effects :refer [register-lingering-effect]]
+   [game.core.effects :refer [any-effects register-lingering-effect]]
    [game.core.engine :refer [resolve-ability]]
    [game.core.gaining :refer [gain-credits lose gain]]
    [game.core.moving :refer [mill archive]]

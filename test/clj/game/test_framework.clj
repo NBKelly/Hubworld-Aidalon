@@ -882,10 +882,11 @@
   (bad-usage "changed?"))
 
 (defn presence?-impl
-  [{:keys [name server slot presence-value prompts forged? opponent-heat player-heat]
-    :or {server :council slot :inner forged? true opponent-heat 0 player-heat 0} :as args}]
+  [{:keys [name server slot presence-value prompts forged? opponent-heat player-heat discard]
+    :or {server :council slot :inner forged? true opponent-heat 0 player-heat 0
+         discard []} :as args}]
   (is' (and name presence-value) (str "Presence? usage: {:name name, :presence-value [int], optional: server, slot, forged?}"))
-  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)] :heat player-heat}
+  (let [state (new-game {:corp {:hand [name] :deck [(qty "Fun Run" 10)] :discard discard :heat player-heat}
                          :runner {:heat opponent-heat}})]
     (play-from-hand state :corp name server slot)
     (when forged? (forge state :corp (pick-card state :corp server slot)))

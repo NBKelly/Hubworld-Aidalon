@@ -130,6 +130,69 @@
     (click-card state :runner "Shardwinner")
     (is-discard? state :runner ["Shardwinner"])))
 
+(deftest dralber-the-fence-no-questions-asked
+  (collects? {:name "Dralber the Fence: No Questions Asked"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Shardwinner"]
+                      :deck ["Dralber the Fence: No Questions Asked"]
+                      :exile ["Cornering the Market"]}
+               :runner {:deck ["Shardwinner"]}})
+    (click-credit state :corp)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-empty-server state :runner :commons {:give-heat? true})
+    (is (changed? [(count (:deck (get-corp))) 1]
+          (click-card state :corp "Cornering the Market"))
+        "Recurred it")
+    (is (no-prompt? state :runner) "Access dissoc'd"))
+  (testing "play instant"
+    (do-game
+      (new-game {:corp {:hand ["Dralber the Fence: No Questions Asked" "Calling in Favors"]}})
+      (play-from-hand state :corp "Dralber the Fence: No Questions Asked" :council :inner)
+      (forge state :corp (pick-card state :corp :council :inner))
+      (click-credit state :runner)
+      (play-from-hand state :corp "Calling in Favors")
+      (is (changed? [(:credit (get-corp)) 2]
+            (click-prompts state :corp "Dralber the Fence: No Questions Asked" "Yes"))
+          "Gained 2")))
+  (testing "flash instant"
+    (do-game
+      (new-game {:corp {:hand ["Dralber the Fence: No Questions Asked" "Trading Secrets"]
+                        :deck [(qty "Fun Run" 3)]}})
+      (play-from-hand state :corp "Dralber the Fence: No Questions Asked" :council :inner)
+      (forge state :corp (pick-card state :corp :council :inner))
+      (click-credit state :runner)
+      (flash-from-hand state :corp "Trading Secrets")
+      (is (changed? [(:credit (get-corp)) 2]
+            (click-prompts state :corp "Dralber the Fence: No Questions Asked" "Yes"))
+          "Gained 2")))
+  (testing "chain reaction"
+    (do-game
+      (new-game {:corp {:hand ["Dralber the Fence: No Questions Asked" "Fun Run"] :credits 8}})
+      (play-from-hand state :corp "Dralber the Fence: No Questions Asked" :council :inner)
+      (forge state :corp (pick-card state :corp :council :inner))
+      (click-credit state :runner)
+      (delve-empty-server state :corp :commons)
+      (click-prompts state :corp "Fun Run" "Yes")
+      (is (changed? [(:credit (get-corp)) 2]
+            (click-prompts state :corp "Dralber the Fence: No Questions Asked" "Yes"))
+          "Gained 2"))))
+
+(deftest frost-pax-lictor
+  (collects? {:name "Frost: Pax Lictor"
+              :cards 1})
+  (doseq [[s idx] [[:corp 2] [:runner 1]]]
+    (do-game
+      (new-game {:corp {:hand ["Frost: Pax Lictor"]
+                        :deck [(qty "Fun Run" 5)]}})
+      (play-from-hand state :corp "Frost: Pax Lictor" :council :inner)
+      (click-credit state :runner)
+      (forge state :corp (pick-card state :corp :council :inner))
+      (is (changed? [(count (get-in @state [s :deck])) -2]
+            (card-ability state :corp (pick-card state :corp :council :inner) idx))
+          "Milled 2"))))
+
 (deftest gargala-larga-imperator-of-growth-unexhaust-seeker
   (do-game
     (new-game {:corp {:hand ["Gargala Larga: Imperator of Growth"]}})
@@ -253,6 +316,33 @@
 (deftest maestro-collects
   (collects? {:name "Maestro: The Bebop Boffin"
               :credits 1}))
+
+(deftest nosmara-undercover-agent
+  (collects? {:name "Nosmara: Undercover Agent"
+              :credits 1})
+  (do-game
+    (new-game {:corp {:hand ["Nosmara: Undercover Agent" "Nosmara: Undercover Agent"]}
+               :runner {:hand ["Fun Run"] :deck ["Fun Run" "Barbican Gate"]}})
+    (play-from-hand state :corp "Nosmara: Undercover Agent" :commons :inner)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-empty-server state :runner :council {:give-heat? true})
+    (click-prompt state :corp "Yes")
+    (is (= (str "The top of your oppoonent's Commons is (first card on top): "
+                (get-in @state [:runner :deck 0 :title]) " and "
+                (get-in @state [:runner :deck 1 :title]))
+           (:msg (prompt-map :corp)))))
+  (do-game
+    (new-game {:corp {:hand ["Nosmara: Undercover Agent" "Nosmara: Undercover Agent"]}
+               :runner {:hand ["Fun Run"] :deck ["Fun Run" "Barbican Gate"]}})
+    (play-from-hand state :corp "Nosmara: Undercover Agent" :commons :inner)
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-server state :runner :council)
+    (forge state :corp (pick-card state :corp :commons :inner))
+    (card-ability state :corp (pick-card state :corp :commons :inner) 1)
+    (stage-select state :corp :archives :outer)
+    (is (= :archives (:server (:delve @state))) "Redirected")))
 
 (deftest prime-treasurer-geel-munificent-financier
   (collects? {:name "Prime Treasurer Geel: Munificent Financier"
@@ -417,3 +507,16 @@
     (click-prompt state :corp "Pay 1 [Credits] and swap a card in your front and back row: Secure")
     (click-prompts state :corp "Shardwinner" "Crispy Crawler")
     (is (seq (get-scored state :corp)) "Scored vapor x")))
+
+(deftest vula-malu-two-minds-for-the-price-of-one
+  (collects? {:name "Vulu-Malu: Two Minds in One"
+              :cards 1})
+  (do-game
+    (new-game {:corp {:hand [(qty "Vulu-Malu: Two Minds in One" 2)]
+                      :deck ["Barbican Gate" "Fun Run"]}})
+    (play-from-hand state :corp "Vulu-Malu: Two Minds in One" :commons :inner)
+    (forge state :corp (pick-card state :corp :commons :inner))
+    (click-credit state :runner)
+    (click-credit state :corp)
+    (delve-empty-server state :runner :council {:give-heat? true})
+    (click-prompts state :corp "Yes" "Barbican Gate" "Vulu-Malu: Two Minds in One" "Yes" "Fun Run")))

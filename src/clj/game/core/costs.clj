@@ -656,18 +656,18 @@
                                :paid/targets targets})))}
     card nil))
 
-(defmethod value :exhaust-network [cost] (:cost/amount cost))
-(defmethod label :exhaust-network [cost] (str "exhaust " (quantify (value cost) "card") " protecting your Network"))
-(defmethod payable? :exhaust-network
+(defmethod value :exhaust-commons [cost] (:cost/amount cost))
+(defmethod label :exhaust-commons [cost] (str "exhaust " (quantify (value cost) "card") " protecting your Commons"))
+(defmethod payable? :exhaust-commons
   [cost state side eid card]
   (<= 0 (- (count (filter (every-pred (complement :exhausted) in-commons-path?)
                           (hubworld-all-installed state side)))
            (value cost))))
-(defmethod handler :exhaust-network
+(defmethod handler :exhaust-commons
   [cost state side eid card]
   (continue-ability
     state side
-    {:prompt (str "Choose " (quantify (value cost) "card") " in your Network path to exhaust")
+    {:prompt (str "Choose " (quantify (value cost) "card") " in your Commons path to exhaust")
      :choices {:all true
                :max (value cost)
                :card #(and (installed? %)
